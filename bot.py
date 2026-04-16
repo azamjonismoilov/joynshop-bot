@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-CHANNEL_ID = '@joynshop_uz'
+CHANNEL_ID = -1003906912233
 BASE_URL = f'https://api.telegram.org/bot{BOT_TOKEN}'
 
 # In-memory storage (simple)
