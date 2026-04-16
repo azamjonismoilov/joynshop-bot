@@ -66,9 +66,7 @@ def build_post_caption(p, product_id):
     needed = max(0, min_g - count)
     
     # Progress bar
-    filled = int((count / min_g) * 10) if min_g > 0 else 0
-    filled = min(filled, 10)
-    bar = '🟢' * filled + '⚪️' * (10 - filled)
+    bar = '🟢' * count + '⚪️' * (min_g - count)
     
     status = '🔥 FAOL' if count < min_g else '✅ GURUH TO\'LDI'
     
