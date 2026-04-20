@@ -365,6 +365,111 @@ def seller_handle_cb(cb):
             )
         answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
 
+    if d == 'confirm_product':
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        publish_product(uid, uid, s)
+        return
+
+    edit_map = {
+        'edit_name':           ('name',           '1️⃣ Yangi mahsulot nomini yozing:'),
+        'edit_shop_name':      ('shop_name',       "2️⃣ Yangi do'kon nomini yozing:"),
+        'edit_description':    ('description',     '3️⃣ Yangi tavsifni yozing:'),
+        'edit_original_price': ('original_price',  '4️⃣ Yangi asl narxni yozing (so\'m):'),
+        'edit_group_price':    ('group_price',     '5️⃣ Yangi guruh narxini yozing (so\'m):'),
+        'edit_min_group':      ('min_group',       '6️⃣ Yangi minimal guruh sonini yozing (2-10):'),
+        'edit_photo':          ('photo',           '7️⃣ Yangi rasmni yuboring 📸'),
+        'edit_contact':        ('contact',         "8️⃣ Yangi aloqa ma'lumotini yozing:"),
+        'edit_seller_channel': ('seller_channel',  '9️⃣ Yangi kanal username ini yozing:'),
+    }
+    if d in edit_map:
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+        field, prompt = edit_map[d]
+        s['step']       = 'editing'
+        s['edit_field'] = field
+        seller_state[uid] = s
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, prompt)
+        return
+
+def show_confirm(cid, s):
+    channel = s.get('seller_channel', '')
+    send_seller(cid,
+        f"📋 <b>Ma'lumotlarni tekshiring:</b>\n\n"
+        f"📦 Mahsulot: <b>{s['name']}</b>\n"
+        f"🏪 Do'kon: <b>{s['shop_name']}</b>\n"
+        f"📝 Tavsif: {s['description']}\n\n"
+        f"💰 Asl narx: <b>{fmt(s['original_price'])} so'm</b>\n"
+        f"🏷 Guruh narxi: <b>{fmt(s['group_price'])} so'm</b>\n"
+        f"📉 Tejash: <b>{fmt(s['original_price']-s['group_price'])} so'm</b>\n\n"
+        f"👥 Minimal guruh: <b>{s['min_group']} kishi</b>\n"
+        f"📞 Aloqa: <b>{s['contact']}</b>\n"
+        f"📢 Kanal: <b>{channel}</b>",
+        {'inline_keyboard': [
+            [{'text': "✅ To'g'ri, e'lon qil!", 'callback_data': 'confirm_product'}],
+            [{'text': "✏️ Nom",         'callback_data': 'edit_name'},
+             {'text': "✏️ Do'kon",       'callback_data': 'edit_shop_name'}],
+            [{'text': "✏️ Tavsif",       'callback_data': 'edit_description'},
+             {'text': "✏️ Asl narx",     'callback_data': 'edit_original_price'}],
+            [{'text': "✏️ Guruh narxi",  'callback_data': 'edit_group_price'},
+             {'text': "✏️ Min guruh",    'callback_data': 'edit_min_group'}],
+            [{'text': "✏️ Rasm",         'callback_data': 'edit_photo'},
+             {'text': "✏️ Aloqa",        'callback_data': 'edit_contact'}],
+            [{'text': "✏️ Kanal",        'callback_data': 'edit_seller_channel'}],
+        ]}
+    )
+
+def publish_product(uid, cid, s):
+    channel  = s['seller_channel']
+    pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    deadline = datetime.now() + timedelta(hours=48)
+    products[pid] = {
+        'name': s['name'], 'shop_name': s['shop_name'],
+        'description': s['description'], 'original_price': s['original_price'],
+        'group_price': s['group_price'], 'min_group': s['min_group'],
+        'photo_id': s['photo_id'], 'contact': s['contact'],
+        'seller_channel': channel, 'seller_id': uid,
+        'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
+        'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
+        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active'
+    }
+    groups[pid] = []
+    if uid not in seller_products: seller_products[uid] = []
+    seller_products[uid].append(pid)
+    result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+        'chat_id': channel, 'photo': s['photo_id'],
+        'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
+        'reply_markup': json.dumps(join_kb(pid, 0, s['min_group']))
+    }).json()
+    del seller_state[uid]
+    if result.get('ok'):
+        products[pid]['channel_message_id'] = result['result']['message_id']
+        products[pid]['channel_chat_id']    = channel
+        send_seller(cid,
+            f"✅ <b>E'lon qilindi!</b>\n\n"
+            f"📦 {s['name']}\n📢 Kanal: {channel}\n"
+            f"🆔 <code>{pid}</code>\n⏰ {deadline.strftime('%d.%m.%Y %H:%M')}\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📊 /mystats\n📢 /boost {pid}\n🗑 /delete {pid}"
+        )
+    else:
+        del products[pid]
+        seller_products[uid].remove(pid)
+        s['step'] = 'confirm'
+        seller_state[uid] = s
+        send_seller(cid,
+            f"❌ Kanalga post qo'yib bo'lmadi!\n\n"
+            f"Tekshiring:\n"
+            f"• Sotuvchi bot {channel} ga admin sifatida qo'shilganmi?\n"
+            f"• Kanal username to'g'rimi?\n\n"
+            f"Tahrirlash yoki qayta urinish:"
+        )
+        show_confirm(cid, s)
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -569,59 +674,37 @@ def seller_handle_msg(msg):
         elif step == 'seller_channel':
             channel = text if text.startswith('@') else f'@{text}'
             s['seller_channel'] = channel
-            pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-            deadline = datetime.now() + timedelta(hours=48)
+            s['step'] = 'confirm'
+            show_confirm(cid, s)
 
-            products[pid] = {
-                'name':               s['name'],
-                'shop_name':          s['shop_name'],
-                'description':        s['description'],
-                'original_price':     s['original_price'],
-                'group_price':        s['group_price'],
-                'min_group':          s['min_group'],
-                'photo_id':           s['photo_id'],
-                'contact':            s['contact'],
-                'seller_channel':     channel,
-                'seller_id':          uid,
-                'deadline':           deadline.strftime('%d.%m.%Y %H:%M'),
-                'deadline_dt':        deadline.strftime('%Y-%m-%d %H:%M'),
-                'channel_message_id': None,
-                'channel_chat_id':    None,
-                'status':             'active'
-            }
-            groups[pid] = []
-            if uid not in seller_products: seller_products[uid] = []
-            seller_products[uid].append(pid)
-
-            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-                'chat_id':      channel,
-                'photo':        s['photo_id'],
-                'caption':      post_caption(products[pid], pid),
-                'parse_mode':   'HTML',
-                'reply_markup': json.dumps(join_kb(pid, 0, s['min_group']))
-            }).json()
-
-            del seller_state[uid]
-
-            if result.get('ok'):
-                products[pid]['channel_message_id'] = result['result']['message_id']
-                products[pid]['channel_chat_id']    = channel
-                send_seller(cid,
-                    f"✅ <b>E'lon qilindi!</b>\n\n"
-                    f"📦 {s['name']}\n📢 Kanal: {channel}\n"
-                    f"🆔 <code>{pid}</code>\n⏰ {deadline.strftime('%d.%m.%Y %H:%M')}\n\n"
-                    f"━━━━━━━━━━━━━━━\n"
-                    f"📊 /mystats\n📢 /boost {pid}\n🗑 /delete {pid}"
-                )
+        elif step == 'editing':
+            field = s.get('edit_field')
+            if field in ('original_price', 'group_price'):
+                try:
+                    s[field] = int(text.replace(' ','').replace(',',''))
+                except:
+                    send_seller(cid, "❌ Faqat raqam kiriting!"); return
+            elif field == 'min_group':
+                try:
+                    mg = int(text)
+                    if mg < 2 or mg > 10:
+                        send_seller(cid, "❌ 2 dan 10 gacha!"); return
+                    s[field] = mg
+                except:
+                    send_seller(cid, "❌ Raqam kiriting!"); return
+            elif field == 'photo':
+                photo = msg.get('photo')
+                if photo:
+                    s['photo_id'] = photo[-1]['file_id']
+                else:
+                    send_seller(cid, "❌ Rasm yuboring!"); return
+            elif field == 'seller_channel':
+                s[field] = text if text.startswith('@') else f'@{text}'
             else:
-                del products[pid]
-                send_seller(cid,
-                    f"❌ Kanalga post qo'yib bo'lmadi!\n\n"
-                    f"Tekshiring:\n"
-                    f"• Sotuvchi bot ({channel}) ga admin sifatida qo'shilganmi?\n"
-                    f"• Kanal username to'g'rimi?\n\n"
-                    f"Qayta urinish: /addproduct"
-                )
+                s[field] = text
+            s['step'] = 'confirm'
+            send_seller(cid, "✅ Yangilandi!")
+            show_confirm(cid, s)
 
 # ══════════════════════════════════════════════════════════════════════
 #  BUYER WEBHOOK
