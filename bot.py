@@ -21,6 +21,8 @@ buyer_profiles  = {}   # uid -> profile
 refund_requests = {}   # code -> refund info
 seller_state    = {}   # uid -> step state
 seller_products = {}   # uid -> [pids]
+verified_channels       = {}  # '@kanal' -> {'owner_id': uid, 'moderators': [uid]}
+pending_moderator_codes = {}  # code -> {'channel': '@kanal', 'added_by': uid}
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
@@ -344,12 +346,14 @@ def seller_handle_cb(cb):
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid,
             "ℹ️ <b>Sotuvchi yordam</b>\n\n"
-            "/addproduct  — Mahsulot qo'shish\n"
-            "/myproducts  — Mahsulotlarim\n"
-            "/mystats     — Statistika\n"
-            "/myorders    — Buyurtmalar\n"
-            "/boost [ID]  — Qayta e'lon\n"
-            "/delete [ID] — O'chirish\n\n"
+            "/addproduct    — Mahsulot qo'shish\n"
+            "/myproducts    — Mahsulotlarim\n"
+            "/mystats       — Statistika\n"
+            "/myorders      — Buyurtmalar\n"
+            "/mychannels    — Kanallarim\n"
+            "/addmoderator  — Moderator qo'shish\n"
+            "/boost [ID]    — Qayta e'lon\n"
+            "/delete [ID]   — O'chirish\n\n"
             "💬 Yordam: @joynshop_support",
             {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
         )
@@ -472,6 +476,20 @@ def seller_handle_cb(cb):
             )
         answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
 
+    if d.startswith('addmod_ch_'):
+        channel = d[10:]
+        answer_cb(cbid, token=SELLER_TOKEN)
+        if verified_channels.get(channel, {}).get('owner_id') != uid:
+            send_seller(uid, "❌ Bu kanal egasi emassiz!"); return
+        seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': channel}
+        send_seller(uid,
+            f"🛡 <b>{channel}</b> uchun moderator qo'shish\n\n"
+            f"Moderatorning Telegram @username ini yozing:\n"
+            f"<i>Masalan: @username</i>\n\n"
+            f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
+        )
+        return
+
     if d == 'confirm_product':
         s = seller_state.get(uid)
         if not s:
@@ -502,6 +520,29 @@ def seller_handle_cb(cb):
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid, prompt)
         return
+
+# ─── CHANNEL HELPERS ────────────────────────────────────────────────
+def can_manage_channel(uid, channel):
+    """Foydalanuvchi kanalga mahsulot qo'sha oladimi?"""
+    ch = verified_channels.get(channel)
+    if not ch: return False
+    return uid == ch['owner_id'] or uid in ch.get('moderators', [])
+
+def is_channel_admin(uid, channel):
+    """Telegram API orqali kanal adminligini tekshirish"""
+    try:
+        result = requests.post(
+            f'https://api.telegram.org/bot{SELLER_TOKEN}/getChatMember',
+            json={'chat_id': channel, 'user_id': uid}
+        ).json()
+        if not result.get('ok'): return False
+        status = result['result'].get('status', '')
+        return status in ('creator', 'administrator')
+    except:
+        return False
+
+def gen_mod_code():
+    return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 def show_confirm(cid, s):
     channel = s.get('seller_channel', '')
@@ -725,9 +766,85 @@ def seller_handle_msg(msg):
         )
         return
 
+    if text == '/mychannels':
+        my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid or uid in data.get('moderators', [])]
+        if not my_channels:
+            send_seller(cid,
+                "📢 Tasdiqlangan kanal yo'q.\n\n"
+                "/addproduct orqali mahsulot qo'shishda kanal tasdiqlanadi."
+            )
+        else:
+            r = "📢 <b>Tasdiqlangan kanallaringiz:</b>\n\n"
+            for ch in my_channels:
+                data = verified_channels[ch]
+                role = "👑 Egasi" if data['owner_id'] == uid else "🛡 Moderator"
+                mods = len(data.get('moderators', []))
+                r += f"{role} {ch}\n👥 {mods} moderator\n\n"
+            send_seller(cid, r)
+        return
+
+    if text == '/addmoderator':
+        my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid]
+        if not my_channels:
+            send_seller(cid, "❌ Siz hech bir kanalning egasi emassiz.\n\nAvval mahsulot qo'shib, kanal tasdiqlang.")
+            return
+        if len(my_channels) == 1:
+            seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': my_channels[0]}
+            send_seller(cid,
+                f"🛡 <b>{my_channels[0]}</b> uchun moderator qo'shish\n\n"
+                f"Moderatorning Telegram @username ini yozing:\n"
+                f"<i>Masalan: @username</i>\n\n"
+                f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
+            )
+        else:
+            btns = [[{'text': ch, 'callback_data': f'addmod_ch_{ch}'}] for ch in my_channels]
+            send_seller(cid, "Qaysi kanal uchun moderator qo'shmoqchisiz?", {'inline_keyboard': btns})
+        return
+
+    # Verifikatsiya kodi kiritish
+    # Moderator kodi kiritish
+    if text.startswith('MOD-'):
+        code = text.strip()
+        if code not in pending_moderator_codes:
+            send_seller(cid, "❌ Kod topilmadi yoki muddati o'tgan."); return
+        data    = pending_moderator_codes[code]
+        channel = data['channel']
+        if channel in verified_channels:
+            if uid not in verified_channels[channel]['moderators']:
+                verified_channels[channel]['moderators'].append(uid)
+        del pending_moderator_codes[code]
+        send_seller(cid,
+            f"✅ <b>{channel}</b> kanalida moderator bo'ldingiz!\n\n"
+            f"Endi /addproduct orqali mahsulot qo'sha olasiz."
+        )
+        # Notify owner
+        owner_id = verified_channels.get(channel, {}).get('owner_id')
+        if owner_id:
+            send_seller(owner_id,
+                f"🛡 Yangi moderator qo'shildi!\n\n"
+                f"Kanal: {channel}\n"
+                f"Moderator ID: <code>{uid}</code>"
+            )
+        return
+
     if uid in seller_state:
         s    = seller_state[uid]
         step = s.get('step')
+
+        if step == 'add_mod_user':
+            username = text if text.startswith('@') else f'@{text}'
+            channel  = s.get('mod_channel')
+            code     = gen_mod_code()
+            pending_moderator_codes[code] = {'channel': channel, 'added_by': uid}
+            del seller_state[uid]
+            send_seller(cid,
+                f"✅ Moderator uchun kod yaratildi!\n\n"
+                f"Quyidagi kodni <b>{username}</b> ga yuboring:\n\n"
+                f"<code>{code}</code>\n\n"
+                f"U seller botga shu kodni yuborishi kerak.\n"
+                f"Kod 24 soat amal qiladi."
+            )
+            return
 
         if step == 'name':
             s['name'] = text; s['step'] = 'shop_name'
@@ -802,8 +919,28 @@ def seller_handle_msg(msg):
         elif step == 'seller_channel':
             channel = text if text.startswith('@') else f'@{text}'
             s['seller_channel'] = channel
-            s['step'] = 'confirm'
-            show_confirm(cid, s)
+            # Kanal verifikatsiya tekshirish
+            if can_manage_channel(uid, channel):
+                # Allaqachon tasdiqlangan
+                s['step'] = 'confirm'
+                show_confirm(cid, s)
+            else:
+                # Telegram API orqali adminligini tekshirish
+                send_seller(cid, f"🔍 <b>{channel}</b> adminligi tekshirilmoqda...")
+                if is_channel_admin(uid, channel):
+                    # Admin tasdiqlandi
+                    verified_channels[channel] = {'owner_id': uid, 'moderators': []}
+                    send_seller(cid, f"✅ <b>{channel}</b> tasdiqlandi!")
+                    s['step'] = 'confirm'
+                    show_confirm(cid, s)
+                else:
+                    send_seller(cid,
+                        f"❌ <b>{channel}</b> kanalining admini emassiz!\n\n"
+                        f"Tekshiring:\n"
+                        f"• Seller bot kanalga admin sifatida qo'shilganmi?\n"
+                        f"• Kanal username to'g'rimi?\n\n"
+                        f"Qayta urinish: /addproduct"
+                    )
 
         elif step == 'editing':
             field = s.get('edit_field')
