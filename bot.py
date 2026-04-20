@@ -57,22 +57,35 @@ def bar(count, min_g):
 
 # ─── POST CAPTION ────────────────────────────────────────────────────
 def post_caption(p, pid):
-    count  = len(groups.get(pid, []))
-    min_g  = p['min_group']
-    status = '🔥 FAOL' if count < min_g else "✅ GURUH TO'LDI"
-    return (
-        f"<b>{p['name']}</b>\n\n"
-        f"💰 <s>{p['original_price']:,} so'm</s> → <b>🏷 {p['group_price']:,} so'm</b>\n"
-        f"📉 Tejash: <b>{p['original_price'] - p['group_price']:,} so'm</b>\n\n"
-        f"👥 Guruh: <b>{count}/{min_g}</b> {status}\n{bar(count, min_g)}\n\n"
-        f"⏳ Kerak: <b>{max(0, min_g - count)} kishi</b>\n"
-        f"🕐 Muddat: <b>{p.get('deadline', '')}</b>\n\n"
-        f"🏪 <b>{p['shop_name']}</b>\n📝 {p['description']}"
-    )
+    count     = len(groups.get(pid, []))
+    min_g     = p['min_group']
+    orig      = p['original_price']
+    solo      = p.get('solo_price', 0)
+    group     = p['group_price']
+    solo_disc = round((orig - solo) / orig * 100) if solo else 0
+    grp_disc  = round((orig - group) / orig * 100)
+    status    = '🔥' if count < min_g else '✅'
+    bar_str   = bar(count, min_g)
 
-def join_kb(pid, count, min_g):
-    txt = f"🛒 Qo'shilish ({count}/{min_g})" if count < min_g else "✅ To'ldi!"
-    return {'inline_keyboard': [[{'text': txt, 'callback_data': f'join_{pid}'}]]}
+    lines = [f"<b>{p['name']}</b>\n"]
+    if solo:
+        lines.append(f"👤 Yakka:  <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
+    lines.append(f"👥 Guruh:  <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
+    lines.append(f"Guruh: {count}/{min_g} {status}")
+    lines.append(f"⏳ Kerak: {max(0, min_g - count)} kishi")
+    lines.append(f"🕐 {p.get('deadline','')}")
+    lines.append(f"\n📝 {p['description']}")
+    lines.append(f"\n🏪 <b>{p['shop_name']}</b>  |  📞 {p.get('contact','')}")
+    return "\n".join(lines)
+
+def join_kb(pid, count, min_g, has_solo=False):
+    if count >= min_g:
+        return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'callback_data': 'noop'}]]}
+    kb = []
+    if has_solo:
+        kb.append([{'text': "🛒 Sotib olish (yakka)", 'callback_data': f'solo_{pid}'}])
+    kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'callback_data': f'join_{pid}'}])
+    return {'inline_keyboard': kb}
 
 # ─── CHEK ────────────────────────────────────────────────────────────
 def build_check(order_code, order):
@@ -218,7 +231,7 @@ def live_update_loop():
                 try:
                     edit_caption(cid, mid,
                         post_caption(p, pid),
-                        join_kb(pid, count, p['min_group'])
+                        join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price')))
                     )
                 except: pass
         except Exception as e:
@@ -345,8 +358,7 @@ def seller_handle_cb(cb):
     if d == 'back_menu':
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid,
-            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-            "Quyidagi tugmalardan birini tanlang 👇",
+            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\nGuruh savdosi orqali ko'proq soting!",
             {'inline_keyboard': [
                 [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
                 [
@@ -373,7 +385,7 @@ def seller_handle_cb(cb):
         result  = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
             'chat_id': channel, 'photo': p['photo_id'],
             'caption': post_caption(p, pid), 'parse_mode': 'HTML',
-            'reply_markup': json.dumps(join_kb(pid, count, p['min_group']))
+            'reply_markup': json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
         }).json()
         if result.get('ok'):
             products[pid]['channel_message_id'] = result['result']['message_id']
@@ -499,8 +511,8 @@ def show_confirm(cid, s):
         f"🏪 Do'kon: <b>{s['shop_name']}</b>\n"
         f"📝 Tavsif: {s['description']}\n\n"
         f"💰 Asl narx: <b>{fmt(s['original_price'])} so'm</b>\n"
-        f"🏷 Guruh narxi: <b>{fmt(s['group_price'])} so'm</b>\n"
-        f"📉 Tejash: <b>{fmt(s['original_price']-s['group_price'])} so'm</b>\n\n"
+        f"👤 Yakka narx: <b>{fmt(s.get('solo_price',0)) if s.get('solo_price') else 'Yoq'} so'm</b>\n"
+        f"🏷 Guruh narxi: <b>{fmt(s['group_price'])} so'm</b>\n\n"
         f"👥 Minimal guruh: <b>{s['min_group']} kishi</b>\n"
         f"📞 Aloqa: <b>{s['contact']}</b>\n"
         f"📢 Kanal: <b>{channel}</b>",
@@ -525,7 +537,8 @@ def publish_product(uid, cid, s):
     products[pid] = {
         'name': s['name'], 'shop_name': s['shop_name'],
         'description': s['description'], 'original_price': s['original_price'],
-        'group_price': s['group_price'], 'min_group': s['min_group'],
+        'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
+        'min_group': s['min_group'],
         'photo_id': s['photo_id'], 'contact': s['contact'],
         'seller_channel': channel, 'seller_id': uid,
         'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
@@ -538,7 +551,7 @@ def publish_product(uid, cid, s):
     result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
         'chat_id': channel, 'photo': s['photo_id'],
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
-        'reply_markup': json.dumps(join_kb(pid, 0, s['min_group']))
+        'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
     }).json()
     del seller_state[uid]
     if result.get('ok'):
@@ -586,8 +599,7 @@ def seller_handle_msg(msg):
     if text == '/start':
         send_seller(cid,
             "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-            "Guruh savdosi orqali ko'proq soting!\n\n"
-            "Quyidagi tugmalardan birini tanlang 👇",
+            "Guruh savdosi orqali ko'proq soting!",
             {'inline_keyboard': [
                 [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
                 [
@@ -740,10 +752,25 @@ def seller_handle_msg(msg):
         elif step == 'group_price':
             try:
                 s['group_price'] = int(text.replace(' ','').replace(',',''))
-                s['step'] = 'min_group'
-                send_seller(cid, "6️⃣ Minimal guruh soni (2-10):")
+                s['step'] = 'solo_price'
+                send_seller(cid,
+                    "5️⃣b Yakka sotish narxi (so'm):\n"
+                    "<i>Masalan: 720000</i>\n\n"
+                    "Yakka sotish bo'lmasa /skip yozing"
+                )
             except:
                 send_seller(cid, "❌ Faqat raqam kiriting!")
+
+        elif step == 'solo_price':
+            if text.strip() == '/skip':
+                s['solo_price'] = 0
+            else:
+                try:
+                    s['solo_price'] = int(text.replace(' ','').replace(',',''))
+                except:
+                    send_seller(cid, "❌ Faqat raqam kiriting yoki /skip yozing!"); return
+            s['step'] = 'min_group'
+            send_seller(cid, "6️⃣ Minimal guruh soni (2-10):")
 
         elif step == 'min_group':
             try:
@@ -830,6 +857,128 @@ def buyer_handle_cb(cb):
 
     if d == 'noop':
         answer_cb(cbid); return
+
+    # ── BUYER MENU ──
+    def buyer_main_menu():
+        send_buyer(uid,
+            "👋 <b>Joynshop</b>\n\nNimani qilmoqchisiz?",
+            {'inline_keyboard': [
+                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
+                [
+                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
+                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
+                ],
+                [
+                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
+                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
+                ],
+            ]}
+        )
+
+    if d == 'buyer_mystatus':
+        answer_cb(cbid)
+        my = {k:v for k,v in orders.items() if v['user_id']==uid}
+        if not my:
+            send_buyer(uid, "📋 Buyurtma yo'q.",
+                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+            ); return
+        r  = "📋 <b>Buyurtmalaringiz:</b>\n\n"
+        em = {'pending':'⏳','confirming':'🔄','confirmed':'✅','rejected':'❌','cancelled':'🚫'}
+        st = {'pending':"To'lov kutilmoqda",'confirming':'Tekshirilmoqda',
+              'confirmed':'Tasdiqlandi','rejected':'Rad','cancelled':'Bekor'}
+        for k, o in list(my.items())[-5:]:
+            p  = products.get(o['product_id'],{})
+            r += f"{em.get(o['status'],'?')} <b>#{k}</b>\n{p.get('name','?')} — {fmt(o['amount'])} so'm\n{st.get(o['status'],'')}\n\n"
+        send_buyer(uid, r, {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]})
+        return
+
+    if d == 'buyer_myprofile':
+        answer_cb(cbid)
+        p = get_profile(uid)
+        send_buyer(uid,
+            f"👤 <b>Profilingiz</b>\n\n"
+            f"🛒 Jami xaridlar: {p['total_orders']}\n"
+            f"💰 Tejagan: {fmt(p['total_saved'])} so'm\n"
+            f"👥 Guruhlar: {p['groups_joined']}\n"
+            f"🎁 Cashback: {fmt(p['cashback'])} so'm\n"
+            f"👫 Referrallar: {p['referrals']}",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+        )
+        return
+
+    if d == 'buyer_mywishlist':
+        answer_cb(cbid)
+        wl = wishlists.get(uid, [])
+        if not wl:
+            send_buyer(uid, "🤍 Wishlist bo'sh.",
+                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+            ); return
+        r = "🤍 <b>Wishlistingiz:</b>\n\n"
+        for pid in wl:
+            p = products.get(pid, {})
+            if not p: continue
+            count = len(groups.get(pid, []))
+            r    += f"📦 {p.get('name','')}\n💰 {fmt(p.get('group_price',0))} so'm\n👥 {count}/{p.get('min_group',3)}\n\n"
+        send_buyer(uid, r, {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]})
+        return
+
+    if d == 'buyer_refund':
+        answer_cb(cbid)
+        my = {k:v for k,v in orders.items() if v['user_id']==uid and v['status']=='confirmed'}
+        if not my:
+            send_buyer(uid, "Qaytarish uchun tasdiqlangan buyurtma yo'q.",
+                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+            ); return
+        btns = []
+        for k, o in list(my.items())[-5:]:
+            p = products.get(o['product_id'],{})
+            btns.append([{'text': f"#{k} — {p.get('name','')}", 'callback_data': f'refund_{k}'}])
+        btns.append([{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}])
+        send_buyer(uid, "Qaysi buyurtmani qaytarmoqchisiz?", {'inline_keyboard': btns})
+        return
+
+    if d == 'buyer_help':
+        answer_cb(cbid)
+        send_buyer(uid,
+            "ℹ️ <b>Yordam</b>\n\n"
+            "/mystatus   — Buyurtmalarim\n"
+            "/myprofile  — Profilim\n"
+            "/mywishlist — Saqlangan mahsulotlar\n"
+            "/refund     — Qaytarish so'rovi\n\n"
+            "🆘 Yordam: @joynshop_support",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+        )
+        return
+
+    if d == 'buyer_back':
+        answer_cb(cbid)
+        buyer_main_menu()
+        return
+
+    # ── GURUH / YAKKA TANLASH ──
+    if d.startswith('choose_'):
+        pid = d[7:]
+        if pid not in products:
+            answer_cb(cbid, '❌ Mahsulot topilmadi!'); return
+        p = products[pid]
+        if p.get('status') == 'closed':
+            answer_cb(cbid, '⛔️ Yopilgan!'); return
+        answer_cb(cbid)
+        count = len(groups.get(pid, []))
+        min_g = p['min_group']
+        has_solo = p.get('solo_price')
+        kb = []
+        if count < min_g:
+            kb.append([{'text': f"👥 Guruh narxi — {fmt(p['group_price'])} so'm ({count}/{min_g})", 'callback_data': f'join_{pid}'}])
+        if has_solo:
+            kb.append([{'text': f"👤 Yakka narxi — {fmt(p['solo_price'])} so'm", 'callback_data': f'solo_{pid}'}])
+        kb.append([{'text': "❌ Bekor", 'callback_data': 'noop'}])
+        send_buyer(uid,
+            f"📦 <b>{p['name']}</b>\n\n"
+            f"Qanday sotib olmoqchisiz?",
+            {'inline_keyboard': kb}
+        )
+        return
 
     if d.startswith('join_'):
         pid = d[5:]
@@ -988,13 +1137,18 @@ def buyer_handle_msg(msg):
     if text == '/start':
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
-            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
-            "━━━━━━━━━━━━━━━\n"
-            "/mystatus   — Buyurtmalarim\n"
-            "/myprofile  — Profilim\n"
-            "/mywishlist — Wishlistim\n"
-            "/refund     — Qaytarish\n"
-            "/help       — Yordam"
+            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!",
+            {'inline_keyboard': [
+                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
+                [
+                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
+                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
+                ],
+                [
+                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
+                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
+                ],
+            ]}
         )
         return
 
