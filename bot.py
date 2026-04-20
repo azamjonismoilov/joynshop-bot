@@ -260,10 +260,105 @@ def seller_handle_cb(cb):
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
 
-    if d == 'start_addproduct':
+    if d in ('start_addproduct', 'menu_addproduct'):
         answer_cb(cbid, token=SELLER_TOKEN)
         seller_state[uid] = {'step': 'name'}
         send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+        return
+
+    if d == 'menu_mystats':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        my = seller_products.get(uid, [])
+        if not my:
+            send_seller(uid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
+        revenue    = sum(o['amount'] for o in orders.values() if o.get('product_id') in my and o['status'] == 'confirmed')
+        commission = int(revenue * COMMISSION_RATE)
+        send_seller(uid,
+            f"📊 <b>Sizning statistikangiz:</b>\n\n"
+            f"📦 Jami mahsulot: {len(my)}\n"
+            f"🔥 Aktiv: {sum(1 for pid in my if products.get(pid,{}).get('status')!='closed')}\n"
+            f"✅ Muvaffaqiyatli guruh: {sum(1 for pid in my if len(groups.get(pid,[]))>=products.get(pid,{}).get('min_group',99))}\n"
+            f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
+            f"📊 Komissiya (5%): {fmt(commission)} so'm\n"
+            f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
+        )
+        return
+
+    if d == 'menu_myorders':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        my_pids = seller_products.get(uid, [])
+        pending = {k:v for k,v in orders.items() if v.get('product_id') in my_pids and v['status']=='confirming'}
+        if not pending:
+            send_seller(uid, "📋 Tasdiqlanmagan buyurtma yo'q.",
+                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
+            ); return
+        for code, o in list(pending.items())[-10:]:
+            p = products.get(o['product_id'], {})
+            send_seller(uid,
+                f"🔔 <b>YANGI TO'LOV!</b>\n\n"
+                f"📦 {p.get('name','')}\n👤 {o['user_name']}\n"
+                f"💰 {fmt(o['amount'])} so'm\n"
+                f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n🆔 #{code}",
+                {'inline_keyboard': [[
+                    {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                    {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'}
+                ]]}
+            )
+        return
+
+    if d == 'menu_myproducts':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        my = seller_products.get(uid, [])
+        if not my:
+            send_seller(uid, "📦 Mahsulot yo'q.",
+                {'inline_keyboard': [[{'text': "➕ Qo'shish", 'callback_data': 'menu_addproduct'}]]}
+            ); return
+        r = "📦 <b>Mahsulotlaringiz:</b>\n\n"
+        for pid in my:
+            p = products.get(pid, {})
+            if not p: continue
+            count = len(groups.get(pid, []))
+            st    = '🔥 Aktiv' if p.get('status') != 'closed' else '✅ Yopilgan'
+            r    += f"━━━━━━━━━━━━━━━\n📦 <b>{p.get('name','')}</b>\n🆔 <code>{pid}</code>\n👥 {count}/{p['min_group']} {st}\n💰 {fmt(p['group_price'])} so'm\n\n"
+        r += "━━━━━━━━━━━━━━━\n/boost [ID] | /delete [ID]"
+        send_seller(uid, r, {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
+        return
+
+    if d == 'menu_help':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            "ℹ️ <b>Sotuvchi yordam</b>\n\n"
+            "/addproduct  — Mahsulot qo'shish\n"
+            "/myproducts  — Mahsulotlarim\n"
+            "/mystats     — Statistika\n"
+            "/myorders    — Buyurtmalar\n"
+            "/boost [ID]  — Qayta e'lon\n"
+            "/delete [ID] — O'chirish\n\n"
+            "💬 Yordam: @joynshop_support",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
+        )
+        return
+
+    if d == 'back_menu':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+            "Quyidagi tugmalardan birini tanlang 👇",
+            {'inline_keyboard': [
+                [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
+                [
+                    {'text': "📊 Statistika",    'callback_data': 'menu_mystats'},
+                    {'text': "📋 Buyurtmalar",   'callback_data': 'menu_myorders'},
+                ],
+                [
+                    {'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'},
+                    {'text': "❓ Yordam",         'callback_data': 'menu_help'},
+                ],
+            ]}
+        )
         return
 
     if d.startswith('boost_confirm_'):
@@ -492,12 +587,18 @@ def seller_handle_msg(msg):
         send_seller(cid,
             "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
             "Guruh savdosi orqali ko'proq soting!\n\n"
-            "/addproduct  — Mahsulot qo'shish\n"
-            "/myproducts  — Mahsulotlarim\n"
-            "/mystats     — Statistika\n"
-            "/myorders    — Buyurtmalar\n"
-            "/help        — Yordam",
-            {'inline_keyboard': [[{'text': "➕ Mahsulot qo'shish", 'callback_data': 'start_addproduct'}]]}
+            "Quyidagi tugmalardan birini tanlang 👇",
+            {'inline_keyboard': [
+                [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
+                [
+                    {'text': "📊 Statistika",      'callback_data': 'menu_mystats'},
+                    {'text': "📋 Buyurtmalar",     'callback_data': 'menu_myorders'},
+                ],
+                [
+                    {'text': "📦 Mahsulotlarim",   'callback_data': 'menu_myproducts'},
+                    {'text': "❓ Yordam",           'callback_data': 'menu_help'},
+                ],
+            ]}
         )
         return
 
