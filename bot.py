@@ -10,7 +10,8 @@ SELLER_TOKEN    = os.environ.get('SELLER_TOKEN')
 BUYER_TOKEN     = os.environ.get('BUYER_TOKEN')
 ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
-COMMISSION_RATE = 0.05  # 5%
+COMMISSION_RATE    = 0.05  # 5%
+DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
 
 # ─── SHARED STORAGE ─────────────────────────────────────────────────
 products        = {}   # pid -> product info
@@ -386,7 +387,7 @@ def seller_handle_cb(cb):
             answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
         count   = len(groups.get(pid, []))
         channel = p.get('seller_channel')
-        result  = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+        result  = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendPhoto', json={
             'chat_id': channel, 'photo': p['photo_id'],
             'caption': post_caption(p, pid), 'parse_mode': 'HTML',
             'reply_markup': json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
@@ -589,7 +590,7 @@ def publish_product(uid, cid, s):
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
-    result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+    result = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendPhoto', json={
         'chat_id': channel, 'photo': s['photo_id'],
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
@@ -1353,6 +1354,93 @@ def buyer_handle_msg(msg):
 @app.route('/', methods=['GET'])
 def index():
     return 'Joynshop Bot ishlayapti! 🏪🛍'
+
+@app.route('/api/stats', methods=['GET'])
+def api_stats():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start  = today_start - timedelta(days=7)
+
+    # Orders
+    all_confirmed = [o for o in orders.values() if o['status'] == 'confirmed']
+    today_orders  = [o for o in all_confirmed if datetime.strptime(o['created'], '%d.%m.%Y %H:%M') >= today_start]
+    week_orders   = [o for o in all_confirmed if datetime.strptime(o['created'], '%d.%m.%Y %H:%M') >= week_start]
+
+    gmv_total = sum(o['amount'] for o in all_confirmed)
+    gmv_today = sum(o['amount'] for o in today_orders)
+    gmv_week  = sum(o['amount'] for o in week_orders)
+
+    # Products
+    all_products   = list(products.values())
+    active_prods   = [p for p in all_products if p.get('status') != 'closed']
+    filled_groups  = [p for p in all_products if len(groups.get(list(products.keys())[list(products.values()).index(p)], [])) >= p.get('min_group', 99)]
+
+    # Sellers
+    unique_sellers = len(set(p.get('seller_id') for p in all_products if p.get('seller_id')))
+
+    # Buyers
+    unique_buyers  = len(set(o['user_id'] for o in all_confirmed))
+    today_buyers   = len(set(o['user_id'] for o in today_orders))
+
+    # Conversion
+    total_attempts = len([o for o in orders.values()])
+    conv_rate = round(len(all_confirmed) / total_attempts * 100) if total_attempts else 0
+
+    # Daily GMV for chart (last 14 days)
+    daily_data = []
+    for i in range(13, -1, -1):
+        day = today_start - timedelta(days=i)
+        day_end = day + timedelta(days=1)
+        day_orders = [o for o in all_confirmed
+                      if datetime.strptime(o['created'], '%d.%m.%Y %H:%M') >= day
+                      and datetime.strptime(o['created'], '%d.%m.%Y %H:%M') < day_end]
+        daily_data.append({
+            'date': day.strftime('%d.%m'),
+            'gmv': sum(o['amount'] for o in day_orders),
+            'orders': len(day_orders)
+        })
+
+    return jsonify({
+        'sellers': {
+            'total': unique_sellers,
+            'channels': len(verified_channels),
+        },
+        'buyers': {
+            'total': unique_buyers,
+            'today': today_buyers,
+        },
+        'products': {
+            'total': len(all_products),
+            'active': len(active_prods),
+            'filled': len(filled_groups),
+        },
+        'orders': {
+            'total': len(all_confirmed),
+            'today': len(today_orders),
+            'week': len(week_orders),
+            'conversion': conv_rate,
+        },
+        'finance': {
+            'gmv_total': gmv_total,
+            'gmv_today': gmv_today,
+            'gmv_week': gmv_week,
+            'commission_total': int(gmv_total * COMMISSION_RATE),
+            'commission_week': int(gmv_week * COMMISSION_RATE),
+            'avg_order': int(gmv_total / len(all_confirmed)) if all_confirmed else 0,
+        },
+        'chart': daily_data,
+    })
+
+@app.route('/dashboard', methods=['GET'])
+def dashboard():
+    from flask import Response
+    html = open('dashboard.html').read()
+    return Response(html, mimetype='text/html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
