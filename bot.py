@@ -12,6 +12,7 @@ ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE    = 0.05  # 5%
 DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
+BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
 
 # ─── SHARED STORAGE ─────────────────────────────────────────────────
 products        = {}   # pid -> product info
@@ -141,12 +142,15 @@ def post_caption(p, pid):
 
 def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
-        return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'callback_data': 'noop'}]]}
+        return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
     if has_solo:
-        kb.append([{'text': "🛒 Sotib olish (yakka)", 'callback_data': f'solo_{pid}'}])
-    kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'callback_data': f'join_{pid}'}])
-    return {'inline_keyboard': kb}
+        kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
+    kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
+    return kb_inline(kb)
+
+def kb_inline(rows):
+    return {'inline_keyboard': rows}
 
 # ─── CHEK ────────────────────────────────────────────────────────────
 def build_check(order_code, order):
@@ -445,7 +449,7 @@ def seller_handle_cb(cb):
             answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
         count   = len(groups.get(pid, []))
         channel = p.get('seller_channel')
-        result  = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendPhoto', json={
+        result  = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
             'chat_id': channel, 'photo': p['photo_id'],
             'caption': post_caption(p, pid), 'parse_mode': 'HTML',
             'reply_markup': json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
@@ -653,7 +657,7 @@ def publish_product(uid, cid, s):
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
-    result = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendPhoto', json={
+    result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
         'chat_id': channel, 'photo': s['photo_id'],
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
@@ -1341,6 +1345,79 @@ def buyer_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
     text = msg.get('text', '')
+
+    # Deep link handler: /start join_abc123 or /start solo_abc123
+    if text.startswith('/start ') or text.startswith('/start\n'):
+        param = text.split(None, 1)[1].strip() if len(text.split(None, 1)) > 1 else ''
+        if param.startswith('join_') or param.startswith('solo_'):
+            action, pid = param.split('_', 1)
+            if pid not in products:
+                send_buyer(cid, "❌ Mahsulot topilmadi yoki muddati o'tgan.")
+                return
+            p = products[pid]
+            if p.get('status') == 'closed':
+                send_buyer(cid, "⛔️ Bu guruh yopilgan.")
+                return
+
+            if action == 'solo':
+                if not p.get('solo_price'):
+                    send_buyer(cid, "❌ Bu mahsulotda yakka sotish yo'q.")
+                    return
+                code = gen_code()
+                orders[code] = {
+                    'product_id': pid, 'user_id': uid,
+                    'user_name':  msg['from'].get('first_name', 'Foydalanuvchi'),
+                    'amount':     p['solo_price'], 'type': 'solo',
+                    'status':     'pending',
+                    'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
+                }
+                save_data()
+                send_buyer(cid,
+                    f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Yakka buyurtma</b>\n"
+                    f"━━━━━━━━━━━━━━━\n"
+                    f"📦 {p['name']}\n💰 {fmt(p['solo_price'])} so'm\n\n"
+                    f"💳 <b>Payme:</b>\n"
+                    f"📱 <code>{PAYME_NUMBER}</code>\n"
+                    f"💵 <code>{fmt(p['solo_price'])}</code>\n"
+                    f"📝 Izoh: <code>{code}</code>\n\n"
+                    f"⚠️ Izohga <b>{code}</b> yozing!\n"
+                    f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+                    {'inline_keyboard': [
+                        [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                        [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+                    ]}
+                )
+                return
+
+            # action == 'join' (guruh)
+            if pid not in groups: groups[pid] = []
+            if uid in groups[pid]:
+                send_buyer(cid, '✅ Siz allaqachon guruhdasiz!'); return
+            code = gen_code()
+            orders[code] = {
+                'product_id': pid, 'user_id': uid,
+                'user_name':  msg['from'].get('first_name', 'Foydalanuvchi'),
+                'amount':     p['group_price'], 'type': 'group',
+                'status':     'pending',
+                'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
+            }
+            save_data()
+            send_buyer(cid,
+                f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"📦 {p['name']}\n💰 {fmt(p['group_price'])} so'm\n\n"
+                f"💳 <b>Payme:</b>\n"
+                f"📱 <code>{PAYME_NUMBER}</code>\n"
+                f"💵 <code>{fmt(p['group_price'])}</code>\n"
+                f"📝 Izoh: <code>{code}</code>\n\n"
+                f"⚠️ Izohga <b>{code}</b> yozing!\n"
+                f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+                {'inline_keyboard': [
+                    [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                    [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+                ]}
+            )
+            return
 
     if text == '/start':
         send_buyer(cid,
