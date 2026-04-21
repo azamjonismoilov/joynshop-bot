@@ -83,6 +83,18 @@ def load_data():
 # Load on startup
 load_data()
 
+# Save on shutdown
+import atexit, signal
+
+def shutdown_save(*args):
+    logging.info("Shutting down — saving data...")
+    save_data()
+    logging.info("Data saved on shutdown!")
+
+atexit.register(shutdown_save)
+signal.signal(signal.SIGTERM, shutdown_save)
+signal.signal(signal.SIGINT, shutdown_save)
+
 # Auto-save every 60 seconds
 def autosave_loop():
     while True:
@@ -336,6 +348,7 @@ def seller_webhook():
     data = request.json
     if 'callback_query' in data: seller_handle_cb(data['callback_query'])
     elif 'message'        in data: seller_handle_msg(data['message'])
+    save_data()
     return 'ok'
 
 def seller_handle_cb(cb):
@@ -1145,6 +1158,7 @@ def buyer_webhook():
             moderate_chat(msg)
         else:
             buyer_handle_msg(msg)
+    save_data()
     return 'ok'
 
 def delivery_notice(p):
@@ -1322,14 +1336,27 @@ def buyer_handle_cb(cb):
         if pid not in groups: groups[pid] = []
         if uid in groups[pid]:
             answer_cb(cbid, '✅ Allaqachon guruhdasiz!'); return
+
+        # Variantlar bo'lsa tanlash
+        variants = p.get('variants', [])
+        if variants:
+            answer_cb(cbid, token=BUYER_TOKEN)
+            btns = [[{'text': v, 'callback_data': f'variant_{pid}_{v}'}] for v in variants]
+            send_buyer(uid,
+                f"📦 <b>{p['name']}</b>\n\nVariantni tanlang:",
+                {'inline_keyboard': btns}
+            )
+            return
+
         code = gen_code()
         orders[code] = {
             'product_id': pid, 'user_id': uid,
             'user_name':  cb['from'].get('first_name', 'Foydalanuvchi'),
             'amount':     p['group_price'], 'type': 'group',
-            'status':     'pending',
+            'status':     'pending', 'variant': '',
             'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
         }
+        save_data()
         answer_cb(cbid, "To'lov ma'lumotlari yuborildi!")
         send_buyer(uid,
             f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
@@ -1806,6 +1833,15 @@ def api_stats():
         'sellers': {
             'total': unique_sellers,
             'channels': len(verified_channels),
+            'channel_list': [
+                {
+                    'username': ch,
+                    'owner': data.get('owner_id'),
+                    'mods': len(data.get('moderators', [])),
+                    'products': sum(1 for p in products.values() if p.get('seller_channel') == ch and p.get('status') != 'closed')
+                }
+                for ch, data in verified_channels.items()
+            ],
         },
         'referrals': {
             'total_referrers': len(referrals),
