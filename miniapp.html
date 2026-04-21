@@ -570,6 +570,132 @@
 
   .btn-secondary:active { background: var(--gray-100); }
 
+  /* PROFILE SCREEN */
+  .profile-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--gray-50);
+    z-index: 150;
+    overflow-y: auto;
+    padding-bottom: 80px;
+    animation: slideInRight 0.25s ease;
+  }
+  .profile-screen.open { display: block; }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .profile-header {
+    background: var(--white);
+    padding: 16px;
+  }
+  .profile-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .profile-title { font-size: 20px; font-weight: 700; }
+  .profile-settings-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--gray-100);
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .profile-user {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .profile-avatar {
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: white;
+    font-size: 22px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .profile-name { font-size: 17px; font-weight: 700; margin-bottom: 3px; }
+  .profile-sub { font-size: 13px; color: var(--gray-500); margin-bottom: 5px; }
+  .profile-chip {
+    display: inline-block;
+    padding: 3px 10px;
+    background: var(--orange-light);
+    color: var(--orange);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .profile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid var(--gray-100);
+  }
+  .profile-stat {
+    padding: 14px 0;
+    text-align: center;
+    border-right: 1px solid var(--gray-100);
+  }
+  .profile-stat:last-child { border-right: none; }
+  .profile-stat-num { font-size: 20px; font-weight: 800; color: var(--orange); }
+  .profile-stat-label { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+  .profile-menu { padding: 14px 16px; }
+  .profile-group { margin-bottom: 16px; }
+  .profile-group-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-400);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-left: 4px;
+  }
+  .profile-menu-card {
+    background: var(--white);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--gray-100);
+  }
+  .profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--gray-50);
+    cursor: pointer;
+    transition: background 0.1s;
+    text-decoration: none;
+    color: var(--gray-900);
+  }
+  .profile-menu-item:last-child { border-bottom: none; }
+  .profile-menu-item:active { background: var(--gray-50); }
+  .profile-menu-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .profile-menu-label { flex: 1; font-size: 15px; font-weight: 500; }
+  .profile-menu-arrow { color: var(--gray-300); font-size: 18px; }
+  .profile-menu-badge {
+    background: var(--orange);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-right: 4px;
+  }
+  .danger { color: #EF4444 !important; }
+
   /* BOTTOM NAV */
   .bottom-nav {
     position: fixed;
@@ -739,6 +865,95 @@
       <div class="modal-desc" id="modalDesc"></div>
       <div class="modal-contact" id="modalContact"></div>
       <div id="modalBtns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE SCREEN -->
+<div class="profile-screen" id="profileScreen">
+  <div class="profile-header">
+    <div class="profile-header-top">
+      <div class="profile-title">Profil</div>
+      <button class="profile-settings-btn" onclick="showToast('Tez kunda!')">⚙️</button>
+    </div>
+    <div class="profile-user">
+      <div class="profile-avatar" id="profileAvatar">👤</div>
+      <div>
+        <div class="profile-name" id="profileName">Yuklanmoqda...</div>
+        <div class="profile-sub" id="profileSub">Joynshop foydalanuvchisi</div>
+        <div class="profile-chip">⭐ Joynshop a'zosi</div>
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <div class="profile-stat-num" id="pStatGroups">—</div>
+        <div class="profile-stat-label">Guruhlar</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-num" id="pStatOrders">—</div>
+        <div class="profile-stat-label">Buyurtmalar</div>
+      </div>
+      <div class="profile-stat">
+        <div class="profile-stat-num" id="pStatCashback">—</div>
+        <div class="profile-stat-label">Cashback</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-menu">
+    <div class="profile-group">
+      <div class="profile-group-title">Faoliyat</div>
+      <div class="profile-menu-card">
+        <a class="profile-menu-item" id="ordersLink">
+          <div class="profile-menu-icon" style="background:#FFF3EB">🛍️</div>
+          <div class="profile-menu-label">Buyurtmalarim</div>
+          <div class="profile-menu-arrow">›</div>
+        </a>
+        <a class="profile-menu-item" id="wishlistLink">
+          <div class="profile-menu-icon" style="background:#FFF0F0">❤️</div>
+          <div class="profile-menu-label">Saqlanganlar</div>
+          <div class="profile-menu-arrow">›</div>
+        </a>
+        <a class="profile-menu-item" id="refundLink">
+          <div class="profile-menu-icon" style="background:#F0F9FF">↩️</div>
+          <div class="profile-menu-label">Qaytarish</div>
+          <div class="profile-menu-arrow">›</div>
+        </a>
+      </div>
+    </div>
+
+    <div class="profile-group">
+      <div class="profile-group-title">Referral</div>
+      <div class="profile-menu-card">
+        <div class="profile-menu-item" id="refLinkItem" onclick="copyRefLink()">
+          <div class="profile-menu-icon" style="background:#F0FFF4">🔗</div>
+          <div class="profile-menu-label">Do'stni taklif qilish</div>
+          <div class="profile-menu-badge" id="refCount">0</div>
+          <div class="profile-menu-arrow">›</div>
+        </div>
+        <div class="profile-menu-item" onclick="shareRefLink()">
+          <div class="profile-menu-icon" style="background:#FFF3EB">📤</div>
+          <div class="profile-menu-label">Ulashish</div>
+          <span style="font-size:12px;color:var(--gray-400);margin-right:8px">+10,000 so'm</span>
+          <div class="profile-menu-arrow">›</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-group">
+      <div class="profile-group-title">Boshqa</div>
+      <div class="profile-menu-card">
+        <div class="profile-menu-item" onclick="showToast('Tez kunda!')">
+          <div class="profile-menu-icon" style="background:#F5F3FF">❓</div>
+          <div class="profile-menu-label">Yordam markazi</div>
+          <div class="profile-menu-arrow">›</div>
+        </div>
+        <div class="profile-menu-item" onclick="closeProfile()">
+          <div class="profile-menu-icon" style="background:#FFF5F5">🏠</div>
+          <div class="profile-menu-label danger">Bosh sahifaga qaytish</div>
+          <div class="profile-menu-arrow">›</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -973,11 +1188,78 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2000);
 }
 
+let refLink = '';
+
 function openProfile() {
-  if (tg) {
-    tg.openTelegramLink(`https://t.me/${location.hostname.includes('render') ? 'joynshop_bot' : 'joynshop_bot'}`);
+  const screen = document.getElementById('profileScreen');
+  screen.classList.add('open');
+
+  // Update nav
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.querySelector('.nav-label').style.color = '';
+  });
+  document.querySelectorAll('.nav-item')[3].querySelector('.nav-label').style.color = 'var(--orange)';
+  document.querySelectorAll('.nav-item')[0].querySelector('.nav-label').style.color = '';
+
+  // Telegram user info
+  const user = tg?.initDataUnsafe?.user;
+  if (user) {
+    const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    document.getElementById('profileName').textContent = name;
+    document.getElementById('profileAvatar').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('profileSub').textContent = user.username ? '@' + user.username : 'Joynshop foydalanuvchisi';
+
+    // Ref link
+    const botUsername = 'joynshop_bot';
+    refLink = `https://t.me/${botUsername}?start=ref_${user.id}`;
+    document.getElementById('ordersLink').href = `https://t.me/${botUsername}?start=mystatus`;
+    document.getElementById('wishlistLink').href = `https://t.me/${botUsername}?start=mywishlist`;
+    document.getElementById('refundLink').href = `https://t.me/${botUsername}?start=refund`;
+
+    // Load user stats from API
+    loadProfileStats(user.id);
   } else {
-    showToast('Telegram bot orqali kiring');
+    document.getElementById('profileName').textContent = 'Mehmon';
+    document.getElementById('profileSub').textContent = 'Kirish uchun botni oching';
+  }
+}
+
+async function loadProfileStats(uid) {
+  try {
+    const res = await fetch(`/api/buyer_stats?uid=${uid}`);
+    if (!res.ok) return;
+    const d = await res.json();
+    document.getElementById('pStatGroups').textContent = d.groups_joined || 0;
+    document.getElementById('pStatOrders').textContent = d.total_orders || 0;
+    const cb = d.cashback || 0;
+    document.getElementById('pStatCashback').textContent = cb >= 1000 ? Math.round(cb/1000) + 'K' : cb;
+    document.getElementById('refCount').textContent = d.referrals || 0;
+  } catch(e) {}
+}
+
+function closeProfile() {
+  document.getElementById('profileScreen').classList.remove('open');
+  document.querySelectorAll('.nav-item')[0].querySelector('.nav-label').style.color = 'var(--orange)';
+  document.querySelectorAll('.nav-item')[3].querySelector('.nav-label').style.color = '';
+}
+
+function copyRefLink() {
+  if (!refLink) { showToast('Avval botga kiring'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(refLink).then(() => showToast('✅ Link nusxalandi!'));
+  } else {
+    showToast('Link: ' + refLink);
+  }
+}
+
+function shareRefLink() {
+  if (!refLink) { showToast('Avval botga kiring'); return; }
+  const text = encodeURIComponent("🛍 Do'stlarim bilan birgalikda xarid qilib 40% gacha tejayapman! Sen ham ulab ko'r 👇");
+  const url = encodeURIComponent(refLink);
+  if (tg) {
+    tg.openTelegramLink(`https://t.me/share/url?url=${url}&text=${text}`);
+  } else {
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`);
   }
 }
 
