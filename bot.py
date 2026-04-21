@@ -305,7 +305,6 @@ def seller_webhook():
     data = request.json
     if 'callback_query' in data: seller_handle_cb(data['callback_query'])
     elif 'message'        in data: seller_handle_msg(data['message'])
-    save_data()
     return 'ok'
 
 def seller_handle_cb(cb):
@@ -1115,7 +1114,6 @@ def buyer_webhook():
             moderate_chat(msg)
         else:
             buyer_handle_msg(msg)
-    save_data()
     return 'ok'
 
 def delivery_notice(p):
