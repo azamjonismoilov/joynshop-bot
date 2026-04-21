@@ -1397,29 +1397,79 @@ function setPage(page) {
   }
 }
 
-function renderOrders() {
+async function renderOrders() {
   const el = document.getElementById('ordersList');
-  // Get orders from API via buyer bot link
-  el.innerHTML = `
-    <div style="text-align:center;padding:32px 0;color:var(--gray-400)">
-      <div style="font-size:40px;margin-bottom:12px">📦</div>
-      <div style="font-size:14px;margin-bottom:16px">Buyurtmalarni ko'rish uchun</div>
-      <a href="https://t.me/${window._buyerBot || 'joynshop_bot'}?start=mystatus"
-         style="display:inline-block;background:var(--orange);color:white;padding:12px 24px;border-radius:12px;font-weight:600;text-decoration:none;font-size:14px">
-        Bot orqali ko'rish
-      </a>
+  if (!tgUser) {
+    el.innerHTML = `<div style="text-align:center;padding:32px;color:var(--gray-400)">
+      <div style="font-size:40px;margin-bottom:12px">🔒</div>
+      <div style="font-size:14px">Telegram orqali kiring</div>
     </div>`;
+    return;
+  }
+  el.innerHTML = `<div style="text-align:center;padding:24px"><div class="loader" style="margin:0 auto"></div></div>`;
+  try {
+    const res  = await fetch('/api/user/' + tgUser.id + '/orders');
+    const data = await res.json();
+    if (!data.length) {
+      el.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--gray-400)">
+        <div style="font-size:48px;margin-bottom:12px">📦</div>
+        <div style="font-size:14px">Hali buyurtma yo'q</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = data.map(o => {
+      const statusColors = {
+        confirmed: 'var(--green)', confirming: 'var(--orange)',
+        pending: 'var(--gray-400)', rejected: 'var(--red)', cancelled: 'var(--gray-300)'
+      };
+      const color = statusColors[o.status] || 'var(--gray-400)';
+      const typeText = o.type === 'solo' ? '👤 Yakka' : '👥 Guruh';
+      const delivText = o.delivery === 'deliver' ? '🚚 Yetkazib berish' : '🏪 Olib ketish';
+      return `
+        <div style="background:var(--white);border-radius:14px;padding:14px;margin-bottom:10px;border:1px solid var(--gray-100)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--gray-900)">${o.name}</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:2px">🏪 ${o.shop_name}</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;color:var(--orange)">${o.amount.toLocaleString()} so'm</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <span style="background:var(--gray-100);color:var(--gray-600);font-size:11px;padding:3px 8px;border-radius:20px">${typeText}</span>
+            <span style="background:var(--gray-100);color:var(--gray-600);font-size:11px;padding:3px 8px;border-radius:20px">${delivText}</span>
+          </div>
+          ${o.address ? `<div style="font-size:12px;color:var(--gray-500);margin-bottom:6px">📍 ${o.address}</div>` : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:11px;color:var(--gray-400)">${o.created} · #${o.code}</span>
+            <span style="font-size:12px;font-weight:600;color:${color}">${o.status_icon} ${o.status_text}</span>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--gray-400)">Xato yuz berdi</div>`;
+  }
 }
 
-function loadProfile() {
+async function loadProfile() {
   if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
     const u = tg.initDataUnsafe.user;
     tgUser = u;
     const initial = (u.first_name || 'U')[0].toUpperCase();
     document.getElementById('profileAvatar').textContent = initial;
-    document.getElementById('profileName').textContent = (u.first_name || '') + ' ' + (u.last_name || '');
+    document.getElementById('profileName').textContent = ((u.first_name || '') + ' ' + (u.last_name || '')).trim();
     document.getElementById('profileUsername').textContent = u.username ? '@' + u.username : '';
   }
+  if (!tgUser) return;
+  try {
+    const res  = await fetch('/api/user/' + tgUser.id + '/profile');
+    const data = await res.json();
+    document.getElementById('statGroups').textContent  = data.groups_joined || 0;
+    document.getElementById('statOrders').textContent  = data.confirmed_orders || 0;
+    document.getElementById('statCashback').textContent = data.cashback
+      ? (data.cashback >= 1000 ? Math.round(data.cashback/1000) + 'K' : data.cashback)
+      : '0';
+    document.getElementById('refCount').textContent = data.referral_count || 0;
+  } catch(e) {}
 }
 
 function shareRef() {
