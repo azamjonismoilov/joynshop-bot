@@ -1673,6 +1673,21 @@ def miniapp():
     html = open('miniapp.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/api/buyer_stats', methods=['GET'])
+def api_buyer_stats():
+    from flask import jsonify
+    uid = request.args.get('uid', type=int)
+    if not uid: return jsonify({}), 400
+    p   = buyer_profiles.get(uid, {})
+    ref = referrals.get(str(uid), {})
+    return jsonify({
+        'total_orders':  p.get('total_orders', 0),
+        'total_saved':   p.get('total_saved', 0),
+        'groups_joined': p.get('groups_joined', 0),
+        'cashback':      p.get('cashback', 0),
+        'referrals':     ref.get('count', 0),
+    })
+
 @app.route('/api/products', methods=['GET'])
 def api_products():
     from flask import jsonify
