@@ -25,6 +25,64 @@ seller_products = {}   # uid -> [pids]
 verified_channels       = {}  # '@kanal' -> {'owner_id': uid, 'moderators': [uid]}
 pending_moderator_codes = {}  # code -> {'channel': '@kanal', 'added_by': uid}
 
+# ─── PERSISTENCE ────────────────────────────────────────────────────
+DATA_FILE = '/data/joynshop_data.json'
+
+def save_data():
+    try:
+        data = {
+            'products':        products,
+            'groups':          groups,
+            'orders':          orders,
+            'wishlists':       wishlists,
+            'buyer_profiles':  buyer_profiles,
+            'refund_requests': refund_requests,
+            'seller_products': {str(k): v for k, v in seller_products.items()},
+            'verified_channels': verified_channels,
+            'pending_moderator_codes': pending_moderator_codes,
+        }
+        import tempfile, os
+        tmp = DATA_FILE + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, default=str)
+        os.replace(tmp, DATA_FILE)
+    except Exception as e:
+        logging.error(f"save_data error: {e}")
+
+def load_data():
+    global products, groups, orders, wishlists, buyer_profiles
+    global refund_requests, seller_products, verified_channels, pending_moderator_codes
+    try:
+        if not os.path.exists(DATA_FILE):
+            logging.info("No data file found, starting fresh.")
+            return
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        products               = data.get('products', {})
+        groups                 = data.get('groups', {})
+        orders                 = data.get('orders', {})
+        wishlists              = data.get('wishlists', {})
+        buyer_profiles         = data.get('buyer_profiles', {})
+        refund_requests        = data.get('refund_requests', {})
+        verified_channels      = data.get('verified_channels', {})
+        pending_moderator_codes= data.get('pending_moderator_codes', {})
+        raw_sp                 = data.get('seller_products', {})
+        seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
+        logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
+    except Exception as e:
+        logging.error(f"load_data error: {e}")
+
+# Load on startup
+load_data()
+
+# Auto-save every 60 seconds
+def autosave_loop():
+    while True:
+        time.sleep(60)
+        save_data()
+
+threading.Thread(target=autosave_loop, daemon=True).start()
+
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
     url = f'https://api.telegram.org/bot{token or BUYER_TOKEN}/{method}'
@@ -410,12 +468,14 @@ def seller_handle_cb(cb):
         buyer_id = o['user_id']
         p        = products.get(pid, {})
         orders[code]['status'] = 'confirmed'
+        save_data()
 
         if o.get('type') == 'group':
             if pid not in groups: groups[pid] = []
             if buyer_id not in groups[pid]: groups[pid].append(buyer_id)
             count = len(groups[pid])
             min_g = p.get('min_group', 3)
+            save_data()
             answer_cb(cbid, f'✅ {count}/{min_g}', token=SELLER_TOKEN)
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
             send_buyer(buyer_id, build_check(code, o))
@@ -599,6 +659,7 @@ def publish_product(uid, cid, s):
     if result.get('ok'):
         products[pid]['channel_message_id'] = result['result']['message_id']
         products[pid]['channel_chat_id']    = channel
+        save_data()
         send_seller(cid,
             f"✅ <b>E'lon qilindi!</b>\n\n"
             f"📦 {s['name']}\n📢 Kanal: {channel}\n"
@@ -814,6 +875,7 @@ def seller_handle_msg(msg):
             if uid not in verified_channels[channel]['moderators']:
                 verified_channels[channel]['moderators'].append(uid)
         del pending_moderator_codes[code]
+        save_data()
         send_seller(cid,
             f"✅ <b>{channel}</b> kanalida moderator bo'ldingiz!\n\n"
             f"Endi /addproduct orqali mahsulot qo'sha olasiz."
@@ -931,6 +993,7 @@ def seller_handle_msg(msg):
                 if is_channel_admin(uid, channel):
                     # Admin tasdiqlandi
                     verified_channels[channel] = {'owner_id': uid, 'moderators': []}
+                    save_data()
                     send_seller(cid, f"✅ <b>{channel}</b> tasdiqlandi!")
                     s['step'] = 'confirm'
                     show_confirm(cid, s)
