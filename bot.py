@@ -2088,9 +2088,16 @@ import atexit, signal
 init_db()
 load_data()
 
+_shutdown_done = False
+
 def shutdown_save(*args):
+    global _shutdown_done
+    if _shutdown_done:
+        return
+    _shutdown_done = True
     logging.info("Shutting down — saving data...")
     save_data()
+    logging.info("Shutdown save complete.")
 
 atexit.register(shutdown_save)
 signal.signal(signal.SIGTERM, shutdown_save)
