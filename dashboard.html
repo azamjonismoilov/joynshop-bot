@@ -588,8 +588,8 @@ function setLang(lang) {
 }
 
 function fmtMoney(n) {
-  if (n >= 1_000_000_000) return (n/1_000_000_000).toFixed(1) + 'B';
-  if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000_000_000) return (n/1_000_000_000).toFixed(1) + ' mlrd';
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + ' mln';
   if (n >= 1_000) return (n/1_000).toFixed(0) + 'K';
   return n.toString();
 }
@@ -790,6 +790,47 @@ function renderDashboard(d) {
 
   document.getElementById('main-content').innerHTML = html;
   renderChart(d.chart);
+
+  // Kanallar ro'yxati
+  const channelList = d.sellers.channel_list || [];
+  if (channelList.length > 0) {
+    const channelHtml = `
+      <div class="section-title" style="margin-top:32px">${currentLang==='uz' ? 'Faol kanallar' : 'Active Channels'}</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="data-table" style="padding:0">
+          <thead>
+            <tr>
+              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Kanal':'Channel'}</th>
+              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Aktiv mahsulot':'Active products'}</th>
+              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Moderatorlar':'Moderators'}</th>
+              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Egasi ID':'Owner ID'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${channelList.map(ch => `
+              <tr>
+                <td style="padding:14px 24px">
+                  <a href="https://t.me/${ch.username.replace('@','')}" target="_blank"
+                     style="color:var(--accent);font-weight:600;text-decoration:none">
+                    ${ch.username}
+                  </a>
+                </td>
+                <td style="padding:14px 24px">
+                  <span style="background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
+                    ${ch.products}
+                  </span>
+                </td>
+                <td style="padding:14px 24px;color:var(--text2)">${ch.mods}</td>
+                <td style="padding:14px 24px">
+                  <code style="font-size:12px;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:6px">${ch.owner}</code>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    document.getElementById('main-content').innerHTML += channelHtml;
+  }
 }
 
 function renderChart(chartData) {
