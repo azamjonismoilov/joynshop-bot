@@ -494,7 +494,7 @@ def seller_handle_cb(cb):
                 f"👥 Guruh: {count}/{min_g}\n\nGuruh to'lganda xabar beramiz! 🔔\n\n"
                 f"👫 Do'stingizni taklif qiling — +10,000 so'm cashback!",
                 {'inline_keyboard': [
-                    [{'text': "🔗 Do'stni taklif qilish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20guruh%20xarid%20qiling!"}],
+                    [{'text': "🔗 Do'stni taklif qilish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
                     [{'text': "↩️ Qaytarish so'rash", 'callback_data': f'refund_{code}'}]
                 ]}
             )
@@ -1127,7 +1127,7 @@ def buyer_handle_cb(cb):
             f"<code>{ref_link}</code>\n\n"
             f"Har taklif uchun +10,000 so'm cashback!",
             {'inline_keyboard': [
-                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20xarid%20qiling!"}],
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
                 [{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]
             ]}
         )
@@ -1509,7 +1509,7 @@ def buyer_handle_msg(msg):
             f"<code>{ref_link}</code>\n\n"
             f"Har taklif uchun +10,000 so'm cashback!",
             {'inline_keyboard': [
-                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20xarid%20qiling!"}],
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
             ]}
         )
         return
