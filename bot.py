@@ -55,54 +55,10 @@ def save_data():
     except Exception as e:
         logging.error(f"save_data error: {e}", exc_info=True)
 
-def load_data():
-    global products, groups, orders, wishlists, buyer_profiles
-    global refund_requests, seller_products, verified_channels, pending_moderator_codes
-    try:
-        if not os.path.exists(DATA_FILE):
-            logging.info("No data file found, starting fresh.")
-            return
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        products               = data.get('products', {})
-        groups                 = data.get('groups', {})
-        orders                 = data.get('orders', {})
-        wishlists              = data.get('wishlists', {})
-        buyer_profiles         = data.get('buyer_profiles', {})
-        refund_requests        = data.get('refund_requests', {})
-        verified_channels      = data.get('verified_channels', {})
-        pending_moderator_codes= data.get('pending_moderator_codes', {})
-        referrals              = data.get('referrals', {})
-        raw_rm                 = data.get('referral_map', {})
-        referral_map           = {int(k) if str(k).isdigit() else k: v for k, v in raw_rm.items()}
-        raw_sp                 = data.get('seller_products', {})
-        seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
-        logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
-    except Exception as e:
-        logging.error(f"load_data error: {e}")
-
-# Load on startup
-load_data()
-
-# Save on shutdown
-import atexit, signal
-
-def shutdown_save(*args):
-    logging.info("Shutting down — saving data...")
-    save_data()
-    logging.info("Data saved on shutdown!")
-
-atexit.register(shutdown_save)
-signal.signal(signal.SIGTERM, shutdown_save)
-signal.signal(signal.SIGINT, shutdown_save)
+# Old load_data replaced by PostgreSQL version below
 
 # Auto-save every 60 seconds
-def autosave_loop():
-    while True:
-        time.sleep(60)
-        save_data()
-
-threading.Thread(target=autosave_loop, daemon=True).start()
+# autosave loop removed — saving after each webhook request
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
@@ -2088,27 +2044,9 @@ import atexit, signal
 init_db()
 load_data()
 
-_shutdown_done = False
+# shutdown save removed — DB persistence handles restarts
 
-def shutdown_save(*args):
-    global _shutdown_done
-    if _shutdown_done:
-        return
-    _shutdown_done = True
-    logging.info("Shutting down — saving data...")
-    save_data()
-    logging.info("Shutdown save complete.")
-
-atexit.register(shutdown_save)
-signal.signal(signal.SIGTERM, shutdown_save)
-signal.signal(signal.SIGINT, shutdown_save)
-
-def autosave_loop():
-    while True:
-        time.sleep(60)
-        save_data()
-
-threading.Thread(target=autosave_loop, daemon=True).start()
+# autosave loop removed — saving after each webhook request
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
