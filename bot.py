@@ -162,12 +162,13 @@ def kb_inline(rows):
 # ─── CHEK ────────────────────────────────────────────────────────────
 def build_check(order_code, order):
     p         = products.get(order['product_id'], {})
-    sale_type = '👤 Yakka' if order.get('type') == 'solo' else '👥 Guruh'
+    sale_type    = '👤 Yakka' if order.get('type') == 'solo' else '👥 Guruh'
+    variant_line = f"\n🎨 {order['variant']}" if order.get('variant') else ''
     return (
         f"🧾 <b>JOYNSHOP CHEKI</b>\n"
         f"━━━━━━━━━━━━━━━\n"
         f"🏪 {p.get('shop_name', 'Sotuvchi')}\n"
-        f"📦 {p.get('name', '')}\n"
+        f"📦 {p.get('name', '')}{variant_line}\n"
         f"🛒 {sale_type} sotuv\n"
         f"💰 {fmt(order['amount'])} so'm\n"
         f"📅 {order.get('created', '')}\n"
@@ -573,6 +574,25 @@ def seller_handle_cb(cb):
             )
         answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
 
+    if d in ('variants_yes', 'variants_no'):
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        if d == 'variants_yes':
+            s['step'] = 'variants_input'
+            send_seller(uid,
+                "Variantlarni vergul bilan yozing:\n\n"
+                "<i>O'lcham uchun: 38, 39, 40, 41, 43</i>\n"
+                "<i>Rang uchun: Qizil, Ko'k, Yashil</i>\n"
+                "<i>Aralash: S, M, L, XL</i>"
+            )
+        else:
+            s['variants'] = []
+            s['step'] = 'min_group'
+            send_seller(uid, "6️⃣ Minimal guruh soni (2-10):")
+        return
+
     if d.startswith('delivery_'):
         s = seller_state.get(uid)
         if not s:
@@ -669,6 +689,7 @@ def show_confirm(cid, s):
         f"🏷 Guruh narxi: <b>{fmt(s['group_price'])} so'm</b>\n\n"
         f"👥 Minimal guruh: <b>{s['min_group']} kishi</b>\n"
         f"📞 Aloqa: <b>{s['contact']}</b>\n"
+        f"{'\n🎨 Variantlar: <b>' + ', '.join(s['variants']) + '</b>' if s.get('variants') else ''}\n"
         f"📢 Kanal: <b>{channel}</b>",
         {'inline_keyboard': [
             [{'text': "✅ To'g'ri, e'lon qil!", 'callback_data': 'confirm_product'}],
@@ -694,6 +715,8 @@ def publish_product(uid, cid, s):
         'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
         'min_group': s['min_group'],
         'photo_id': s['photo_id'], 'contact': s['contact'],
+        'delivery_type': s.get('delivery_type', 'pickup'),
+        'variants': s.get('variants', []),
         'seller_channel': channel, 'seller_id': uid,
         'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
         'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
@@ -1001,8 +1024,26 @@ def seller_handle_msg(msg):
                     s['solo_price'] = int(text.replace(' ','').replace(',',''))
                 except:
                     send_seller(cid, "❌ Faqat raqam kiriting yoki /skip yozing!"); return
+            s['step'] = 'has_variants'
+            send_seller(cid,
+                "5️⃣c Variantlar bormi? (o'lcham, rang va h.k.)",
+                {'inline_keyboard': [
+                    [{'text': "✅ Ha, variantlar bor", 'callback_data': 'variants_yes'}],
+                    [{'text': "❌ Yo'q, oddiy mahsulot", 'callback_data': 'variants_no'}],
+                ]}
+            )
+
+        elif step == 'variants_input':
+            # Parse variants: "38,39,40,41,43" or "Qizil,Ko'k,Yashil"
+            raw = [v.strip() for v in text.replace('،',',').split(',') if v.strip()]
+            if not raw:
+                send_seller(cid, "❌ Kamida 1 ta variant kiriting!"); return
+            s['variants'] = raw
             s['step'] = 'min_group'
-            send_seller(cid, "6️⃣ Minimal guruh soni (2-10):")
+            send_seller(cid,
+                f"✅ Variantlar: {', '.join(raw)}\n\n"
+                f"6️⃣ Minimal guruh soni (2-10):"
+            )
 
         elif step == 'min_group':
             try:
@@ -1323,9 +1364,10 @@ def buyer_handle_cb(cb):
         p   = products.get(o['product_id'], {})
         sid = p.get('seller_id')
         if sid:
+            variant_text = f"\n🎨 Variant: {o.get('variant','')}" if o.get('variant') else ''
             send_seller(sid,
                 f"🔔 <b>YANGI TO'LOV!</b>\n\n"
-                f"📦 {p.get('name','')}\n👤 {o['user_name']} (ID: {uid})\n"
+                f"📦 {p.get('name','')}{variant_text}\n👤 {o['user_name']} (ID: {uid})\n"
                 f"💰 {fmt(o['amount'])} so'm\n"
                 f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n🆔 #{code}",
                 {'inline_keyboard': [[
@@ -1381,6 +1423,47 @@ def buyer_handle_cb(cb):
             answer_cb(cbid, '✅ Wishlistga saqlandi!')
         else:
             answer_cb(cbid, '✅ Allaqachon saqlangan!')
+        return
+
+    if d.startswith('variant_'):
+        parts   = d.split('_', 2)
+        pid     = parts[1]
+        variant = parts[2] if len(parts) > 2 else ''
+        if pid not in products:
+            answer_cb(cbid, '❌ Topilmadi!'); return
+        p = products[pid]
+        if p.get('status') == 'closed':
+            answer_cb(cbid, '⛔️ Yopilgan!'); return
+        if pid not in groups: groups[pid] = []
+        if uid in groups[pid]:
+            answer_cb(cbid, '✅ Allaqachon guruhdasiz!'); return
+        answer_cb(cbid, f"✅ {variant} tanlandi!")
+        code = gen_code()
+        orders[code] = {
+            'product_id': pid, 'user_id': uid,
+            'user_name':  cb['from'].get('first_name', 'Foydalanuvchi'),
+            'amount':     p['group_price'], 'type': 'group',
+            'status':     'pending', 'variant': variant,
+            'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
+        }
+        save_data()
+        send_buyer(uid,
+            f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📦 {p['name']}\n"
+            f"🎨 Variant: <b>{variant}</b>\n"
+            f"💰 {fmt(p['group_price'])} so'm\n\n"
+            f"💳 <b>Payme:</b>\n"
+            f"📱 <code>{PAYME_NUMBER}</code>\n"
+            f"💵 <code>{fmt(p['group_price'])}</code>\n"
+            f"📝 Izoh: <code>{code}</code>\n\n"
+            f"⚠️ Izohga <b>{code}</b> yozing!\n"
+            f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+            {'inline_keyboard': [
+                [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+            ]}
+        )
         return
 
     if d.startswith('refund_') and not d.startswith('refund_reason_'):
@@ -1515,12 +1598,23 @@ def buyer_handle_msg(msg):
             if pid not in groups: groups[pid] = []
             if uid in groups[pid]:
                 send_buyer(cid, '✅ Siz allaqachon guruhdasiz!'); return
+
+            # Variantlar bo'lsa tanlash
+            variants = p.get('variants', [])
+            if variants:
+                btns = [[{'text': v, 'callback_data': f'variant_{pid}_{v}'}] for v in variants]
+                send_buyer(cid,
+                    f"📦 <b>{p['name']}</b>\n\nVariantni tanlang:",
+                    {'inline_keyboard': btns}
+                )
+                return
+
             code = gen_code()
             orders[code] = {
                 'product_id': pid, 'user_id': uid,
                 'user_name':  msg['from'].get('first_name', 'Foydalanuvchi'),
                 'amount':     p['group_price'], 'type': 'group',
-                'status':     'pending',
+                'status':     'pending', 'variant': '',
                 'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
             }
             save_data()
