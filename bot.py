@@ -25,6 +25,8 @@ seller_state    = {}   # uid -> step state
 seller_products = {}   # uid -> [pids]
 verified_channels       = {}  # '@kanal' -> {'owner_id': uid, 'moderators': [uid]}
 pending_moderator_codes = {}  # code -> {'channel': '@kanal', 'added_by': uid}
+referrals               = {}  # uid -> {'count': 0, 'cashback': 0}  (kim kimni taklif qildi)
+referral_map            = {}  # new_uid -> referrer_uid
 
 # ─── PERSISTENCE ────────────────────────────────────────────────────
 DATA_FILE = '/data/joynshop_data.json'
@@ -67,6 +69,9 @@ def load_data():
         refund_requests        = data.get('refund_requests', {})
         verified_channels      = data.get('verified_channels', {})
         pending_moderator_codes= data.get('pending_moderator_codes', {})
+        referrals              = data.get('referrals', {})
+        raw_rm                 = data.get('referral_map', {})
+        referral_map           = {int(k) if str(k).isdigit() else k: v for k, v in raw_rm.items()}
         raw_sp                 = data.get('seller_products', {})
         seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
         logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
@@ -1102,15 +1107,24 @@ def buyer_handle_cb(cb):
 
     if d == 'buyer_myprofile':
         answer_cb(cbid)
-        p = get_profile(uid)
+        p      = get_profile(uid)
+        ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
+        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
         send_buyer(uid,
             f"👤 <b>Profilingiz</b>\n\n"
             f"🛒 Jami xaridlar: {p['total_orders']}\n"
             f"💰 Tejagan: {fmt(p['total_saved'])} so'm\n"
             f"👥 Guruhlar: {p['groups_joined']}\n"
             f"🎁 Cashback: {fmt(p['cashback'])} so'm\n"
-            f"👫 Referrallar: {p['referrals']}",
-            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]]}
+            f"👫 Taklif qilganlar: {ref_d['count']} kishi\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"🔗 Referral linkingiz:\n"
+            f"<code>{ref_link}</code>\n\n"
+            f"Har taklif uchun +10,000 so'm cashback!",
+            {'inline_keyboard': [
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20xarid%20qiling!"}],
+                [{'text': "🔙 Menyu", 'callback_data': 'buyer_back'}]
+            ]}
         )
         return
 
@@ -1346,9 +1360,51 @@ def buyer_handle_msg(msg):
     uid  = msg['from']['id']
     text = msg.get('text', '')
 
-    # Deep link handler: /start join_abc123 or /start solo_abc123
+    # Deep link handler: /start join_abc123 or /start solo_abc123 or /start ref_uid
     if text.startswith('/start ') or text.startswith('/start\n'):
         param = text.split(None, 1)[1].strip() if len(text.split(None, 1)) > 1 else ''
+
+        if param.startswith('ref_'):
+            try:
+                referrer_uid = int(param[4:])
+                if referrer_uid != uid and uid not in referral_map:
+                    referral_map[uid] = referrer_uid
+                    # Cashback referral qiluvchiga
+                    if str(referrer_uid) not in referrals:
+                        referrals[str(referrer_uid)] = {'count': 0, 'cashback': 0}
+                    referrals[str(referrer_uid)]['count']   += 1
+                    referrals[str(referrer_uid)]['cashback'] += 10000
+                    prof = get_profile(referrer_uid)
+                    prof['cashback']  = prof.get('cashback', 0) + 10000
+                    prof['referrals'] = prof.get('referrals', 0) + 1
+                    save_data()
+                    # Referral qiluvchiga xabar
+                    send_buyer(referrer_uid,
+                        f"🎉 <b>Yangi taklif!</b>\n\n"
+                        f"Do'stingiz Joynshop ga qo'shildi!\n"
+                        f"💰 +10,000 so'm cashback oldiniz!\n\n"
+                        f"Jami cashback: {fmt(prof['cashback'])} so'm"
+                    )
+            except: pass
+            # Oddiy /start ko'rsatish
+            send_buyer(cid,
+                "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
+                "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
+                "💰 Do'stingiz sizni taklif qildi — birinchi xariddan chegirma olasiz!",
+                {'inline_keyboard': [
+                    [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
+                    [
+                        {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
+                        {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
+                    ],
+                    [
+                        {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
+                        {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
+                    ],
+                ]}
+            )
+            return
+
         if param.startswith('join_') or param.startswith('solo_'):
             action, pid = param.split('_', 1)
             if pid not in products:
@@ -1438,14 +1494,23 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/myprofile':
-        p = get_profile(uid)
+        p      = get_profile(uid)
+        ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
+        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
         send_buyer(cid,
             f"👤 <b>Profilingiz</b>\n\n"
             f"🛒 Jami xaridlar: {p['total_orders']}\n"
             f"💰 Tejagan: {fmt(p['total_saved'])} so'm\n"
             f"👥 Guruhlar: {p['groups_joined']}\n"
             f"🎁 Cashback: {fmt(p['cashback'])} so'm\n"
-            f"👫 Referrallar: {p['referrals']}"
+            f"👫 Taklif qilganlar: {ref_d['count']} kishi\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"🔗 Referral linkingiz:\n"
+            f"<code>{ref_link}</code>\n\n"
+            f"Har taklif uchun +10,000 so'm cashback!",
+            {'inline_keyboard': [
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20xarid%20qiling!"}],
+            ]}
         )
         return
 
@@ -1556,6 +1621,11 @@ def api_stats():
         'sellers': {
             'total': unique_sellers,
             'channels': len(verified_channels),
+        },
+        'referrals': {
+            'total_referrers': len(referrals),
+            'total_referred': len(referral_map),
+            'total_cashback': sum(v.get('cashback', 0) for v in referrals.values()),
         },
         'buyers': {
             'total': unique_buyers,
