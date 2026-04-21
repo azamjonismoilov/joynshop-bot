@@ -488,10 +488,15 @@ def seller_handle_cb(cb):
             answer_cb(cbid, f'✅ {count}/{min_g}', token=SELLER_TOKEN)
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
             send_buyer(buyer_id, build_check(code, o))
+            ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{buyer_id}"
             send_buyer(buyer_id,
                 f"🎉 <b>Guruhga qo'shildingiz!</b>\n\n"
-                f"👥 Guruh: {count}/{min_g}\n\nGuruh to'lganda xabar beramiz! 🔔",
-                {'inline_keyboard': [[{'text': "↩️ Qaytarish so'rash", 'callback_data': f'refund_{code}'}]]}
+                f"👥 Guruh: {count}/{min_g}\n\nGuruh to'lganda xabar beramiz! 🔔\n\n"
+                f"👫 Do'stingizni taklif qiling — +10,000 so'm cashback!",
+                {'inline_keyboard': [
+                    [{'text': "🔗 Do'stni taklif qilish", 'url': f"https://t.me/share/url?url={ref_link}&text=Joynshop%20da%20arzon%20guruh%20xarid%20qiling!"}],
+                    [{'text': "↩️ Qaytarish so'rash", 'callback_data': f'refund_{code}'}]
+                ]}
             )
             if count >= min_g:
                 for wuid in groups[pid]:
@@ -1294,12 +1299,7 @@ def buyer_handle_cb(cb):
         answer_cb(cbid, f"{'⭐'*rating} Baho berildi!")
         p      = products.get(pid, {})
         uname  = cb['from'].get('first_name', 'Xaridor')
-        review = f"{'⭐'*rating} {uname}\n\"{p.get('name','')}\" haqida baho"
-        channel = p.get('seller_channel')
-        if channel:
-            try:
-                api('sendMessage', {'chat_id': channel, 'text': review, 'parse_mode': 'HTML'}, token=SELLER_TOKEN)
-            except: pass
+        # Faqat sotuvchiga shaxsiy — kanalga yuborilmaydi
         sid = p.get('seller_id')
         if sid:
             send_seller(sid, f"⭐ <b>Yangi baho!</b>\n\n📦 {p.get('name','')}\n{'⭐'*rating} — {uname}")
