@@ -43,14 +43,16 @@ def save_data():
             'seller_products': {str(k): v for k, v in seller_products.items()},
             'verified_channels': verified_channels,
             'pending_moderator_codes': pending_moderator_codes,
+            'referrals':       referrals,
+            'referral_map':    {str(k): v for k, v in referral_map.items()},
         }
-        import tempfile, os
         tmp = DATA_FILE + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, default=str)
         os.replace(tmp, DATA_FILE)
+        logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
     except Exception as e:
-        logging.error(f"save_data error: {e}")
+        logging.error(f"save_data error: {e}", exc_info=True)
 
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
