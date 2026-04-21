@@ -106,6 +106,7 @@ def post_caption(p, pid):
     bar_str   = bar(count, min_g)
 
     lines = [f"<b>{p['name']}</b>\n"]
+    lines.append(f"💰 Asl narx: <s>{fmt(orig)} so'm</s>")
     if solo:
         lines.append(f"👤 Yakka:  <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
     lines.append(f"👥 Guruh:  <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
@@ -2092,6 +2093,7 @@ def post_caption(p, pid):
     bar_str   = bar(count, min_g)
 
     lines = [f"<b>{p['name']}</b>\n"]
+    lines.append(f"💰 Asl narx: <s>{fmt(orig)} so'm</s>")
     if solo:
         lines.append(f"👤 Yakka:  <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
     lines.append(f"👥 Guruh:  <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
