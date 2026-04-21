@@ -1744,6 +1744,47 @@ def api_stats():
         'chart': daily_data,
     })
 
+@app.route('/api/user/<int:uid>/orders', methods=['GET'])
+def api_user_orders(uid):
+    from flask import jsonify
+    my = {k: v for k, v in orders.items() if v.get('user_id') == uid}
+    result = []
+    em = {'pending':'⏳','confirming':'🔄','confirmed':'✅','rejected':'❌','cancelled':'🚫'}
+    st = {'pending':"To'lov kutilmoqda",'confirming':'Tekshirilmoqda',
+          'confirmed':'Tasdiqlandi','rejected':'Rad etildi','cancelled':'Bekor qilindi'}
+    for code, o in sorted(my.items(), key=lambda x: x[1].get('created',''), reverse=True)[:20]:
+        p = products.get(o.get('product_id',''), {})
+        result.append({
+            'code':       code,
+            'name':       p.get('name',''),
+            'shop_name':  p.get('shop_name',''),
+            'amount':     o.get('amount', 0),
+            'type':       o.get('type','group'),
+            'status':     o.get('status',''),
+            'status_text': st.get(o.get('status',''), ''),
+            'status_icon': em.get(o.get('status',''), '?'),
+            'created':    o.get('created',''),
+            'address':    o.get('address',''),
+            'photo_id':   p.get('photo_id',''),
+            'delivery':   p.get('delivery_type','pickup'),
+        })
+    return jsonify(result)
+
+@app.route('/api/user/<int:uid>/profile', methods=['GET'])
+def api_user_profile(uid):
+    from flask import jsonify
+    prof    = get_profile(uid)
+    ref_d   = referrals.get(str(uid), {'count': 0, 'cashback': 0})
+    my_ords = {k:v for k,v in orders.items() if v.get('user_id')==uid and v.get('status')=='confirmed'}
+    return jsonify({
+        'total_orders':   prof.get('total_orders', 0),
+        'total_saved':    prof.get('total_saved', 0),
+        'groups_joined':  prof.get('groups_joined', 0),
+        'cashback':       prof.get('cashback', 0),
+        'referral_count': ref_d.get('count', 0),
+        'confirmed_orders': len(my_ords),
+    })
+
 @app.route('/api/photo/<file_id>', methods=['GET'])
 def api_photo(file_id):
     from flask import redirect
