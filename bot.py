@@ -512,6 +512,7 @@ def seller_handle_cb(cb):
         code = d[10:]
         if code in orders:
             orders[code]['status'] = 'rejected'
+            save_data()
             send_buyer(orders[code]['user_id'],
                 f"❌ <b>To'lov tasdiqlanmadi</b>\n\n#{code}\n\nIzohda kodni tekshiring."
             )
@@ -521,6 +522,7 @@ def seller_handle_cb(cb):
         code = d[21:]
         if code in refund_requests:
             refund_requests[code]['status'] = 'approved'
+            save_data()
             o = orders.get(code, {})
             send_buyer(refund_requests[code]['user_id'],
                 f"✅ <b>Qaytarish tasdiqlandi!</b>\n\n#{code}\n"
@@ -532,6 +534,7 @@ def seller_handle_cb(cb):
         code = d[19:]
         if code in refund_requests:
             refund_requests[code]['status'] = 'denied'
+            save_data()
             send_buyer(refund_requests[code]['user_id'],
                 f"❌ <b>Qaytarish rad etildi</b>\n\n#{code}\nSotuvchi bilan bog'laning."
             )
@@ -1225,6 +1228,7 @@ def buyer_handle_cb(cb):
         if o['status'] != 'pending':
             answer_cb(cbid, '⚠️ Allaqachon yuborilgan!'); return
         orders[code]['status'] = 'confirming'
+        save_data()
         answer_cb(cbid, '⏳ Sotuvchi tasdiqlamoqda...')
         send_buyer(uid, f"⏳ <b>Tekshirilmoqda</b>\n\nBuyurtma: #{code}\n15 daqiqa ichida tasdiqlanadi.")
         p   = products.get(o['product_id'], {})
@@ -1244,7 +1248,9 @@ def buyer_handle_cb(cb):
 
     if d.startswith('cancel_'):
         code = d[7:]
-        if code in orders: orders[code]['status'] = 'cancelled'
+        if code in orders:
+            orders[code]['status'] = 'cancelled'
+            save_data()
         answer_cb(cbid, '❌ Bekor qilindi')
         send_buyer(uid, f"❌ #{code} bekor qilindi.")
         return
@@ -1312,6 +1318,7 @@ def buyer_handle_cb(cb):
         code       = '_'.join(parts[1:])
         reason     = reason_map.get(reason_key, 'Boshqa')
         refund_requests[code] = {'user_id': uid, 'reason': reason, 'status': 'pending'}
+        save_data()
         answer_cb(cbid, "✅ Qaytarish so'rovi yuborildi!")
         send_buyer(uid,
             f"✅ <b>Qaytarish so'rovi yuborildi</b>\n\n#{code}\nSabab: {reason}\n\nSotuvchi 24 soat ichida ko'rib chiqadi."
