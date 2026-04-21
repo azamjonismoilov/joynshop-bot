@@ -1,8 +1,7 @@
 import os, json, logging, random, string, threading, time, requests
 from datetime import datetime, timedelta
 from flask import Flask, request
-import psycopg2
-from psycopg2.extras import Json
+import pg8000
 
 logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
@@ -1995,7 +1994,14 @@ if __name__ == '__main__':
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
-    return psycopg2.connect(DATABASE_URL)
+    import urllib.parse
+    r = urllib.parse.urlparse(DATABASE_URL)
+    return pg8000.connect(
+        host=r.hostname, port=r.port or 5432,
+        database=r.path.lstrip('/'),
+        user=r.username, password=r.password,
+        ssl_context=True
+    )
 
 def init_db():
     try:
