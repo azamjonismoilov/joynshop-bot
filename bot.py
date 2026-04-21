@@ -490,6 +490,15 @@ def seller_handle_cb(cb):
             answer_cb(cbid, f'✅ {count}/{min_g}', token=SELLER_TOKEN)
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
             send_buyer(buyer_id, build_check(code, o))
+            # Yetkazib berish bo'lsa manzil so'ra
+            dtype = p.get('delivery_type', 'pickup')
+            if dtype == 'deliver':
+                send_buyer(buyer_id,
+                    f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
+                    f"Shahar, tuman, ko'cha, uy raqami\n"
+                    f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
+                )
+                get_profile(buyer_id)['awaiting_address'] = code
             ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{buyer_id}"
             send_buyer(buyer_id,
                 f"🎉 <b>Guruhga qo'shildingiz!</b>\n\n"
@@ -515,6 +524,14 @@ def seller_handle_cb(cb):
             answer_cb(cbid, '✅ Tasdiqlandi!', token=SELLER_TOKEN)
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), False)
             send_buyer(buyer_id, build_check(code, o))
+            dtype = p.get('delivery_type', 'pickup')
+            if dtype == 'deliver':
+                send_buyer(buyer_id,
+                    f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
+                    f"Shahar, tuman, ko'cha, uy raqami\n"
+                    f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
+                )
+                get_profile(buyer_id)['awaiting_address'] = code
             send_buyer(buyer_id,
                 f"✅ <b>Buyurtma tasdiqlandi!</b>\n\n📞 Sotuvchi: {p.get('contact','')}\n\nMahsulot yetkazilgandan so'ng:",
                 {'inline_keyboard': [[
@@ -555,6 +572,22 @@ def seller_handle_cb(cb):
                 f"❌ <b>Qaytarish rad etildi</b>\n\n#{code}\nSotuvchi bilan bog'laning."
             )
         answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
+
+    if d.startswith('delivery_'):
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+        dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
+        s['delivery_type'] = dtype
+        s['step'] = 'seller_channel'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
+            "9️⃣ Kanalingiz username ini yozing:\n"
+            "<i>Masalan: @mening_kanalim</i>\n\n"
+            "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
+        )
+        return
 
     if d.startswith('addmod_ch_'):
         channel = d[10:]
@@ -991,11 +1024,14 @@ def seller_handle_msg(msg):
                 send_seller(cid, "❌ Rasm yuboring!")
 
         elif step == 'contact':
-            s['contact'] = text; s['step'] = 'seller_channel'
+            s['contact'] = text
+            s['step']    = 'delivery_type'
             send_seller(cid,
-                "9️⃣ Kanalingiz username ini yozing:\n"
-                "<i>Masalan: @mening_kanalim</i>\n\n"
-                "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
+                "8️⃣b Yetkazib berish turi:",
+                {'inline_keyboard': [
+                    [{'text': "🚚 Sotuvchi yetkazadi", 'callback_data': 'delivery_deliver'}],
+                    [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'delivery_pickup'}],
+                ]}
             )
 
         elif step == 'seller_channel':
@@ -1069,6 +1105,32 @@ def buyer_webhook():
         else:
             buyer_handle_msg(msg)
     return 'ok'
+
+def delivery_notice(p):
+    dtype = p.get('delivery_type', 'pickup')
+    if dtype == 'deliver':
+        return "🚚 <b>Yetkazib berish:</b> Sotuvchi yetkazadi\nTo'lovdan so'ng manzil so'raladi."
+    return "🏪 <b>Olish:</b> Sotuvchi manzilidan olib ketasiz\n📞 " + p.get('contact', '')
+
+def auto_check(code, order, p):
+    """Xaridorga darhol avtomatik chek yuborish"""
+    dtype = p.get('delivery_type', 'pickup')
+    delivery_text = "🚚 Sotuvchi yetkazadi" if dtype == 'deliver' else "🏪 Xaridor olib ketadi"
+    send_buyer(order['user_id'],
+        f"📋 <b>BUYURTMA QABUL QILINDI</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🏪 {p.get('shop_name','')}\n"
+        f"📦 {p.get('name','')}\n"
+        f"🛒 {'Yakka' if order.get('type')=='solo' else 'Guruh'} buyurtma\n"
+        f"💰 {fmt(order['amount'])} so'm\n"
+        f"📅 {order.get('created','')}\n"
+        f"🆔 #{code}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{delivery_text}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"⏳ Sotuvchi 15 daqiqa ichida tasdiqlaydi\n"
+        f"🔒 Joynshop kafolati ostida"
+    )
 
 def buyer_handle_cb(cb):
     cbid = cb['id']
@@ -1255,7 +1317,9 @@ def buyer_handle_cb(cb):
         orders[code]['status'] = 'confirming'
         save_data()
         answer_cb(cbid, '⏳ Sotuvchi tasdiqlamoqda...')
-        send_buyer(uid, f"⏳ <b>Tekshirilmoqda</b>\n\nBuyurtma: #{code}\n15 daqiqa ichida tasdiqlanadi.")
+        # Avtomatik chek
+        p_auto = products.get(orders[code]['product_id'], {})
+        auto_check(code, orders[code], p_auto)
         p   = products.get(o['product_id'], {})
         sid = p.get('seller_id')
         if sid:
@@ -1476,6 +1540,31 @@ def buyer_handle_msg(msg):
                 ]}
             )
             return
+
+    # Manzil kutilayotgan bo'lsa
+    prof = get_profile(uid)
+    if prof.get('awaiting_address') and not text.startswith('/'):
+        code = prof['awaiting_address']
+        o    = orders.get(code, {})
+        p    = products.get(o.get('product_id',''), {})
+        sid  = p.get('seller_id')
+        orders[code]['address'] = text
+        del prof['awaiting_address']
+        save_data()
+        send_buyer(cid,
+            f"✅ <b>Manzil saqlandi!</b>\n\n"
+            f"📍 {text}\n\n"
+            f"Sotuvchi yetkazib berish vaqtini belgilaydi."
+        )
+        if sid:
+            send_seller(sid,
+                f"📍 <b>Yangi manzil!</b>\n\n"
+                f"📦 {p.get('name','')}\n"
+                f"👤 {o.get('user_name','')}\n"
+                f"🆔 #{code}\n\n"
+                f"📍 Manzil: <b>{text}</b>"
+            )
+        return
 
     if text == '/start':
         send_buyer(cid,
