@@ -1653,6 +1653,58 @@ def api_stats():
         'chart': daily_data,
     })
 
+@app.route('/api/photo/<file_id>', methods=['GET'])
+def api_photo(file_id):
+    from flask import redirect
+    try:
+        result = requests.get(
+            f'https://api.telegram.org/bot{SELLER_TOKEN}/getFile',
+            params={'file_id': file_id}
+        ).json()
+        if result.get('ok'):
+            path = result['result']['file_path']
+            return redirect(f'https://api.telegram.org/file/bot{SELLER_TOKEN}/{path}')
+    except: pass
+    return '', 404
+
+@app.route('/miniapp', methods=['GET'])
+def miniapp():
+    from flask import Response
+    html = open('miniapp.html').read()
+    return Response(html, mimetype='text/html')
+
+@app.route('/api/products', methods=['GET'])
+def api_products():
+    from flask import jsonify
+    result = []
+    for pid, p in products.items():
+        if p.get('status') == 'closed': continue
+        count = len(groups.get(pid, []))
+        min_g = p.get('min_group', 3)
+        orig  = p.get('original_price', 0)
+        solo  = p.get('solo_price', 0)
+        grp   = p.get('group_price', 0)
+        result.append({
+            'id':             pid,
+            'name':           p.get('name',''),
+            'shop_name':      p.get('shop_name',''),
+            'description':    p.get('description',''),
+            'original_price': orig,
+            'solo_price':     solo,
+            'group_price':    grp,
+            'min_group':      min_g,
+            'count':          count,
+            'deadline':       p.get('deadline',''),
+            'photo_id':       p.get('photo_id',''),
+            'contact':        p.get('contact',''),
+            'solo_disc':      round((orig-solo)/orig*100) if solo and orig else 0,
+            'grp_disc':       round((orig-grp)/orig*100) if grp and orig else 0,
+            'join_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}",
+            'solo_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}" if solo else None,
+        })
+    result.sort(key=lambda x: x['count'], reverse=True)
+    return jsonify(result)
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from flask import Response
