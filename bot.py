@@ -1951,6 +1951,85 @@ def dashboard():
     html = open('dashboard.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/api/checkout', methods=['POST'])
+def api_checkout():
+    from flask import jsonify, request as req
+    data     = req.get_json(force=True)
+    pid      = data.get('product_id', '')
+    uid      = data.get('user_id')
+    uname    = data.get('user_name', 'Foydalanuvchi')
+    otype    = data.get('type', 'group')   # 'group' | 'solo'
+    variant  = data.get('variant', '')
+    delivery = data.get('delivery', 'pickup')  # 'pickup' | 'deliver'
+    address  = data.get('address', '')
+
+    if not pid or pid not in products:
+        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
+    if not uid:
+        return jsonify({'ok': False, 'error': 'Foydalanuvchi aniqlanmadi'}), 400
+
+    p = products[pid]
+    if p.get('status') == 'closed':
+        return jsonify({'ok': False, 'error': 'Guruh yopilgan'}), 400
+
+    # Price
+    if otype == 'solo':
+        if not p.get('solo_price'):
+            return jsonify({'ok': False, 'error': 'Yakka narx mavjud emas'}), 400
+        amount = p['solo_price']
+    else:
+        amount = p['group_price']
+        # Check if already in group
+        if pid not in groups:
+            groups[pid] = []
+        if uid in groups[pid]:
+            return jsonify({'ok': False, 'error': 'Siz allaqachon guruhdasiz'}), 400
+
+    code = gen_code()
+    orders[code] = {
+        'product_id': pid,
+        'user_id':    uid,
+        'user_name':  uname,
+        'amount':     amount,
+        'type':       otype,
+        'status':     'pending',
+        'variant':    variant,
+        'delivery':   delivery,
+        'address':    address,
+        'created':    datetime.now().strftime('%d.%m.%Y %H:%M'),
+    }
+    save_data()
+
+    # Notify buyer via Telegram
+    delivery_text = '🚚 Yetkazib berish' if delivery == 'deliver' else '🏪 Olib ketish'
+    address_line  = f'\n📍 Manzil: {address}' if address else ''
+    variant_line  = f'\n🎨 Variant: {variant}' if variant else ''
+    type_text     = '👤 Yakka' if otype == 'solo' else '👥 Guruh'
+    send_buyer(uid,
+        f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {type_text} buyurtma</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📦 {p['name']}{variant_line}\n"
+        f"💰 {fmt(amount)} so'm\n"
+        f"{delivery_text}{address_line}\n\n"
+        f"💳 <b>Payme orqali to'lang:</b>\n"
+        f"📱 <code>{PAYME_NUMBER}</code>\n"
+        f"💵 <code>{fmt(amount)}</code>\n"
+        f"📝 Izoh: <code>{code}</code>\n\n"
+        f"⚠️ Izohga <b>{code}</b> yozing!\n"
+        f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+        {'inline_keyboard': [
+            [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+            [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+        ]}
+    )
+
+    return jsonify({
+        'ok':       True,
+        'code':     code,
+        'amount':   amount,
+        'payme':    PAYME_NUMBER,
+    })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))# ─── PERSISTENCE (PostgreSQL) ───────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL')
