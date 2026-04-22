@@ -801,6 +801,44 @@
     font-weight: 500;
     line-height: 1.3;
   }
+  /* CHECKOUT CHOICE */
+  .co-choice {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .co-choice.selected {
+    border-color: var(--orange);
+    background: var(--orange-light);
+  }
+  .co-variant-btn {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    background: var(--white);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-align: left;
+    color: var(--gray-900);
+    transition: all 0.15s;
+  }
+  .co-variant-btn:active { background: var(--orange-light); border-color: var(--orange); }
+  .co-confirm-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  .co-confirm-row .label { color: var(--gray-500); }
+  .co-confirm-row .value { font-weight: 600; color: var(--gray-900); }
+  .co-confirm-row .price { font-weight: 800; color: var(--orange); font-size: 15px; }
 </style>
 </head>
 <body>
@@ -849,6 +887,78 @@
   <div class="loading-screen" style="grid-column:1/-1">
     <div class="loader"></div>
     <span style="font-size:13px;color:var(--gray-400)">Yuklanmoqda...</span>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-overlay" id="checkoutOverlay" onclick="closeCheckout(event)">
+  <div class="modal" id="checkoutModal">
+    <div class="modal-handle"></div>
+    <div class="modal-body">
+
+      <!-- Step 1: Variant -->
+      <div id="co-step-variant" style="display:none">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px" id="co-variant-title"></div>
+        <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Variantni tanlang</div>
+        <div id="co-variant-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <!-- Step 2: Delivery -->
+      <div id="co-step-delivery" style="display:none">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">Yetkazib berish usuli</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px" id="co-delivery-sub"></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="co-choice" id="co-del-pickup" onclick="selectDelivery('pickup')">
+            <div style="font-size:22px">🏪</div>
+            <div>
+              <div style="font-size:15px;font-weight:600">Olib ketish</div>
+              <div style="font-size:12px;color:var(--gray-500)">Sotuvchi manzilidan</div>
+            </div>
+          </div>
+          <div class="co-choice" id="co-del-deliver" onclick="selectDelivery('deliver')">
+            <div style="font-size:22px">🚚</div>
+            <div>
+              <div style="font-size:15px;font-weight:600">Yetkazib berish</div>
+              <div style="font-size:12px;color:var(--gray-500)">Manzilingizga olib kelinadi</div>
+            </div>
+          </div>
+        </div>
+        <div id="co-address-wrap" style="display:none;margin-top:14px">
+          <textarea id="co-address" placeholder="Manzilingizni kiriting..." style="
+            width:100%;min-height:80px;border:1.5px solid var(--gray-200);
+            border-radius:12px;padding:12px;font-size:14px;font-family:'Inter',sans-serif;
+            resize:none;outline:none;color:var(--gray-900);
+          "></textarea>
+        </div>
+        <button class="btn-main" style="margin-top:16px" onclick="coStepNext()">Davom etish →</button>
+      </div>
+
+      <!-- Step 3: Confirm -->
+      <div id="co-step-confirm" style="display:none">
+        <div style="font-size:17px;font-weight:700;margin-bottom:16px">Buyurtmani tasdiqlash</div>
+        <div style="background:var(--gray-50);border-radius:14px;padding:14px;margin-bottom:16px">
+          <div id="co-confirm-rows" style="display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+        <div style="background:var(--orange-light);border-radius:12px;padding:12px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--orange);margin-bottom:4px">💳 To'lov</div>
+          <div style="font-size:13px;color:var(--gray-700)">Payme orqali to'laysiz. Buyurtma berganingizdan so'ng Telegram botdan to'lov ma'lumotlari yuboriladi.</div>
+        </div>
+        <button class="btn-main" id="co-confirm-btn" onclick="submitCheckout()">
+          ✅ Buyurtma berish
+        </button>
+        <button class="btn-secondary" style="margin-top:8px" onclick="coStepBack()">← Orqaga</button>
+      </div>
+
+      <!-- Step 4: Success -->
+      <div id="co-step-success" style="display:none;text-align:center;padding:24px 0">
+        <div style="font-size:64px;margin-bottom:12px">✅</div>
+        <div style="font-size:20px;font-weight:800;margin-bottom:8px">Buyurtma berildi!</div>
+        <div style="font-size:14px;color:var(--gray-500);margin-bottom:8px">Telegram botdan to'lov ma'lumotlari yuborildi.</div>
+        <div style="font-size:14px;color:var(--gray-700);font-weight:600;margin-bottom:20px" id="co-success-code"></div>
+        <button class="btn-main" onclick="closeCheckout(null,true)">Davom etish</button>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -1228,15 +1338,15 @@ function openProduct(pid) {
     </div>
     <div style="font-size:12px;color:var(--gray-400);margin-top:4px">🕐 ${p.deadline}</div>`;
 
-  // Buttons
+  // Buttons — in-app checkout
   const btns = document.getElementById('modalBtns');
   btns.innerHTML = `
-    <a class="btn-main" href="${p.join_url}">
+    <button class="btn-main" onclick="openCheckout('${p.id}','group')">
       👥 Guruhga qo'shilish — ${fmt(p.group_price)} so'm
-    </a>
-    ${p.solo_url ? `<a class="btn-secondary" href="${p.solo_url}">
+    </button>
+    ${p.solo_price ? `<button class="btn-secondary" onclick="openCheckout('${p.id}','solo')">
       🛒 Yakka sotib olish — ${fmt(p.solo_price)} so'm
-    </a>` : ''}`;
+    </button>` : ''}`;
 
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -1531,6 +1641,171 @@ async function loadStats() {
 }
 
 loadStats();
+
+// ── CHECKOUT FLOW ──
+let co = {
+  product: null,
+  type: null,       // 'group' | 'solo'
+  variant: '',
+  delivery: 'pickup',
+  step: null,       // 'variant' | 'delivery' | 'confirm' | 'success'
+};
+
+function openCheckout(pid, otype) {
+  const p = allProducts.find(x => x.id === pid);
+  if (!p) return;
+
+  // Close detail modal
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = 'hidden';
+
+  co.product  = p;
+  co.type     = otype;
+  co.variant  = '';
+  co.delivery = 'pickup';
+
+  const variants = p.variants || [];
+  if (variants.length > 0) {
+    coShowStep('variant');
+  } else {
+    coShowStep('delivery');
+  }
+
+  document.getElementById('checkoutOverlay').classList.add('open');
+}
+
+function coShowStep(step) {
+  co.step = step;
+  ['variant','delivery','confirm','success'].forEach(s => {
+    document.getElementById('co-step-' + s).style.display = 'none';
+  });
+  document.getElementById('co-step-' + step).style.display = 'block';
+
+  const p = co.product;
+
+  if (step === 'variant') {
+    document.getElementById('co-variant-title').textContent = p.name;
+    const list = document.getElementById('co-variant-list');
+    list.innerHTML = (p.variants || []).map(v =>
+      `<button class="co-variant-btn" onclick="selectVariant('${v}')">${v}</button>`
+    ).join('');
+  }
+
+  if (step === 'delivery') {
+    const price = co.type === 'solo' ? p.solo_price : p.group_price;
+    document.getElementById('co-delivery-sub').textContent =
+      `${p.name} · ${fmt(price)} so'm`;
+    // Reset selection
+    document.getElementById('co-del-pickup').classList.add('selected');
+    document.getElementById('co-del-deliver').classList.remove('selected');
+    document.getElementById('co-address-wrap').style.display = 'none';
+    co.delivery = 'pickup';
+  }
+
+  if (step === 'confirm') {
+    const price = co.type === 'solo' ? p.solo_price : p.group_price;
+    const typeText = co.type === 'solo' ? '👤 Yakka' : '👥 Guruh';
+    const delivText = co.delivery === 'deliver' ? '🚚 Yetkazib berish' : '🏪 Olib ketish';
+    const rows = [
+      { label: 'Mahsulot', value: p.name },
+      { label: 'Do\'kon',   value: p.shop_name },
+      { label: 'Tur',       value: typeText },
+      co.variant ? { label: 'Variant', value: co.variant } : null,
+      { label: 'Yetkazish', value: delivText },
+      co.delivery === 'deliver' ? { label: 'Manzil', value: document.getElementById('co-address').value || '—' } : null,
+      { label: 'Narx', value: fmt(price) + ' so\'m', price: true },
+    ].filter(Boolean);
+
+    document.getElementById('co-confirm-rows').innerHTML = rows.map(r =>
+      `<div class="co-confirm-row">
+        <span class="label">${r.label}</span>
+        <span class="${r.price ? 'price' : 'value'}">${r.value}</span>
+      </div>`
+    ).join('');
+  }
+}
+
+function selectVariant(v) {
+  co.variant = v;
+  coShowStep('delivery');
+}
+
+function selectDelivery(type) {
+  co.delivery = type;
+  document.getElementById('co-del-pickup').classList.toggle('selected', type === 'pickup');
+  document.getElementById('co-del-deliver').classList.toggle('selected', type === 'deliver');
+  document.getElementById('co-address-wrap').style.display = type === 'deliver' ? 'block' : 'none';
+}
+
+function coStepNext() {
+  if (co.delivery === 'deliver') {
+    const addr = document.getElementById('co-address').value.trim();
+    if (!addr) {
+      showToast('Manzilni kiriting');
+      return;
+    }
+  }
+  coShowStep('confirm');
+}
+
+function coStepBack() {
+  coShowStep('delivery');
+}
+
+async function submitCheckout() {
+  const user = tg?.initDataUnsafe?.user;
+  if (!user) {
+    showToast('Telegram orqali kiring');
+    return;
+  }
+
+  const btn = document.getElementById('co-confirm-btn');
+  btn.textContent = '⏳ Yuborilmoqda...';
+  btn.disabled = true;
+
+  const address = co.delivery === 'deliver'
+    ? document.getElementById('co-address').value.trim()
+    : '';
+
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        product_id: co.product.id,
+        user_id:    user.id,
+        user_name:  [user.first_name, user.last_name].filter(Boolean).join(' '),
+        type:       co.type,
+        variant:    co.variant,
+        delivery:   co.delivery,
+        address:    address,
+      })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('co-success-code').textContent =
+        `Buyurtma kodi: #${d.code}`;
+      coShowStep('success');
+      // Reload products to update group count
+      loadProducts();
+    } else {
+      showToast('❌ ' + (d.error || 'Xato yuz berdi'));
+      btn.textContent = '✅ Buyurtma berish';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    showToast('❌ Serverga ulanib bo\'lmadi');
+    btn.textContent = '✅ Buyurtma berish';
+    btn.disabled = false;
+  }
+}
+
+function closeCheckout(e, force) {
+  if (force || !e || e.target === document.getElementById('checkoutOverlay')) {
+    document.getElementById('checkoutOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
 </script>
 </body>
 </html>
