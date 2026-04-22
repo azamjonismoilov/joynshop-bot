@@ -21,6 +21,36 @@ PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE    = 0.05  # 5%
 DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
 BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
+APP_URL            = os.environ.get('APP_URL', '')  # e.g. https://joynshop.uz
+
+def setup_bot_ui():
+    """Buyer bot uchun menu button va commandlarni o'rnatadi."""
+    if not BUYER_TOKEN:
+        return
+    miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
+
+    # 1. Menu button (ko'k tugma) — miniapp ochadi
+    if miniapp_url:
+        requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton', json={
+            'menu_button': {
+                'type': 'web_app',
+                'text': '🛍 Joynshop',
+                'web_app': {'url': miniapp_url}
+            }
+        })
+
+    # 2. Bot commandlari
+    requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setMyCommands', json={
+        'commands': [
+            {'command': 'start',      'description': '🏠 Bosh sahifa'},
+            {'command': 'shop',       'description': '🛍 Do\'konga o\'tish'},
+            {'command': 'mystatus',   'description': '🛍 Mening buyurtmalarim'},
+            {'command': 'myprofile',  'description': '👤 Profilim'},
+            {'command': 'feedback',   'description': '✍️ Fikr bildirish'},
+            {'command': 'settings',   'description': '⚙️ Sozlamalar'},
+        ]
+    })
+    logging.info("Bot UI setup done.")
 
 # ─── SHARED STORAGE ─────────────────────────────────────────────────
 products        = {}   # pid -> product info
@@ -570,15 +600,6 @@ def seller_handle_cb(cb):
             send_seller(uid, "6️⃣ Minimal guruh soni (2-10):")
         return
 
-    if d == 'photo_done':
-        s = seller_state.get(uid)
-        if not s or not s.get('photo_ids'):
-            answer_cb(cbid, '❌ Rasm topilmadi!', token=SELLER_TOKEN); return
-        s['step'] = 'contact'
-        answer_cb(cbid, token=SELLER_TOKEN)
-        send_seller(uid, f"✅ {len(s['photo_ids'])} ta rasm saqlandi.\n\n8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
-        return
-
     if d.startswith('delivery_'):
         s = seller_state.get(uid)
         if not s:
@@ -700,7 +721,7 @@ def publish_product(uid, cid, s):
         'description': s['description'], 'original_price': s['original_price'],
         'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
         'min_group': s['min_group'],
-        'photo_ids': s.get('photo_ids', [s['photo_id']] if s.get('photo_id') else []), 'contact': s['contact'],
+        'photo_id': s['photo_id'], 'contact': s['contact'],
         'delivery_type': s.get('delivery_type', 'pickup'),
         'variants': s.get('variants', []),
         'seller_channel': channel, 'seller_id': uid,
@@ -711,9 +732,8 @@ def publish_product(uid, cid, s):
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
-    first_photo = products[pid].get('photo_ids', [None])[0] or products[pid].get('photo_id','')
     result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-        'chat_id': channel, 'photo': first_photo,
+        'chat_id': channel, 'photo': s['photo_id'],
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
     }).json()
@@ -1045,26 +1065,9 @@ def seller_handle_msg(msg):
         elif step == 'photo':
             photo = msg.get('photo')
             if photo:
-                if 'photo_ids' not in s:
-                    s['photo_ids'] = []
-                if len(s['photo_ids']) < 5:
-                    s['photo_ids'].append(photo[-1]['file_id'])
-                count = len(s['photo_ids'])
-                if count < 5:
-                    send_seller(cid,
-                        f"✅ {count}/5 rasm qabul qilindi.\n"
-                        f"Yana rasm yuboring yoki tugatish uchun /done yozing.",
-                        {'inline_keyboard': [[{'text': f"✅ Tayyor ({count} rasm)", 'callback_data': 'photo_done'}]]}
-                    )
-                else:
-                    s['step'] = 'contact'
-                    send_seller(cid, "✅ 5/5 rasm qabul qilindi.\n\n8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
-            elif text == '/done':
-                if s.get('photo_ids'):
-                    s['step'] = 'contact'
-                    send_seller(cid, "8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
-                else:
-                    send_seller(cid, "❌ Kamida 1 ta rasm yuboring!")
+                s['photo_id'] = photo[-1]['file_id']
+                s['step']     = 'contact'
+                send_seller(cid, "8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
             else:
                 send_seller(cid, "❌ Rasm yuboring!")
 
@@ -1124,9 +1127,7 @@ def seller_handle_msg(msg):
             elif field == 'photo':
                 photo = msg.get('photo')
                 if photo:
-                    if 'photo_ids' not in s:
-                        s['photo_ids'] = []
-                    s['photo_ids'] = [photo[-1]['file_id']]  # edit: replace all with new one
+                    s['photo_id'] = photo[-1]['file_id']
                 else:
                     send_seller(cid, "❌ Rasm yuboring!"); return
             elif field == 'seller_channel':
@@ -1680,24 +1681,29 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/start':
+        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
-            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!",
-            {'inline_keyboard': [
-                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
-                [
-                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
-                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
-                ],
-                [
-                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
-                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
-                ],
-            ]}
+            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
+            "Pastdagi tugmalar orqali boshqaring 👇",
+            {'keyboard': [
+                [{'text': '🛍 Mening buyurtmalarim'}],
+                [{'text': '✍️ Fikr bildirish'}, {'text': '⚙️ Sozlamalar'}],
+            ], 'resize_keyboard': True}
         )
         return
 
-    if text == '/myprofile':
+    if text == '/shop':
+        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
+        if miniapp_url:
+            send_buyer(cid, "🛍 Do'konni ochish uchun tugmani bosing:",
+                {'inline_keyboard': [[{'text': '🛍 Joynshop ni ochish', 'web_app': {'url': miniapp_url}}]]}
+            )
+        else:
+            send_buyer(cid, "⚠️ Do'kon hozir mavjud emas.")
+        return
+
+    if text == '🛍 Mening buyurtmalarim' or text == '/mystatus':
         p      = get_profile(uid)
         ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
         ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
@@ -1718,7 +1724,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    if text == '/mystatus':
+    if text == '/mystatus' or text == '🛍 Mening buyurtmalarim':
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(cid, "📋 Buyurtma yo'q."); return
@@ -1765,6 +1771,47 @@ def buyer_handle_msg(msg):
             "/refund     — Qaytarish so'rovi\n\n"
             "🆘 Yordam: @joynshop_support"
         )
+        return
+
+    if text == '/feedback' or text == '✍️ Fikr bildirish':
+        send_buyer(cid,
+            "✍️ <b>Fikr bildirish</b>\n\n"
+            "Joynshop haqida fikringizni yozing — har qanday taklif, shikoyat yoki maqtov!\n\n"
+            "Xabaringizni shu yerga yuboring 👇"
+        )
+        # Mark user as awaiting feedback
+        get_profile(uid)['awaiting_feedback'] = True
+        return
+
+    if text == '/settings' or text == '⚙️ Sozlamalar':
+        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
+        p = get_profile(uid)
+        send_buyer(cid,
+            f"⚙️ <b>Sozlamalar</b>\n\n"
+            f"👤 ID: <code>{uid}</code>\n"
+            f"🎁 Cashback: {fmt(p.get('cashback', 0))} so'm\n"
+            f"👫 Taklif qilganlar: {referrals.get(str(uid), {}).get('count', 0)} kishi\n\n"
+            f"🔗 Referral linkingiz:\n<code>{ref_link}</code>",
+            {'inline_keyboard': [
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
+            ]}
+        )
+        return
+
+    # Handle feedback reply
+    prof = get_profile(uid)
+    if prof.get('awaiting_feedback') and not text.startswith('/'):
+        prof['awaiting_feedback'] = False
+        # Forward to admin
+        if ADMIN_ID:
+            uname = msg.get('from', {}).get('first_name', 'Foydalanuvchi')
+            username = msg.get('from', {}).get('username', '')
+            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendMessage', json={
+                'chat_id': ADMIN_ID,
+                'text': f"📩 <b>Yangi fikr!</b>\n\n👤 {uname} (@{username}, ID: {uid})\n\n💬 {text}",
+                'parse_mode': 'HTML'
+            })
+        send_buyer(cid, "✅ Fikringiz uchun rahmat! Tez orada ko'rib chiqamiz.")
         return
 
 @app.route('/', methods=['GET'])
@@ -1964,8 +2011,7 @@ def api_products():
             'min_group':      min_g,
             'count':          count,
             'deadline':       p.get('deadline',''),
-            'photo_ids':      p.get('photo_ids', [p['photo_id']] if p.get('photo_id') else []),
-            'photo_id':       p.get('photo_ids', [p.get('photo_id','')])[0] if p.get('photo_ids') else p.get('photo_id',''),
+            'photo_id':       p.get('photo_id',''),
             'contact':        p.get('contact',''),
             'solo_disc':      round((orig-solo)/orig*100) if solo and orig else 0,
             'grp_disc':       round((orig-grp)/orig*100) if grp and orig else 0,
@@ -2079,10 +2125,7 @@ def load_data():
 import atexit, signal
 init_db()
 load_data()
-
-# shutdown save removed — DB persistence handles restarts
-
-# autosave loop removed — saving after each webhook request
+threading.Thread(target=setup_bot_ui, daemon=True).start()
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
