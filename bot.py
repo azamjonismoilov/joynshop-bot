@@ -6,6 +6,13 @@ import pg8000
 logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 
+@app.after_request
+def add_cors(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 # ─── TOKENS & CONFIG ────────────────────────────────────────────────
 SELLER_TOKEN    = os.environ.get('SELLER_TOKEN')
 BUYER_TOKEN     = os.environ.get('BUYER_TOKEN')
