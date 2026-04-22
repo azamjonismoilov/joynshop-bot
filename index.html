@@ -342,6 +342,57 @@ nav {
 .loader { width: 36px; height: 36px; border: 3px solid var(--gray-200); border-top-color: var(--orange-500); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── LOGIN MODAL ── */
+.login-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,13,20,0.6);
+  z-index: 300; display: none;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+}
+.login-modal-overlay.open { display: flex; }
+.login-modal {
+  background: #fff; border-radius: 20px;
+  width: 100%; max-width: 400px;
+  padding: 32px 28px; margin: 24px;
+  text-align: center;
+  animation: fadeUp .25s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+.login-modal-close {
+  position: absolute; top: 16px; right: 16px;
+  background: var(--gray-100); border: none;
+  border-radius: 8px; width: 32px; height: 32px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--gray-500); font-size: 18px;
+}
+.login-modal-icon {
+  width: 64px; height: 64px; border-radius: 18px;
+  background: #229ED9; display: flex;
+  align-items: center; justify-content: center;
+  margin: 0 auto 20px; font-size: 32px; color: #fff;
+}
+.login-modal h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.login-modal p { font-size: 14px; color: var(--gray-500); line-height: 1.6; margin-bottom: 24px; }
+.tg-login-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+
+/* User badge in nav */
+.nav-user {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px 6px 8px;
+  background: var(--gray-50); border-radius: 9999px;
+  border: 1.5px solid var(--gray-200); cursor: pointer;
+  transition: border-color 150ms;
+}
+.nav-user:hover { border-color: var(--gray-300); }
+.nav-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--orange-500);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.nav-user-name { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+
 /* ── MODAL ── */
 .modal-overlay {
   position: fixed; inset: 0;
@@ -465,9 +516,11 @@ nav {
       <a href="https://t.me/joynshop_seller_bot" class="btn btn-sm btn-outline" target="_blank">
         <i class="ri-store-2-line"></i> Sotuvchi bo'lish
       </a>
-      <a href="https://t.me/joynshop_bot" class="btn btn-sm btn-tg" target="_blank">
-        <i class="ri-telegram-fill"></i> Bot
-      </a>
+      <div id="navUserArea">
+        <button class="btn btn-sm btn-tg" onclick="openLoginModal()">
+          <i class="ri-telegram-fill"></i> Kirish
+        </button>
+      </div>
     </div>
   </div>
 </nav>
@@ -912,6 +965,10 @@ function onSearch() { renderProducts(); }
 function openModal(pid) {
   const p = allProducts.find(x => x.id === pid);
   if (!p) return;
+  if (!currentUser) {
+    openLoginModal();
+    return;
+  }
   currentProduct = p;
   const pct = Math.min(100, Math.round(p.count / p.min_group * 100));
   const needed = p.min_group - p.count;
@@ -999,6 +1056,70 @@ function showMarketplace(e) {
   window.scrollTo(0, 0);
 }
 
+// ── AUTH ──
+let currentUser = null;
+
+function onTelegramAuth(user) {
+  currentUser = user;
+  localStorage.setItem('tg_user', JSON.stringify(user));
+  updateNavUser(user);
+  closeLoginModal({target: document.getElementById('loginModalOverlay')});
+  showToast(`Xush kelibsiz, ${user.first_name}! 👋`);
+}
+
+function updateNavUser(user) {
+  const area = document.getElementById('navUserArea');
+  const initial = (user.first_name || 'U')[0].toUpperCase();
+  area.innerHTML = `
+    <div class="nav-user" onclick="showUserMenu()">
+      <div class="nav-avatar">${initial}</div>
+      <span class="nav-user-name">${user.first_name}</span>
+      <i class="ri-arrow-down-s-line" style="font-size:14px;color:var(--gray-400)"></i>
+    </div>`;
+}
+
+function showUserMenu() {
+  // Simple logout for now
+  if (confirm(`Chiqish: ${currentUser?.first_name}?`)) {
+    currentUser = null;
+    localStorage.removeItem('tg_user');
+    document.getElementById('navUserArea').innerHTML = `
+      <button class="btn btn-sm btn-tg" onclick="openLoginModal()">
+        <i class="ri-telegram-fill"></i> Kirish
+      </button>`;
+  }
+}
+
+function openLoginModal() {
+  document.getElementById('loginModalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLoginModal(e) {
+  if (e.target === document.getElementById('loginModalOverlay')) {
+    document.getElementById('loginModalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
+// Toast notification
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--slate-900);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;z-index:400;white-space:nowrap;animation:fadeUp .2s ease';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Check saved session
+const savedUser = localStorage.getItem('tg_user');
+if (savedUser) {
+  try {
+    currentUser = JSON.parse(savedUser);
+    updateNavUser(currentUser);
+  } catch(e) {}
+}
+
 // Init
 loadProducts();
 
@@ -1008,5 +1129,29 @@ const observer = new IntersectionObserver(entries => {
 }, { threshold: 0.1 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
+<!-- LOGIN MODAL -->
+<div class="login-modal-overlay" id="loginModalOverlay" onclick="closeLoginModal(event)">
+  <div class="login-modal" style="position:relative">
+    <button class="login-modal-close" onclick="closeLoginModal({target:document.getElementById('loginModalOverlay')})">
+      <i class="ri-close-line"></i>
+    </button>
+    <div class="login-modal-icon"><i class="ri-telegram-fill"></i></div>
+    <h3>Joynshop ga kiring</h3>
+    <p>Telegram hisobingiz orqali kiring va xarid qilishni boshlang</p>
+    <div class="tg-login-wrap">
+      <script async src="https://telegram.org/js/telegram-widget.js?22"
+        data-telegram-login="joynshop_bot"
+        data-size="large"
+        data-radius="10"
+        data-onauth="onTelegramAuth(user)"
+        data-request-access="write">
+      </script>
+    </div>
+    <p style="font-size:12px;color:var(--gray-400)">
+      <i class="ri-shield-check-line"></i> Faqat Telegram orqali — parol kerak emas
+    </p>
+  </div>
+</div>
+
 </body>
 </html>
