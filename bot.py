@@ -168,11 +168,12 @@ def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    if has_solo:
+    p = products.get(pid, {})
+    solo_available = p.get('solo_available', True)
+    if has_solo and solo_available:
         kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
     kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
     return kb_inline(kb)
-
 def kb_inline(rows):
     return {'inline_keyboard': rows}
 
@@ -419,15 +420,33 @@ def seller_handle_cb(cb):
             send_seller(uid, "📦 Mahsulot yo'q.",
                 {'inline_keyboard': [[{'text': "➕ Qo'shish", 'callback_data': 'menu_addproduct'}]]}
             ); return
-        r = "📦 <b>Mahsulotlaringiz:</b>\n\n"
-        for pid in my:
+        for pid in my[-10:]:
             p = products.get(pid, {})
             if not p: continue
-            count = len(groups.get(pid, []))
-            st    = '🔥 Aktiv' if p.get('status') != 'closed' else '✅ Yopilgan'
-            r    += f"━━━━━━━━━━━━━━━\n📦 <b>{p.get('name','')}</b>\n🆔 <code>{pid}</code>\n👥 {count}/{p['min_group']} {st}\n💰 {fmt(p['group_price'])} so'm\n\n"
-        r += "━━━━━━━━━━━━━━━\n/boost [ID] | /delete [ID]"
-        send_seller(uid, r, {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
+            count  = len(groups.get(pid, []))
+            status = p.get('status', 'active')
+            solo_a = p.get('solo_available', True)
+            st_icon = '🔥' if status != 'closed' else '✅ Yopilgan'
+            kb = []
+            if status != 'closed':
+                kb.append([
+                    {'text': '⏰ +24 soat', 'callback_data': f'extend_{pid}'},
+                    {'text': '🔒 Yopish',   'callback_data': f'close_group_{pid}'},
+                ])
+                if p.get('solo_price'):
+                    solo_label = '🚫 Yakka off' if solo_a else '✅ Yakka on'
+                    kb.append([{'text': solo_label, 'callback_data': f'toggle_solo_{pid}'}])
+                kb.append([{'text': '📢 Qayta e\'lon', 'callback_data': f'boost_confirm_{pid}'}])
+            kb.append([{'text': '🗑 O\'chirish', 'callback_data': f'delete_confirm_{pid}'}])
+            send_seller(uid,
+                f"📦 <b>{p.get('name','')}</b>\n"
+                f"🆔 <code>{pid}</code>\n"
+                f"👥 {count}/{p['min_group']} {st_icon}\n"
+                f"💰 Guruh: {fmt(p['group_price'])} so'm\n"
+                f"🕐 {p.get('deadline','')}\n"
+                f"{'👤 Yakka: ' + fmt(p['solo_price']) + ' so\'m ' + ('✅' if solo_a else '🚫') if p.get('solo_price') else ''}",
+                {'inline_keyboard': kb}
+            )
         return
 
     if d == 'menu_help':
@@ -463,6 +482,92 @@ def seller_handle_cb(cb):
                 ],
             ]}
         )
+        return
+
+    if d.startswith('extend_'):
+        pid = d[7:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
+        if p.get('status') == 'closed':
+            answer_cb(cbid, '❌ Mahsulot yopilgan!', token=SELLER_TOKEN); return
+        old_dt  = p.get('deadline_dt', datetime.now().strftime('%Y-%m-%d %H:%M'))
+        old_d   = datetime.strptime(old_dt, '%Y-%m-%d %H:%M')
+        new_d   = max(old_d, datetime.now()) + timedelta(hours=24)
+        products[pid]['deadline']    = new_d.strftime('%d.%m.%Y %H:%M')
+        products[pid]['deadline_dt'] = new_d.strftime('%Y-%m-%d %H:%M')
+        save_data()
+        answer_cb(cbid, '✅ +24 soat uzaytirildi!', token=SELLER_TOKEN)
+        send_seller(uid, f"⏰ <b>{p['name']}</b>\n\nYangi muddat: <b>{products[pid]['deadline']}</b>")
+        return
+
+    if d.startswith('close_group_'):
+        pid = d[12:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        count = len(groups.get(pid, []))
+        send_seller(uid,
+            f"🔒 <b>{p['name']}</b> ni yopmoqchimisiz?\n\n"
+            f"👥 Hozir: {count}/{p['min_group']} kishi",
+            {'inline_keyboard': [[
+                {'text': '✅ Ha, yop', 'callback_data': f'close_confirm_{pid}'},
+                {'text': '❌ Yo\'q',   'callback_data': 'noop'}
+            ]]}
+        )
+        return
+
+    if d.startswith('close_confirm_'):
+        pid = d[14:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
+        expire_product(pid)
+        save_data()
+        answer_cb(cbid, '✅ Yopildi!', token=SELLER_TOKEN)
+        send_seller(uid, f"✅ <b>{p['name']}</b> yopildi.")
+        return
+
+    if d.startswith('toggle_solo_'):
+        pid = d[12:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
+        new_state = not p.get('solo_available', True)
+        products[pid]['solo_available'] = new_state
+        save_data()
+        status_text = '✅ Yoqildi' if new_state else '🚫 O\'chirildi'
+        answer_cb(cbid, f'Yakka sotuv {status_text}', token=SELLER_TOKEN)
+        send_seller(uid, f"👤 <b>{p['name']}</b>\n\nYakka sotuv: {'✅ Aktiv' if new_state else '🚫 To\'xtatildi'}")
+        return
+
+    if d.startswith('delete_confirm_'):
+        pid = d[15:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"🗑 <b>{p['name']}</b> ni o'chirmoqchimisiz?\n\nBu amalni ortga qaytarib bo'lmaydi!",
+            {'inline_keyboard': [[
+                {'text': '✅ Ha, o\'chir', 'callback_data': f'delete_final_{pid}'},
+                {'text': '❌ Yo\'q',       'callback_data': 'noop'}
+            ]]}
+        )
+        return
+
+    if d.startswith('delete_final_'):
+        pid = d[13:]
+        p = products.get(pid, {})
+        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
+            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
+        products[pid]['status'] = 'closed'
+        if uid in seller_products and pid in seller_products[uid]:
+            seller_products[uid].remove(pid)
+        save_data()
+        answer_cb(cbid, '✅ O\'chirildi!', token=SELLER_TOKEN)
+        send_seller(uid, f"✅ <b>{p['name']}</b> o'chirildi.")
         return
 
     if d.startswith('boost_confirm_'):
@@ -616,10 +721,30 @@ def seller_handle_cb(cb):
             answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
         dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
         s['delivery_type'] = dtype
-        s['step'] = 'seller_channel'
+        s['step'] = 'deadline'
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid,
             f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
+            "⏰ Guruh muddatini tanlang:",
+            {'inline_keyboard': [
+                [{'text': "24 soat",  'callback_data': 'deadline_24'}],
+                [{'text': "48 soat ✅ (tavsiya)", 'callback_data': 'deadline_48'}],
+                [{'text': "72 soat",  'callback_data': 'deadline_72'}],
+                [{'text': "7 kun",    'callback_data': 'deadline_168'}],
+            ]}
+        )
+        return
+
+    if d.startswith('deadline_'):
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+        hours = int(d.split('_')[1])
+        s['deadline_hours'] = hours
+        s['step'] = 'seller_channel'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"⏰ {hours} soat belgilandi ✅\n\n"
             "9️⃣ Kanalingiz username ini yozing:\n"
             "<i>Masalan: @mening_kanalim</i>\n\n"
             "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
@@ -725,7 +850,8 @@ def show_confirm(cid, s):
 def publish_product(uid, cid, s):
     channel  = s['seller_channel']
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    deadline = datetime.now() + timedelta(hours=48)
+    hours    = s.get('deadline_hours', 48)
+    deadline = datetime.now() + timedelta(hours=hours)
     products[pid] = {
         'name': s['name'], 'shop_name': s['shop_name'],
         'description': s['description'], 'original_price': s['original_price'],
@@ -737,7 +863,8 @@ def publish_product(uid, cid, s):
         'seller_channel': channel, 'seller_id': uid,
         'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
         'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
-        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active'
+        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active',
+        'solo_available': True,
     }
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
@@ -1686,23 +1813,21 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/start':
-        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
-            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
-            "Do'konni ochish uchun bosing 👇",
-            {'keyboard': [
-                [{'text': '🛍 Mening buyurtmalarim'}],
-                [{'text': '✍️ Fikr bildirish'}, {'text': '⚙️ Sozlamalar'}],
-            ], 'resize_keyboard': True}
+            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!",
+            {'inline_keyboard': [
+                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
+                [
+                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
+                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
+                ],
+                [
+                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
+                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
+                ],
+            ]}
         )
-        if miniapp_url:
-            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendMessage', json={
-                'chat_id': cid,
-                'text': '🛍',
-                'reply_markup': {'inline_keyboard': [[{'text': 'Xarid qilish', 'web_app': {'url': miniapp_url}}]]},
-                'parse_mode': 'HTML'
-            })
         return
 
     if text == '/myprofile':
@@ -1726,56 +1851,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    if text == '/shop':
-        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
-        if miniapp_url:
-            send_buyer(cid, "🛍 Do'konni ochish uchun tugmani bosing:",
-                {'inline_keyboard': [[{'text': '🛍 Xarid qilish', 'web_app': {'url': miniapp_url}}]]}
-            )
-        else:
-            send_buyer(cid, "⚠️ Do'kon hozir mavjud emas.")
-        return
-
-    if text == '/feedback' or text == '✍️ Fikr bildirish':
-        send_buyer(cid,
-            "✍️ <b>Fikr bildirish</b>\n\n"
-            "Joynshop haqida fikringizni yozing — taklif, shikoyat yoki maqtov!\n\n"
-            "Xabaringizni shu yerga yuboring 👇"
-        )
-        get_profile(uid)['awaiting_feedback'] = True
-        return
-
-    if text == '/settings' or text == '⚙️ Sozlamalar':
-        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
-        p = get_profile(uid)
-        send_buyer(cid,
-            f"⚙️ <b>Sozlamalar</b>\n\n"
-            f"👤 ID: <code>{uid}</code>\n"
-            f"🎁 Cashback: {fmt(p.get('cashback', 0))} so'm\n"
-            f"👫 Taklif qilganlar: {referrals.get(str(uid), {}).get('count', 0)} kishi\n\n"
-            f"🔗 Referral linkingiz:\n<code>{ref_link}</code>",
-            {'inline_keyboard': [[
-                {'text': "🔗 Ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!"}
-            ]]}
-        )
-        return
-
-    # Feedback reply handler
-    prof = get_profile(uid)
-    if prof.get('awaiting_feedback') and not text.startswith('/'):
-        prof['awaiting_feedback'] = False
-        if ADMIN_ID:
-            uname = msg.get('from', {}).get('first_name', 'Foydalanuvchi')
-            username = msg.get('from', {}).get('username', '')
-            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendMessage', json={
-                'chat_id': ADMIN_ID,
-                'text': f"📩 <b>Yangi fikr!</b>\n\n👤 {uname} (@{username}, ID: {uid})\n\n💬 {text}",
-                'parse_mode': 'HTML'
-            })
-        send_buyer(cid, "✅ Fikringiz uchun rahmat! Tez orada ko'rib chiqamiz.")
-        return
-
-    if text == '🛍 Mening buyurtmalarim' or text == '/mystatus':
+    if text == '/mystatus':
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(cid, "📋 Buyurtma yo'q."); return
@@ -2025,6 +2101,7 @@ def api_products():
             'contact':        p.get('contact',''),
             'solo_disc':      round((orig-solo)/orig*100) if solo and orig else 0,
             'grp_disc':       round((orig-grp)/orig*100) if grp and orig else 0,
+            'solo_available': p.get('solo_available', True),
             'join_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}",
             'solo_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}" if solo else None,
         })
@@ -2202,7 +2279,9 @@ def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    if has_solo:
+    p = products.get(pid, {})
+    solo_available = p.get('solo_available', True)
+    if has_solo and solo_available:
         kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
     kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
     return kb_inline(kb)
