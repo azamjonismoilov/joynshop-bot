@@ -835,8 +835,8 @@ function renderDashboard(d) {
 
 function renderChart(chartData) {
   const ctx = document.getElementById('gmvChart');
-  if (!ctx) return;
-  if (gmvChart) gmvChart.destroy();
+  if (!ctx) { setTimeout(() => renderChart(chartData), 100); return; }
+  if (gmvChart) { gmvChart.destroy(); gmvChart = null; }
 
   const labels = chartData.map(d => d.date);
   const gmvData = chartData.map(d => d.gmv);
