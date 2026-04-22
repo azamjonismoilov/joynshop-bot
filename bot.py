@@ -168,12 +168,11 @@ def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    p = products.get(pid, {})
-    solo_available = p.get('solo_available', True)
-    if has_solo and solo_available:
+    if has_solo:
         kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
     kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
     return kb_inline(kb)
+
 def kb_inline(rows):
     return {'inline_keyboard': rows}
 
@@ -420,33 +419,15 @@ def seller_handle_cb(cb):
             send_seller(uid, "📦 Mahsulot yo'q.",
                 {'inline_keyboard': [[{'text': "➕ Qo'shish", 'callback_data': 'menu_addproduct'}]]}
             ); return
-        for pid in my[-10:]:
+        r = "📦 <b>Mahsulotlaringiz:</b>\n\n"
+        for pid in my:
             p = products.get(pid, {})
             if not p: continue
-            count  = len(groups.get(pid, []))
-            status = p.get('status', 'active')
-            solo_a = p.get('solo_available', True)
-            st_icon = '🔥' if status != 'closed' else '✅ Yopilgan'
-            kb = []
-            if status != 'closed':
-                kb.append([
-                    {'text': '⏰ +24 soat', 'callback_data': f'extend_{pid}'},
-                    {'text': '🔒 Yopish',   'callback_data': f'close_group_{pid}'},
-                ])
-                if p.get('solo_price'):
-                    solo_label = '🚫 Yakka off' if solo_a else '✅ Yakka on'
-                    kb.append([{'text': solo_label, 'callback_data': f'toggle_solo_{pid}'}])
-                kb.append([{'text': '📢 Qayta e\'lon', 'callback_data': f'boost_confirm_{pid}'}])
-            kb.append([{'text': '🗑 O\'chirish', 'callback_data': f'delete_confirm_{pid}'}])
-            send_seller(uid,
-                f"📦 <b>{p.get('name','')}</b>\n"
-                f"🆔 <code>{pid}</code>\n"
-                f"👥 {count}/{p['min_group']} {st_icon}\n"
-                f"💰 Guruh: {fmt(p['group_price'])} so'm\n"
-                f"🕐 {p.get('deadline','')}\n"
-                f"{'👤 Yakka: ' + fmt(p['solo_price']) + ' so\'m ' + ('✅' if solo_a else '🚫') if p.get('solo_price') else ''}",
-                {'inline_keyboard': kb}
-            )
+            count = len(groups.get(pid, []))
+            st    = '🔥 Aktiv' if p.get('status') != 'closed' else '✅ Yopilgan'
+            r    += f"━━━━━━━━━━━━━━━\n📦 <b>{p.get('name','')}</b>\n🆔 <code>{pid}</code>\n👥 {count}/{p['min_group']} {st}\n💰 {fmt(p['group_price'])} so'm\n\n"
+        r += "━━━━━━━━━━━━━━━\n/boost [ID] | /delete [ID]"
+        send_seller(uid, r, {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
         return
 
     if d == 'menu_help':
@@ -482,92 +463,6 @@ def seller_handle_cb(cb):
                 ],
             ]}
         )
-        return
-
-    if d.startswith('extend_'):
-        pid = d[7:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
-        if p.get('status') == 'closed':
-            answer_cb(cbid, '❌ Mahsulot yopilgan!', token=SELLER_TOKEN); return
-        old_dt  = p.get('deadline_dt', datetime.now().strftime('%Y-%m-%d %H:%M'))
-        old_d   = datetime.strptime(old_dt, '%Y-%m-%d %H:%M')
-        new_d   = max(old_d, datetime.now()) + timedelta(hours=24)
-        products[pid]['deadline']    = new_d.strftime('%d.%m.%Y %H:%M')
-        products[pid]['deadline_dt'] = new_d.strftime('%Y-%m-%d %H:%M')
-        save_data()
-        answer_cb(cbid, '✅ +24 soat uzaytirildi!', token=SELLER_TOKEN)
-        send_seller(uid, f"⏰ <b>{p['name']}</b>\n\nYangi muddat: <b>{products[pid]['deadline']}</b>")
-        return
-
-    if d.startswith('close_group_'):
-        pid = d[12:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
-        count = len(groups.get(pid, []))
-        send_seller(uid,
-            f"🔒 <b>{p['name']}</b> ni yopmoqchimisiz?\n\n"
-            f"👥 Hozir: {count}/{p['min_group']} kishi",
-            {'inline_keyboard': [[
-                {'text': '✅ Ha, yop', 'callback_data': f'close_confirm_{pid}'},
-                {'text': '❌ Yo\'q',   'callback_data': 'noop'}
-            ]]}
-        )
-        return
-
-    if d.startswith('close_confirm_'):
-        pid = d[14:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
-        expire_product(pid)
-        save_data()
-        answer_cb(cbid, '✅ Yopildi!', token=SELLER_TOKEN)
-        send_seller(uid, f"✅ <b>{p['name']}</b> yopildi.")
-        return
-
-    if d.startswith('toggle_solo_'):
-        pid = d[12:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌ Ruxsat yo\'q!', token=SELLER_TOKEN); return
-        new_state = not p.get('solo_available', True)
-        products[pid]['solo_available'] = new_state
-        save_data()
-        status_text = '✅ Yoqildi' if new_state else '🚫 O\'chirildi'
-        answer_cb(cbid, f'Yakka sotuv {status_text}', token=SELLER_TOKEN)
-        send_seller(uid, f"👤 <b>{p['name']}</b>\n\nYakka sotuv: {'✅ Aktiv' if new_state else '🚫 To\'xtatildi'}")
-        return
-
-    if d.startswith('delete_confirm_'):
-        pid = d[15:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
-        send_seller(uid,
-            f"🗑 <b>{p['name']}</b> ni o'chirmoqchimisiz?\n\nBu amalni ortga qaytarib bo'lmaydi!",
-            {'inline_keyboard': [[
-                {'text': '✅ Ha, o\'chir', 'callback_data': f'delete_final_{pid}'},
-                {'text': '❌ Yo\'q',       'callback_data': 'noop'}
-            ]]}
-        )
-        return
-
-    if d.startswith('delete_final_'):
-        pid = d[13:]
-        p = products.get(pid, {})
-        if not p or (p.get('seller_id') != uid and uid != ADMIN_ID):
-            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
-        products[pid]['status'] = 'closed'
-        if uid in seller_products and pid in seller_products[uid]:
-            seller_products[uid].remove(pid)
-        save_data()
-        answer_cb(cbid, '✅ O\'chirildi!', token=SELLER_TOKEN)
-        send_seller(uid, f"✅ <b>{p['name']}</b> o'chirildi.")
         return
 
     if d.startswith('boost_confirm_'):
@@ -721,30 +616,10 @@ def seller_handle_cb(cb):
             answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
         dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
         s['delivery_type'] = dtype
-        s['step'] = 'deadline'
-        answer_cb(cbid, token=SELLER_TOKEN)
-        send_seller(uid,
-            f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
-            "⏰ Guruh muddatini tanlang:",
-            {'inline_keyboard': [
-                [{'text': "24 soat",  'callback_data': 'deadline_24'}],
-                [{'text': "48 soat ✅ (tavsiya)", 'callback_data': 'deadline_48'}],
-                [{'text': "72 soat",  'callback_data': 'deadline_72'}],
-                [{'text': "7 kun",    'callback_data': 'deadline_168'}],
-            ]}
-        )
-        return
-
-    if d.startswith('deadline_'):
-        s = seller_state.get(uid)
-        if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
-        hours = int(d.split('_')[1])
-        s['deadline_hours'] = hours
         s['step'] = 'seller_channel'
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid,
-            f"⏰ {hours} soat belgilandi ✅\n\n"
+            f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
             "9️⃣ Kanalingiz username ini yozing:\n"
             "<i>Masalan: @mening_kanalim</i>\n\n"
             "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
@@ -850,8 +725,7 @@ def show_confirm(cid, s):
 def publish_product(uid, cid, s):
     channel  = s['seller_channel']
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    hours    = s.get('deadline_hours', 48)
-    deadline = datetime.now() + timedelta(hours=hours)
+    deadline = datetime.now() + timedelta(hours=48)
     products[pid] = {
         'name': s['name'], 'shop_name': s['shop_name'],
         'description': s['description'], 'original_price': s['original_price'],
@@ -863,8 +737,7 @@ def publish_product(uid, cid, s):
         'seller_channel': channel, 'seller_id': uid,
         'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
         'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
-        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active',
-        'solo_available': True,
+        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active'
     }
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
@@ -2101,12 +1974,185 @@ def api_products():
             'contact':        p.get('contact',''),
             'solo_disc':      round((orig-solo)/orig*100) if solo and orig else 0,
             'grp_disc':       round((orig-grp)/orig*100) if grp and orig else 0,
-            'solo_available': p.get('solo_available', True),
             'join_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}",
             'solo_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}" if solo else None,
         })
     result.sort(key=lambda x: x['count'], reverse=True)
     return jsonify(result)
+
+@app.route('/api/admin/orders', methods=['GET'])
+def api_admin_orders():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    page   = int(request.args.get('page', 1))
+    status = request.args.get('status', '')
+    per    = 20
+    em = {'pending':'⏳','confirming':'🔄','confirmed':'✅','rejected':'❌','cancelled':'🚫'}
+    st = {'pending':"To'lov kutilmoqda",'confirming':'Tekshirilmoqda',
+          'confirmed':'Tasdiqlandi','rejected':'Rad etildi','cancelled':'Bekor qilindi'}
+    all_orders = sorted(orders.items(), key=lambda x: x[1].get('created',''), reverse=True)
+    if status: all_orders = [(k,v) for k,v in all_orders if v.get('status') == status]
+    total  = len(all_orders)
+    sliced = all_orders[(page-1)*per : page*per]
+    result = []
+    for code, o in sliced:
+        p = products.get(o.get('product_id',''), {})
+        result.append({
+            'code':        code,
+            'product':     p.get('name',''),
+            'shop':        p.get('shop_name',''),
+            'buyer_id':    o.get('user_id'),
+            'buyer_name':  o.get('user_name',''),
+            'amount':      o.get('amount', 0),
+            'type':        o.get('type','group'),
+            'status':      o.get('status',''),
+            'status_text': st.get(o.get('status',''), ''),
+            'status_icon': em.get(o.get('status',''), '?'),
+            'created':     o.get('created',''),
+            'address':     o.get('address',''),
+            'variant':     o.get('variant',''),
+        })
+    return jsonify({'orders': result, 'total': total, 'page': page, 'pages': (total+per-1)//per})
+
+@app.route('/api/admin/products', methods=['GET'])
+def api_admin_products():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    result = []
+    for pid, p in products.items():
+        count = len(groups.get(pid, []))
+        conf  = sum(1 for o in orders.values() if o.get('product_id')==pid and o['status']=='confirmed')
+        rev   = sum(o['amount'] for o in orders.values() if o.get('product_id')==pid and o['status']=='confirmed')
+        result.append({
+            'id':            pid,
+            'name':          p.get('name',''),
+            'shop_name':     p.get('shop_name',''),
+            'status':        p.get('status','active'),
+            'solo_available':p.get('solo_available', True),
+            'group_price':   p.get('group_price', 0),
+            'solo_price':    p.get('solo_price', 0),
+            'original_price':p.get('original_price', 0),
+            'min_group':     p.get('min_group', 3),
+            'count':         count,
+            'deadline':      p.get('deadline',''),
+            'deadline_dt':   p.get('deadline_dt',''),
+            'seller_id':     p.get('seller_id'),
+            'channel':       p.get('seller_channel',''),
+            'photo_id':      p.get('photo_id',''),
+            'confirmed_orders': conf,
+            'revenue':       rev,
+            'grp_disc':      round((p.get('original_price',0)-p.get('group_price',0))/p.get('original_price',1)*100) if p.get('original_price') else 0,
+        })
+    result.sort(key=lambda x: x['status']=='active', reverse=True)
+    return jsonify(result)
+
+@app.route('/api/admin/buyers', methods=['GET'])
+def api_admin_buyers():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    page = int(request.args.get('page', 1))
+    per  = 20
+    all_buyers = []
+    for uid, prof in buyer_profiles.items():
+        ref_d   = referrals.get(str(uid), {})
+        my_ords = [(k,v) for k,v in orders.items() if v.get('user_id')==uid]
+        last    = max((v.get('created','') for _,v in my_ords), default='')
+        all_buyers.append({
+            'uid':          uid,
+            'total_orders': prof.get('total_orders', 0),
+            'confirmed':    sum(1 for _,v in my_ords if v['status']=='confirmed'),
+            'total_spent':  sum(v['amount'] for _,v in my_ords if v['status']=='confirmed'),
+            'cashback':     prof.get('cashback', 0),
+            'referrals':    ref_d.get('count', 0),
+            'last_order':   last,
+        })
+    all_buyers.sort(key=lambda x: x['total_spent'], reverse=True)
+    total  = len(all_buyers)
+    sliced = all_buyers[(page-1)*per : page*per]
+    return jsonify({'buyers': sliced, 'total': total, 'page': page, 'pages': (total+per-1)//per})
+
+@app.route('/api/admin/sellers', methods=['GET'])
+def api_admin_sellers():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    result = []
+    all_seller_ids = set()
+    for p in products.values():
+        if p.get('seller_id'): all_seller_ids.add(p['seller_id'])
+    for uid in all_seller_ids:
+        my_pids = seller_products.get(uid, [])
+        rev     = sum(o['amount'] for o in orders.values() if o.get('product_id') in my_pids and o['status']=='confirmed')
+        comm    = int(rev * COMMISSION_RATE)
+        my_channels = [ch for ch, data in verified_channels.items() if data.get('owner_id')==uid]
+        active  = sum(1 for pid in my_pids if products.get(pid,{}).get('status')!='closed')
+        result.append({
+            'uid':       uid,
+            'products':  len(my_pids),
+            'active':    active,
+            'channels':  my_channels,
+            'revenue':   rev,
+            'commission':comm,
+            'payout':    rev - comm,
+            'orders':    sum(1 for o in orders.values() if o.get('product_id') in my_pids and o['status']=='confirmed'),
+        })
+    result.sort(key=lambda x: x['revenue'], reverse=True)
+    return jsonify(result)
+
+@app.route('/api/admin/product/<pid>/action', methods=['POST'])
+def api_admin_product_action():
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    pid    = request.view_args.get('pid','')  # won't work, fix below
+    return jsonify({'ok': False}), 400
+
+@app.route('/api/admin/product/<pid>/close', methods=['POST'])
+def api_admin_close_product(pid):
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    if pid not in products: return jsonify({'ok': False, 'error': 'Not found'}), 404
+    expire_product(pid)
+    save_data()
+    return jsonify({'ok': True})
+
+@app.route('/api/admin/product/<pid>/extend', methods=['POST'])
+def api_admin_extend_product(pid):
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    if pid not in products: return jsonify({'ok': False, 'error': 'Not found'}), 404
+    old_dt = products[pid].get('deadline_dt', datetime.now().strftime('%Y-%m-%d %H:%M'))
+    old_d  = datetime.strptime(old_dt, '%Y-%m-%d %H:%M')
+    new_d  = max(old_d, datetime.now()) + timedelta(hours=24)
+    products[pid]['deadline']    = new_d.strftime('%d.%m.%Y %H:%M')
+    products[pid]['deadline_dt'] = new_d.strftime('%Y-%m-%d %H:%M')
+    save_data()
+    return jsonify({'ok': True, 'deadline': products[pid]['deadline']})
+
+@app.route('/api/admin/order/<code>/confirm', methods=['POST'])
+def api_admin_confirm_order(code):
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    if code not in orders: return jsonify({'ok': False}), 404
+    orders[code]['status'] = 'confirmed'
+    save_data()
+    return jsonify({'ok': True})
+
+@app.route('/api/admin/order/<code>/reject', methods=['POST'])
+def api_admin_reject_order(code):
+    from flask import jsonify
+    pwd = request.args.get('pwd', '')
+    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
+    if code not in orders: return jsonify({'ok': False}), 404
+    orders[code]['status'] = 'rejected'
+    save_data()
+    return jsonify({'ok': True})
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
@@ -2279,9 +2325,7 @@ def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    p = products.get(pid, {})
-    solo_available = p.get('solo_available', True)
-    if has_solo and solo_available:
+    if has_solo:
         kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
     kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
     return kb_inline(kb)
