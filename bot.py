@@ -70,6 +70,7 @@ wishlists       = {}   # uid -> [pids]
 buyer_profiles  = {}   # uid -> profile
 refund_requests = {}   # code -> refund info
 seller_state    = {}   # uid -> step state
+seller_shops    = {}   # uid -> [{'name','phone','city','delivery','channel','verified'}]
 seller_products = {}   # uid -> [pids]
 verified_channels       = {}  # '@kanal' -> {'owner_id': uid, 'moderators': [uid]}
 pending_moderator_codes = {}  # code -> {'channel': '@kanal', 'added_by': uid}
@@ -90,6 +91,7 @@ def save_data():
             'refund_requests': refund_requests,
             'seller_products': {str(k): v for k, v in seller_products.items()},
             'verified_channels': verified_channels,
+            'seller_shops':    {str(k): v for k, v in seller_shops.items()},
             'pending_moderator_codes': pending_moderator_codes,
             'referrals':       referrals,
             'referral_map':    {str(k): v for k, v in referral_map.items()},
@@ -363,10 +365,58 @@ def seller_handle_cb(cb):
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
 
+    if d == 'add_new_shop':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'ob_shop_name', 'adding_shop': True}
+        send_seller(uid,
+            "🏪 <b>Yangi do'kon qo'shish</b>\n\n"
+            "<b>1/4</b> Do'kon nomini yozing:"
+        )
+        return
+
+    if d.startswith('sel_shop_'):
+        idx = int(d.split('_')[2])
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops):
+            answer_cb(cbid, '❌ Do\'kon topilmadi', token=SELLER_TOKEN); return
+        shop = shops[idx]
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {
+            'step': 'prod_name',
+            'shop_idx': idx,
+            'shop_name': shop['name'],
+            'contact': shop['phone'],
+            'delivery_type': shop.get('delivery', 'pickup'),
+            'seller_channel': shop.get('channel', ''),
+        }
+        send_seller(uid,
+            f"📦 <b>{shop['name']}</b> uchun yangi mahsulot\n\n"
+            f"<b>1/4</b> Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
+        )
+        return
+
     if d in ('start_addproduct', 'menu_addproduct'):
         answer_cb(cbid, token=SELLER_TOKEN)
-        seller_state[uid] = {'step': 'name'}
-        send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            send_seller(uid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
+            return
+        if len(shops) == 1:
+            seller_state[uid] = {
+                'step': 'prod_name',
+                'shop_idx': 0,
+                'shop_name': shops[0]['name'],
+                'contact': shops[0]['phone'],
+                'delivery_type': shops[0].get('delivery', 'pickup'),
+                'seller_channel': shops[0].get('channel', ''),
+            }
+            send_seller(uid,
+                f"📦 <b>{shops[0]['name']}</b> uchun yangi mahsulot\n\n"
+                f"<b>1/4</b> Mahsulot nomini yozing:"
+            )
+        else:
+            btns = [[{'text': f"🏪 {s['name']}", 'callback_data': f"sel_shop_{i}"}] for i, s in enumerate(shops)]
+            send_seller(uid, "Qaysi do'kon uchun?", {'inline_keyboard': btns})
         return
 
     if d == 'menu_mystats':
@@ -610,6 +660,68 @@ def seller_handle_cb(cb):
             send_seller(uid, "6️⃣ Minimal guruh soni (2-10):")
         return
 
+    if d.startswith('ob_delivery_'):
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['ob_delivery'] = 'deliver' if d == 'ob_delivery_deliver' else 'pickup'
+        s['step'] = 'ob_channel'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"{'🚚 Yetkazib beraman' if s['ob_delivery']=='deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
+            "<b>4/4</b> Telegram kanal username ini yozing:\n"
+            "<i>Masalan: @mening_kanalim</i>\n\n"
+            "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
+        )
+        return
+
+    if d == 'prod_photo_done':
+        s = seller_state.get(uid)
+        if not s or not s.get('photo_ids'):
+            answer_cb(cbid, '❌ Rasm topilmadi', token=SELLER_TOKEN); return
+        s['step'] = 'prod_price'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"✅ {len(s['photo_ids'])} ta rasm saqlandi.\n\n"
+            "<b>3/4</b> Narxlarni kiriting:\n\n"
+            "<code>850000 / 550000</code>\n"
+            "<i>asl narx / guruh narxi</i>"
+        )
+        return
+
+    if d == 'prod_confirm_publish':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        publish_product(uid, uid, s)
+        return
+
+    if d == 'prod_add_desc':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_desc'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "Tavsif yozing (max 300 belgi):")
+        return
+
+    if d == 'prod_add_solo':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_solo'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "Yakka sotuv narxini yozing (so'm):")
+        return
+
+    if d == 'prod_add_variants':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_variants'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            "Variantlarni vergul bilan yozing:\n"
+            "<i>38, 39, 40, 41 yoki Qizil, Ko'k, Yashil</i>"
+        )
+        return
+
     if d.startswith('delivery_'):
         s = seller_state.get(uid)
         if not s:
@@ -694,6 +806,34 @@ def is_channel_admin(uid, channel):
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
+def show_prod_confirm(cid, s, shop):
+    """Yangi 5-step mahsulot tasdiqlash ekrani"""
+    orig = s.get('original_price', 0)
+    grp  = s.get('group_price', 0)
+    disc = round((orig - grp) / orig * 100) if orig else 0
+    photos = len(s.get('photo_ids', [s['photo_id']] if s.get('photo_id') else []))
+    desc_line = f"\n📝 {s['description']}" if s.get('description') else ''
+    solo_line = f"\n👤 Yakka: {s['solo_price']:,} so'm" if s.get('solo_price') else ''
+    variants_line = f"\n🎨 {', '.join(s['variants'])}" if s.get('variants') else ''
+    send_seller(cid,
+        f"📋 <b>Mahsulotni tekshiring:</b>\n\n"
+        f"📦 <b>{s['name']}</b>\n"
+        f"🏪 {shop.get('name', '')}\n"
+        f"📸 {photos} ta rasm\n"
+        f"💰 {orig:,} → {grp:,} so'm (-{disc}%)\n"
+        f"👥 Min guruh: {s['min_group']} kishi\n"
+        f"📢 {shop.get('channel', '—')}"
+        f"{desc_line}{solo_line}{variants_line}",
+        {'inline_keyboard': [
+            [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
+            [
+                {'text': "📝 Tavsif qo'shish", 'callback_data': 'prod_add_desc'},
+                {'text': "💰 Yakka narx", 'callback_data': 'prod_add_solo'},
+            ],
+            [{'text': "🎨 Variantlar qo'shish", 'callback_data': 'prod_add_variants'}],
+        ]}
+    )
+
 def show_confirm(cid, s):
     channel = s.get('seller_channel', '')
     send_seller(cid,
@@ -723,27 +863,56 @@ def show_confirm(cid, s):
     )
 
 def publish_product(uid, cid, s):
-    channel  = s['seller_channel']
+    # Shop ma'lumotlarini olish
+    shop_idx = s.get('shop_idx')
+    if shop_idx is not None:
+        shops = seller_shops.get(uid, [])
+        shop  = shops[shop_idx] if shop_idx < len(shops) else {}
+        channel      = shop.get('channel', s.get('seller_channel', ''))
+        contact      = shop.get('phone', s.get('contact', ''))
+        delivery     = shop.get('delivery', s.get('delivery_type', 'pickup'))
+        shop_name    = shop.get('name', s.get('shop_name', ''))
+    else:
+        channel   = s.get('seller_channel', '')
+        contact   = s.get('contact', '')
+        delivery  = s.get('delivery_type', 'pickup')
+        shop_name = s.get('shop_name', '')
+
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    deadline = datetime.now() + timedelta(hours=48)
+    hours    = s.get('deadline_hours', 48)
+    deadline = datetime.now() + timedelta(hours=hours)
+
+    # photo_ids support
+    photo_ids = s.get('photo_ids', [s['photo_id']] if s.get('photo_id') else [])
+    first_photo = photo_ids[0] if photo_ids else None
+    if not first_photo:
+        send_seller(cid, "❌ Rasm topilmadi!"); return
+
     products[pid] = {
-        'name': s['name'], 'shop_name': s['shop_name'],
-        'description': s['description'], 'original_price': s['original_price'],
-        'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
-        'min_group': s['min_group'],
-        'photo_id': s['photo_id'], 'contact': s['contact'],
-        'delivery_type': s.get('delivery_type', 'pickup'),
-        'variants': s.get('variants', []),
-        'seller_channel': channel, 'seller_id': uid,
-        'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
-        'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
-        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active'
+        'name':          s['name'],
+        'shop_name':     shop_name,
+        'description':   s.get('description', ''),
+        'original_price':s['original_price'],
+        'group_price':   s['group_price'],
+        'solo_price':    s.get('solo_price', 0),
+        'min_group':     s['min_group'],
+        'photo_id':      first_photo,
+        'photo_ids':     photo_ids,
+        'contact':       contact,
+        'delivery_type': delivery,
+        'variants':      s.get('variants', []),
+        'seller_channel':channel,
+        'seller_id':     uid,
+        'deadline':      deadline.strftime('%d.%m.%Y %H:%M'),
+        'deadline_dt':   deadline.strftime('%Y-%m-%d %H:%M'),
+        'channel_message_id': None, 'channel_chat_id': None,
+        'status': 'active', 'solo_available': True,
     }
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
     result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-        'chat_id': channel, 'photo': s['photo_id'],
+        'chat_id': channel, 'photo': first_photo,
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
     }).json()
@@ -762,17 +931,18 @@ def publish_product(uid, cid, s):
     else:
         del products[pid]
         seller_products[uid].remove(pid)
-        s['step'] = 'confirm'
+        s['step'] = 'prod_confirm'
         seller_state[uid] = s
         send_seller(cid,
             f"❌ Kanalga post qo'yib bo'lmadi!\n\n"
             f"Tekshiring:\n"
-            f"• Sotuvchi bot {channel} ga admin sifatida qo'shilganmi?\n"
+            f"• Seller bot {channel} ga admin sifatida qo'shilganmi?\n"
             f"• Kanal username to'g'rimi?\n\n"
-            f"Tahrirlash yoki qayta urinish:"
+            "Qayta urinish:"
         )
-        show_confirm(cid, s)
-
+        shops = seller_shops.get(uid, [])
+        shop  = shops[s.get('shop_idx', 0)] if shops else {}
+        show_prod_confirm(cid, s, shop)
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -792,16 +962,25 @@ def seller_handle_msg(msg):
         return
 
     if text == '/start':
-        send_seller(cid,
-            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-            "Guruh savdosi orqali ko'proq soting!\n\n"
-            "Pastdagi tugmalar orqali boshqaring 👇",
-            {'keyboard': [
-                [{'text': '➕ Mahsulot qo\'shish'}],
-                [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
-                [{'text': '📊 Statistika'},    {'text': '📢 Kanallarim'}],
-            ], 'resize_keyboard': True}
-        )
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            # Yangi sotuvchi — onboarding boshlash
+            seller_state[uid] = {'step': 'ob_shop_name'}
+            send_seller(cid,
+                "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
+                "Bir marta profilingizni to'ldiring — keyin mahsulot qo'shish juda tez bo'ladi.\n\n"
+                "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
+            )
+        else:
+            send_seller(cid,
+                "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+                "Guruh savdosi orqali ko'proq soting!",
+                {'keyboard': [
+                    [{'text': '➕ Mahsulot qo\'shish'}],
+                    [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
+                    [{'text': '📊 Statistika'},    {'text': '📢 Do\'konlarim'}],
+                ], 'resize_keyboard': True}
+            )
         return
 
     if text == '/myproducts' or text == '📦 Mahsulotlarim':
@@ -908,28 +1087,42 @@ def seller_handle_msg(msg):
         return
 
     if text == '/addproduct' or text == '➕ Mahsulot qo\'shish':
-        seller_state[uid] = {'step': 'name'}
-        send_seller(cid,
-            "📦 <b>Yangi mahsulot qo'shish</b>\n\n"
-            "1️⃣ Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
-        )
-        return
-
-    if text == '/mychannels' or text == '📢 Kanallarim':
-        my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid or uid in data.get('moderators', [])]
-        if not my_channels:
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            send_seller(cid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
+            return
+        if len(shops) == 1:
+            # Bitta do'kon — avtomatik tanlash
+            seller_state[uid] = {
+                'step': 'prod_name',
+                'shop_idx': 0,
+                'shop_name': shops[0]['name'],
+                'contact': shops[0]['phone'],
+                'delivery_type': shops[0].get('delivery', 'pickup'),
+                'seller_channel': shops[0].get('channel', ''),
+            }
             send_seller(cid,
-                "📢 Tasdiqlangan kanal yo'q.\n\n"
-                "/addproduct orqali mahsulot qo'shishda kanal tasdiqlanadi."
+                f"📦 <b>{shops[0]['name']}</b> uchun yangi mahsulot\n\n"
+                f"<b>1/4</b> Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
             )
         else:
-            r = "📢 <b>Tasdiqlangan kanallaringiz:</b>\n\n"
-            for ch in my_channels:
-                data = verified_channels[ch]
-                role = "👑 Egasi" if data['owner_id'] == uid else "🛡 Moderator"
-                mods = len(data.get('moderators', []))
-                r += f"{role} {ch}\n👥 {mods} moderator\n\n"
-            send_seller(cid, r)
+            # Ko'p do'kon — tanlash
+            btns = [[{'text': f"🏪 {s['name']}", 'callback_data': f"sel_shop_{i}"}] for i, s in enumerate(shops)]
+            send_seller(cid, "Qaysi do'kon uchun mahsulot qo'shmoqchisiz?", {'inline_keyboard': btns})
+        return
+
+    if text == '/mychannels' or text == '📢 Do\'konlarim':
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            send_seller(cid, "Do'kon profili yo'q.\n\n/start yozing.")
+            return
+        r = "🏪 <b>Do'konlaringiz:</b>\n\n"
+        for i, s in enumerate(shops):
+            ch = s.get('channel', '—')
+            r += f"━━━━━━━━━━━━━━━\n🏪 <b>{s['name']}</b>\n📞 {s['phone']}\n📢 {ch}\n🚚 {'Yetkazadi' if s.get('delivery')=='deliver' else 'Olib ketish'}\n"
+        r += "\n━━━━━━━━━━━━━━━"
+        btns = [[{'text': f"➕ Yangi do'kon qo'shish", 'callback_data': 'add_new_shop'}]]
+        send_seller(cid, r, {'inline_keyboard': btns})
         return
 
     if text == '/addmoderator':
@@ -996,7 +1189,176 @@ def seller_handle_msg(msg):
             )
             return
 
-        if step == 'name':
+        # ── ONBOARDING ──
+        if step == 'ob_shop_name':
+            s['ob_shop_name'] = text
+            s['step'] = 'ob_phone'
+            send_seller(cid,
+                f"<b>2/4</b> Telefon raqamingiz:\n<i>+998XXXXXXXXX</i>"
+            )
+
+        elif step == 'ob_phone':
+            phone = text.strip()
+            if not (phone.startswith('+') or phone.startswith('998') or phone.isdigit()):
+                send_seller(cid, "❌ To'g'ri telefon raqam kiriting!\n<i>Masalan: +998901234567</i>"); return
+            s['ob_phone'] = phone
+            s['step'] = 'ob_delivery'
+            send_seller(cid,
+                "<b>3/4</b> Yetkazib berish turi:",
+                {'inline_keyboard': [
+                    [{'text': "🚚 Yetkazib beraman", 'callback_data': 'ob_delivery_deliver'}],
+                    [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
+                ]}
+            )
+
+        elif step == 'ob_channel':
+            channel = text if text.startswith('@') else f'@{text}'
+            send_seller(cid, f"🔍 <b>{channel}</b> tekshirilmoqda...")
+            if can_manage_channel(uid, channel) or is_channel_admin(uid, channel):
+                if channel not in verified_channels:
+                    verified_channels[channel] = {'owner_id': uid, 'moderators': []}
+                # Save shop
+                if uid not in seller_shops:
+                    seller_shops[uid] = []
+                new_shop = {
+                    'name': s['ob_shop_name'],
+                    'phone': s['ob_phone'],
+                    'delivery': s.get('ob_delivery', 'pickup'),
+                    'channel': channel,
+                    'verified': True,
+                }
+                adding = s.get('adding_shop', False)
+                seller_shops[uid].append(new_shop)
+                save_data()
+                del seller_state[uid]
+                send_seller(cid,
+                    f"✅ <b>Do'kon profili saqlandi!</b>\n\n"
+                    f"🏪 {new_shop['name']}\n"
+                    f"📞 {new_shop['phone']}\n"
+                    f"📢 {channel}\n\n"
+                    f"Endi mahsulot qo'sha olasiz!",
+                    {'keyboard': [
+                        [{'text': '➕ Mahsulot qo\'shish'}],
+                        [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
+                        [{'text': '📊 Statistika'},    {'text': "📢 Do'konlarim"}],
+                    ], 'resize_keyboard': True}
+                )
+            else:
+                send_seller(cid,
+                    f"❌ <b>{channel}</b> kanalining admini emassiz!\n\n"
+                    "Tekshiring:\n"
+                    "• Seller bot kanalga admin sifatida qo'shilganmi?\n"
+                    "• Kanal username to'g'rimi?\n\n"
+                    "Qayta kiriting:"
+                )
+
+        # ── MAHSULOT QO'SHISH (5 STEP) ──
+        elif step == 'prod_name':
+            s['name'] = text
+            s['step'] = 'prod_photo'
+            send_seller(cid, f"<b>2/4</b> Mahsulot rasmini yuboring 📸\n<i>Bir nechta rasm yuborsangiz ham bo'ladi (max 5)</i>")
+
+        elif step == 'prod_photo':
+            photo = msg.get('photo')
+            if photo:
+                if 'photo_ids' not in s:
+                    s['photo_ids'] = []
+                if len(s['photo_ids']) < 5:
+                    s['photo_ids'].append(photo[-1]['file_id'])
+                count = len(s['photo_ids'])
+                if count < 5:
+                    send_seller(cid,
+                        f"✅ {count}/5 rasm.\nYana rasm yuboring yoki davom eting:",
+                        {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} rasm)", 'callback_data': 'prod_photo_done'}]]}
+                    )
+                else:
+                    s['step'] = 'prod_price'
+                    send_seller(cid,
+                        "<b>3/4</b> Narxlarni kiriting:\n\n"
+                        "Asl narx va guruh narxini quyidagi formatda yozing:\n"
+                        "<code>850000 / 550000</code>\n\n"
+                        "<i>Birinchisi asl narx, ikkinchisi guruh narxi</i>"
+                    )
+            else:
+                send_seller(cid, "❌ Rasm yuboring!")
+
+        elif step == 'prod_price':
+            try:
+                parts = text.replace(' ', '').split('/')
+                if len(parts) == 2:
+                    orig = int(parts[0].replace(',', ''))
+                    grp  = int(parts[1].replace(',', ''))
+                else:
+                    orig = grp = int(parts[0].replace(',', ''))
+                if grp >= orig:
+                    send_seller(cid, "❌ Guruh narxi asl narxdan kam bo'lishi kerak!"); return
+                s['original_price'] = orig
+                s['group_price']    = grp
+                s['solo_price']     = 0
+                s['step'] = 'prod_min_group'
+                disc = round((orig - grp) / orig * 100)
+                send_seller(cid,
+                    f"✅ Asl: {orig:,} so'm → Guruh: {grp:,} so'm (-{disc}%)\n\n"
+                    f"<b>4/4</b> Minimal guruh soni (2-10):\n<i>Nechta kishi to'planganda sotuv boshlanadi</i>"
+                )
+            except:
+                send_seller(cid,
+                    "❌ Format xato! Quyidagicha yozing:\n"
+                    "<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>"
+                )
+
+        elif step == 'prod_min_group':
+            try:
+                mg = int(text)
+                if mg < 2 or mg > 10:
+                    send_seller(cid, "❌ 2 dan 10 gacha!"); return
+                s['min_group'] = mg
+                s['step'] = 'prod_confirm'
+                s['description'] = ''
+                s['variants'] = []
+                # Get shop info
+                shop_idx = s.get('shop_idx', 0)
+                shops = seller_shops.get(uid, [])
+                shop = shops[shop_idx] if shop_idx < len(shops) else {}
+                show_prod_confirm(cid, s, shop)
+            except:
+                send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_edit_desc':
+            s['description'] = text[:300]
+            s['step'] = 'prod_confirm'
+            shop_idx = s.get('shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            shop = shops[shop_idx] if shop_idx < len(shops) else {}
+            send_seller(cid, "✅ Tavsif saqlandi!")
+            show_prod_confirm(cid, s, shop)
+
+        elif step == 'prod_edit_solo':
+            try:
+                s['solo_price'] = int(text.replace(' ', '').replace(',', ''))
+                s['step'] = 'prod_confirm'
+                shop_idx = s.get('shop_idx', 0)
+                shops = seller_shops.get(uid, [])
+                shop = shops[shop_idx] if shop_idx < len(shops) else {}
+                send_seller(cid, "✅ Yakka narx saqlandi!")
+                show_prod_confirm(cid, s, shop)
+            except:
+                send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_edit_variants':
+            raw = [v.strip() for v in text.replace('،', ',').split(',') if v.strip()]
+            if not raw:
+                send_seller(cid, "❌ Kamida 1 ta variant!"); return
+            s['variants'] = raw
+            s['step'] = 'prod_confirm'
+            shop_idx = s.get('shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            shop = shops[shop_idx] if shop_idx < len(shops) else {}
+            send_seller(cid, f"✅ Variantlar: {', '.join(raw)}")
+            show_prod_confirm(cid, s, shop)
+
+        # ── ESKI STEPLAR (backwards compat) ──
+        elif step == 'name':
             s['name'] = text; s['step'] = 'shop_name'
             send_seller(cid, "2️⃣ Do'kon nomingiz:\n<i>Masalan: Nike Toshkent</i>")
 
@@ -1980,180 +2342,6 @@ def api_products():
     result.sort(key=lambda x: x['count'], reverse=True)
     return jsonify(result)
 
-@app.route('/api/admin/orders', methods=['GET'])
-def api_admin_orders():
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    page   = int(request.args.get('page', 1))
-    status = request.args.get('status', '')
-    per    = 20
-    em = {'pending':'⏳','confirming':'🔄','confirmed':'✅','rejected':'❌','cancelled':'🚫'}
-    st = {'pending':"To'lov kutilmoqda",'confirming':'Tekshirilmoqda',
-          'confirmed':'Tasdiqlandi','rejected':'Rad etildi','cancelled':'Bekor qilindi'}
-    all_orders = sorted(orders.items(), key=lambda x: x[1].get('created',''), reverse=True)
-    if status: all_orders = [(k,v) for k,v in all_orders if v.get('status') == status]
-    total  = len(all_orders)
-    sliced = all_orders[(page-1)*per : page*per]
-    result = []
-    for code, o in sliced:
-        p = products.get(o.get('product_id',''), {})
-        result.append({
-            'code':        code,
-            'product':     p.get('name',''),
-            'shop':        p.get('shop_name',''),
-            'buyer_id':    o.get('user_id'),
-            'buyer_name':  o.get('user_name',''),
-            'amount':      o.get('amount', 0),
-            'type':        o.get('type','group'),
-            'status':      o.get('status',''),
-            'status_text': st.get(o.get('status',''), ''),
-            'status_icon': em.get(o.get('status',''), '?'),
-            'created':     o.get('created',''),
-            'address':     o.get('address',''),
-            'variant':     o.get('variant',''),
-        })
-    return jsonify({'orders': result, 'total': total, 'page': page, 'pages': (total+per-1)//per})
-
-@app.route('/api/admin/products', methods=['GET'])
-def api_admin_products():
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    result = []
-    for pid, p in products.items():
-        count = len(groups.get(pid, []))
-        conf  = sum(1 for o in orders.values() if o.get('product_id')==pid and o['status']=='confirmed')
-        rev   = sum(o['amount'] for o in orders.values() if o.get('product_id')==pid and o['status']=='confirmed')
-        result.append({
-            'id':            pid,
-            'name':          p.get('name',''),
-            'shop_name':     p.get('shop_name',''),
-            'status':        p.get('status','active'),
-            'solo_available':p.get('solo_available', True),
-            'group_price':   p.get('group_price', 0),
-            'solo_price':    p.get('solo_price', 0),
-            'original_price':p.get('original_price', 0),
-            'min_group':     p.get('min_group', 3),
-            'count':         count,
-            'deadline':      p.get('deadline',''),
-            'deadline_dt':   p.get('deadline_dt',''),
-            'seller_id':     p.get('seller_id'),
-            'channel':       p.get('seller_channel',''),
-            'photo_id':      p.get('photo_id',''),
-            'confirmed_orders': conf,
-            'revenue':       rev,
-            'grp_disc':      round((p.get('original_price',0)-p.get('group_price',0))/p.get('original_price',1)*100) if p.get('original_price') else 0,
-        })
-    result.sort(key=lambda x: x['status']=='active', reverse=True)
-    return jsonify(result)
-
-@app.route('/api/admin/buyers', methods=['GET'])
-def api_admin_buyers():
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    page = int(request.args.get('page', 1))
-    per  = 20
-    all_buyers = []
-    for uid, prof in buyer_profiles.items():
-        ref_d   = referrals.get(str(uid), {})
-        my_ords = [(k,v) for k,v in orders.items() if v.get('user_id')==uid]
-        last    = max((v.get('created','') for _,v in my_ords), default='')
-        all_buyers.append({
-            'uid':          uid,
-            'total_orders': prof.get('total_orders', 0),
-            'confirmed':    sum(1 for _,v in my_ords if v['status']=='confirmed'),
-            'total_spent':  sum(v['amount'] for _,v in my_ords if v['status']=='confirmed'),
-            'cashback':     prof.get('cashback', 0),
-            'referrals':    ref_d.get('count', 0),
-            'last_order':   last,
-        })
-    all_buyers.sort(key=lambda x: x['total_spent'], reverse=True)
-    total  = len(all_buyers)
-    sliced = all_buyers[(page-1)*per : page*per]
-    return jsonify({'buyers': sliced, 'total': total, 'page': page, 'pages': (total+per-1)//per})
-
-@app.route('/api/admin/sellers', methods=['GET'])
-def api_admin_sellers():
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    result = []
-    all_seller_ids = set()
-    for p in products.values():
-        if p.get('seller_id'): all_seller_ids.add(p['seller_id'])
-    for uid in all_seller_ids:
-        my_pids = seller_products.get(uid, [])
-        rev     = sum(o['amount'] for o in orders.values() if o.get('product_id') in my_pids and o['status']=='confirmed')
-        comm    = int(rev * COMMISSION_RATE)
-        my_channels = [ch for ch, data in verified_channels.items() if data.get('owner_id')==uid]
-        active  = sum(1 for pid in my_pids if products.get(pid,{}).get('status')!='closed')
-        result.append({
-            'uid':       uid,
-            'products':  len(my_pids),
-            'active':    active,
-            'channels':  my_channels,
-            'revenue':   rev,
-            'commission':comm,
-            'payout':    rev - comm,
-            'orders':    sum(1 for o in orders.values() if o.get('product_id') in my_pids and o['status']=='confirmed'),
-        })
-    result.sort(key=lambda x: x['revenue'], reverse=True)
-    return jsonify(result)
-
-@app.route('/api/admin/product/<pid>/action', methods=['POST'])
-def api_admin_product_action():
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    pid    = request.view_args.get('pid','')  # won't work, fix below
-    return jsonify({'ok': False}), 400
-
-@app.route('/api/admin/product/<pid>/close', methods=['POST'])
-def api_admin_close_product(pid):
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    if pid not in products: return jsonify({'ok': False, 'error': 'Not found'}), 404
-    expire_product(pid)
-    save_data()
-    return jsonify({'ok': True})
-
-@app.route('/api/admin/product/<pid>/extend', methods=['POST'])
-def api_admin_extend_product(pid):
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    if pid not in products: return jsonify({'ok': False, 'error': 'Not found'}), 404
-    old_dt = products[pid].get('deadline_dt', datetime.now().strftime('%Y-%m-%d %H:%M'))
-    old_d  = datetime.strptime(old_dt, '%Y-%m-%d %H:%M')
-    new_d  = max(old_d, datetime.now()) + timedelta(hours=24)
-    products[pid]['deadline']    = new_d.strftime('%d.%m.%Y %H:%M')
-    products[pid]['deadline_dt'] = new_d.strftime('%Y-%m-%d %H:%M')
-    save_data()
-    return jsonify({'ok': True, 'deadline': products[pid]['deadline']})
-
-@app.route('/api/admin/order/<code>/confirm', methods=['POST'])
-def api_admin_confirm_order(code):
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    if code not in orders: return jsonify({'ok': False}), 404
-    orders[code]['status'] = 'confirmed'
-    save_data()
-    return jsonify({'ok': True})
-
-@app.route('/api/admin/order/<code>/reject', methods=['POST'])
-def api_admin_reject_order(code):
-    from flask import jsonify
-    pwd = request.args.get('pwd', '')
-    if pwd != DASHBOARD_PASSWORD: return jsonify({'error': 'Unauthorized'}), 401
-    if code not in orders: return jsonify({'ok': False}), 404
-    orders[code]['status'] = 'rejected'
-    save_data()
-    return jsonify({'ok': True})
-
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from flask import Response
@@ -2224,7 +2412,7 @@ def save_data():
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
     global refund_requests, seller_products, verified_channels
-    global pending_moderator_codes, referrals, referral_map
+    global pending_moderator_codes, referrals, referral_map, seller_shops
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
@@ -2245,6 +2433,8 @@ def load_data():
         buyer_profiles         = data.get('buyer_profiles', {})
         refund_requests        = data.get('refund_requests', {})
         verified_channels      = data.get('verified_channels', {})
+        raw_ss                 = data.get('seller_shops', {})
+        seller_shops           = {int(k) if k.isdigit() else k: v for k, v in raw_ss.items()}
         pending_moderator_codes= data.get('pending_moderator_codes', {})
         referrals              = data.get('referrals', {})
         raw_rm                 = data.get('referral_map', {})
