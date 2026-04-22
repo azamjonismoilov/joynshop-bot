@@ -122,17 +122,18 @@ nav {
 }
 .filter-item.active .filter-count { background: var(--orange-100); color: var(--orange-600); }
 
-.price-range { padding: 0 4px; }
-.price-inputs { display: flex; gap: 8px; align-items: center; }
+.price-range { padding: 0 4px; position: relative; z-index: 1; }
+.price-inputs { display: flex; gap: 8px; align-items: center; position: relative; z-index: 1; }
 .price-input {
-  flex: 1; padding: 8px 10px;
+  flex: 1; min-width: 0; padding: 8px 10px;
   border: 1.5px solid var(--gray-200); border-radius: 8px;
   font-family: 'Inter', sans-serif; font-size: 13px;
   color: var(--gray-900); outline: none;
   transition: border-color 150ms;
+  position: relative; z-index: 1;
 }
-.price-input:focus { border-color: var(--orange-500); }
-.price-sep { font-size: 13px; color: var(--gray-400); }
+.price-input:focus { border-color: var(--orange-500); z-index: 2; }
+.price-sep { font-size: 13px; color: var(--gray-400); flex-shrink: 0; }
 
 .disc-filters { display: flex; flex-wrap: wrap; gap: 6px; }
 .disc-chip {
@@ -181,7 +182,7 @@ nav {
 /* ── PRODUCTS GRID ── */
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 .prod-card {
@@ -421,10 +422,13 @@ nav {
 .breadcrumb i { font-size: 12px; }
 
 /* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .products-grid { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 960px) {
   .page-layout { grid-template-columns: 1fr; }
   .sidebar { position: static; }
-  .products-grid { grid-template-columns: repeat(2, 1fr); }
+  .products-grid { grid-template-columns: repeat(3, 1fr); }
   .footer-top { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 600px) {
@@ -483,15 +487,15 @@ nav {
             <span class="filter-count" id="cnt-all">0</span>
           </button>
           <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot', this)">
-            <span><i class="ri-fire-line" style="margin-right:6px"></i>🔥 Ommabop</span>
+            <span><i class="ri-fire-line" style="margin-right:6px"></i>Ommabop</span>
             <span class="filter-count" id="cnt-hot">0</span>
           </button>
           <button class="filter-item" data-filter="almost" onclick="setSideFilter('almost', this)">
-            <span><i class="ri-alarm-warning-line" style="margin-right:6px"></i>⚡️ Tugayapti</span>
+            <span><i class="ri-alarm-warning-line" style="margin-right:6px"></i>Tugayapti</span>
             <span class="filter-count" id="cnt-almost">0</span>
           </button>
           <button class="filter-item" data-filter="new" onclick="setSideFilter('new', this)">
-            <span><i class="ri-sparkle-line" style="margin-right:6px"></i>✨ Yangi</span>
+            <span><i class="ri-sparkle-line" style="margin-right:6px"></i>Yangi</span>
             <span class="filter-count" id="cnt-new">0</span>
           </button>
         </div>
@@ -553,8 +557,8 @@ nav {
       <!-- Quick tags -->
       <div class="tags-row">
         <button class="tag-chip active" data-tag="all" onclick="setTag(this,'all')">Barchasi</button>
-        <button class="tag-chip" data-tag="hot" onclick="setTag(this,'hot')">🔥 Ommabop</button>
-        <button class="tag-chip" data-tag="almost" onclick="setTag(this,'almost')">⚡️ Tugayapti</button>
+        <button class="tag-chip" data-tag="hot" onclick="setTag(this,'hot')">Ommabop</button>
+        <button class="tag-chip" data-tag="almost" onclick="setTag(this,'almost')">Tugayapti</button>
         <button class="tag-chip" data-tag="disc30" onclick="setTag(this,'disc30')">30%+ chegirma</button>
         <button class="tag-chip" data-tag="disc40" onclick="setTag(this,'disc40')">40%+ chegirma</button>
         <button class="tag-chip" data-tag="cheap" onclick="setTag(this,'cheap')">1 mln gacha</button>
@@ -643,8 +647,8 @@ nav {
         <h5>Marketplace</h5>
         <ul>
           <li><a href="#" onclick="setSideFilter('all',document.querySelector('[data-filter=all]'));return false">Barcha mahsulotlar</a></li>
-          <li><a href="#" onclick="setSideFilter('hot',document.querySelector('[data-filter=hot]'));return false">🔥 Ommabop</a></li>
-          <li><a href="#" onclick="setSideFilter('almost',document.querySelector('[data-filter=almost]'));return false">⚡️ Tugayapti</a></li>
+          <li><a href="#" onclick="setSideFilter('hot',document.querySelector('[data-filter=hot]'));return false">Ommabop</a></li>
+          <li><a href="#" onclick="setSideFilter('almost',document.querySelector('[data-filter=almost]'));return false">Tugayapti</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -825,7 +829,7 @@ function renderProducts(targetEl = 'productsGrid', list = null) {
           ${imgHtml}
           <div class="prod-badge-disc">-${p.grp_disc}%</div>
           ${p.count > 0 ? `<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>` : ''}
-          ${almost ? `<div class="prod-badge-hot">⚡️ ${needed} o'rin</div>` : ''}
+          ${almost ? `<div class="prod-badge-hot"><i class="ri-alarm-warning-line"></i> ${needed} o'rin</div>` : ''}
         </div>
         <div class="prod-body">
           <a class="prod-shop" href="#" onclick="event.stopPropagation();openShop('${p.shop_name.replace(/'/g,"\\'")}')">
