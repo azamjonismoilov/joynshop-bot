@@ -1687,22 +1687,22 @@ def buyer_handle_msg(msg):
 
     if text == '/start':
         miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
-        # 1. Reply keyboard (pastki doimiy tugmalar)
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
             "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
-            "Pastdagi tugmalar orqali boshqaring 👇",
+            "Do'konni ochish uchun bosing 👇",
             {'keyboard': [
                 [{'text': '🛍 Mening buyurtmalarim'}],
                 [{'text': '✍️ Fikr bildirish'}, {'text': '⚙️ Sozlamalar'}],
             ], 'resize_keyboard': True}
         )
-        # 2. Miniapp ochish tugmasi (inline)
         if miniapp_url:
-            send_buyer(cid,
-                "👇 Do'konni ochish uchun bosing:",
-                {'inline_keyboard': [[{'text': '🛍 Xarid qilish', 'web_app': {'url': miniapp_url}}]]}
-            )
+            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendMessage', json={
+                'chat_id': cid,
+                'text': '🛍',
+                'reply_markup': {'inline_keyboard': [[{'text': 'Xarid qilish', 'web_app': {'url': miniapp_url}}]]},
+                'parse_mode': 'HTML'
+            })
         return
 
     if text == '/myprofile':
