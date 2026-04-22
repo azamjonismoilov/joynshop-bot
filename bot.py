@@ -570,6 +570,15 @@ def seller_handle_cb(cb):
             send_seller(uid, "6️⃣ Minimal guruh soni (2-10):")
         return
 
+    if d == 'photo_done':
+        s = seller_state.get(uid)
+        if not s or not s.get('photo_ids'):
+            answer_cb(cbid, '❌ Rasm topilmadi!', token=SELLER_TOKEN); return
+        s['step'] = 'contact'
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, f"✅ {len(s['photo_ids'])} ta rasm saqlandi.\n\n8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
+        return
+
     if d.startswith('delivery_'):
         s = seller_state.get(uid)
         if not s:
@@ -691,7 +700,7 @@ def publish_product(uid, cid, s):
         'description': s['description'], 'original_price': s['original_price'],
         'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
         'min_group': s['min_group'],
-        'photo_id': s['photo_id'], 'contact': s['contact'],
+        'photo_ids': s.get('photo_ids', [s['photo_id']] if s.get('photo_id') else []), 'contact': s['contact'],
         'delivery_type': s.get('delivery_type', 'pickup'),
         'variants': s.get('variants', []),
         'seller_channel': channel, 'seller_id': uid,
@@ -702,8 +711,9 @@ def publish_product(uid, cid, s):
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
+    first_photo = products[pid].get('photo_ids', [None])[0] or products[pid].get('photo_id','')
     result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-        'chat_id': channel, 'photo': s['photo_id'],
+        'chat_id': channel, 'photo': first_photo,
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
     }).json()
@@ -1035,9 +1045,26 @@ def seller_handle_msg(msg):
         elif step == 'photo':
             photo = msg.get('photo')
             if photo:
-                s['photo_id'] = photo[-1]['file_id']
-                s['step']     = 'contact'
-                send_seller(cid, "8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
+                if 'photo_ids' not in s:
+                    s['photo_ids'] = []
+                if len(s['photo_ids']) < 5:
+                    s['photo_ids'].append(photo[-1]['file_id'])
+                count = len(s['photo_ids'])
+                if count < 5:
+                    send_seller(cid,
+                        f"✅ {count}/5 rasm qabul qilindi.\n"
+                        f"Yana rasm yuboring yoki tugatish uchun /done yozing.",
+                        {'inline_keyboard': [[{'text': f"✅ Tayyor ({count} rasm)", 'callback_data': 'photo_done'}]]}
+                    )
+                else:
+                    s['step'] = 'contact'
+                    send_seller(cid, "✅ 5/5 rasm qabul qilindi.\n\n8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
+            elif text == '/done':
+                if s.get('photo_ids'):
+                    s['step'] = 'contact'
+                    send_seller(cid, "8️⃣ Aloqa ma'lumotingiz:\n<i>@username yoki +998XXXXXXXXX</i>")
+                else:
+                    send_seller(cid, "❌ Kamida 1 ta rasm yuboring!")
             else:
                 send_seller(cid, "❌ Rasm yuboring!")
 
@@ -1097,7 +1124,9 @@ def seller_handle_msg(msg):
             elif field == 'photo':
                 photo = msg.get('photo')
                 if photo:
-                    s['photo_id'] = photo[-1]['file_id']
+                    if 'photo_ids' not in s:
+                        s['photo_ids'] = []
+                    s['photo_ids'] = [photo[-1]['file_id']]  # edit: replace all with new one
                 else:
                     send_seller(cid, "❌ Rasm yuboring!"); return
             elif field == 'seller_channel':
@@ -1935,7 +1964,8 @@ def api_products():
             'min_group':      min_g,
             'count':          count,
             'deadline':       p.get('deadline',''),
-            'photo_id':       p.get('photo_id',''),
+            'photo_ids':      p.get('photo_ids', [p['photo_id']] if p.get('photo_id') else []),
+            'photo_id':       p.get('photo_ids', [p.get('photo_id','')])[0] if p.get('photo_ids') else p.get('photo_id',''),
             'contact':        p.get('contact',''),
             'solo_disc':      round((orig-solo)/orig*100) if solo and orig else 0,
             'grp_disc':       round((orig-grp)/orig*100) if grp and orig else 0,
@@ -1950,85 +1980,6 @@ def dashboard():
     from flask import Response
     html = open('dashboard.html').read()
     return Response(html, mimetype='text/html')
-
-@app.route('/api/checkout', methods=['POST'])
-def api_checkout():
-    from flask import jsonify, request as req
-    data     = req.get_json(force=True)
-    pid      = data.get('product_id', '')
-    uid      = data.get('user_id')
-    uname    = data.get('user_name', 'Foydalanuvchi')
-    otype    = data.get('type', 'group')   # 'group' | 'solo'
-    variant  = data.get('variant', '')
-    delivery = data.get('delivery', 'pickup')  # 'pickup' | 'deliver'
-    address  = data.get('address', '')
-
-    if not pid or pid not in products:
-        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
-    if not uid:
-        return jsonify({'ok': False, 'error': 'Foydalanuvchi aniqlanmadi'}), 400
-
-    p = products[pid]
-    if p.get('status') == 'closed':
-        return jsonify({'ok': False, 'error': 'Guruh yopilgan'}), 400
-
-    # Price
-    if otype == 'solo':
-        if not p.get('solo_price'):
-            return jsonify({'ok': False, 'error': 'Yakka narx mavjud emas'}), 400
-        amount = p['solo_price']
-    else:
-        amount = p['group_price']
-        # Check if already in group
-        if pid not in groups:
-            groups[pid] = []
-        if uid in groups[pid]:
-            return jsonify({'ok': False, 'error': 'Siz allaqachon guruhdasiz'}), 400
-
-    code = gen_code()
-    orders[code] = {
-        'product_id': pid,
-        'user_id':    uid,
-        'user_name':  uname,
-        'amount':     amount,
-        'type':       otype,
-        'status':     'pending',
-        'variant':    variant,
-        'delivery':   delivery,
-        'address':    address,
-        'created':    datetime.now().strftime('%d.%m.%Y %H:%M'),
-    }
-    save_data()
-
-    # Notify buyer via Telegram
-    delivery_text = '🚚 Yetkazib berish' if delivery == 'deliver' else '🏪 Olib ketish'
-    address_line  = f'\n📍 Manzil: {address}' if address else ''
-    variant_line  = f'\n🎨 Variant: {variant}' if variant else ''
-    type_text     = '👤 Yakka' if otype == 'solo' else '👥 Guruh'
-    send_buyer(uid,
-        f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {type_text} buyurtma</b>\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"📦 {p['name']}{variant_line}\n"
-        f"💰 {fmt(amount)} so'm\n"
-        f"{delivery_text}{address_line}\n\n"
-        f"💳 <b>Payme orqali to'lang:</b>\n"
-        f"📱 <code>{PAYME_NUMBER}</code>\n"
-        f"💵 <code>{fmt(amount)}</code>\n"
-        f"📝 Izoh: <code>{code}</code>\n\n"
-        f"⚠️ Izohga <b>{code}</b> yozing!\n"
-        f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
-        {'inline_keyboard': [
-            [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-            [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
-        ]}
-    )
-
-    return jsonify({
-        'ok':       True,
-        'code':     code,
-        'amount':   amount,
-        'payme':    PAYME_NUMBER,
-    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))# ─── PERSISTENCE (PostgreSQL) ───────────────────────────────────────
