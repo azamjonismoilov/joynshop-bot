@@ -1686,6 +1686,8 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/start':
+        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
+        # 1. Reply keyboard (pastki doimiy tugmalar)
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
             "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
@@ -1695,13 +1697,40 @@ def buyer_handle_msg(msg):
                 [{'text': '✍️ Fikr bildirish'}, {'text': '⚙️ Sozlamalar'}],
             ], 'resize_keyboard': True}
         )
+        # 2. Miniapp ochish tugmasi (inline)
+        if miniapp_url:
+            send_buyer(cid,
+                "👇 Do'konni ochish uchun bosing:",
+                {'inline_keyboard': [[{'text': '🛍 Xarid qilish', 'web_app': {'url': miniapp_url}}]]}
+            )
+        return
+
+    if text == '/myprofile':
+        p      = get_profile(uid)
+        ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
+        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
+        send_buyer(cid,
+            f"👤 <b>Profilingiz</b>\n\n"
+            f"🛒 Jami xaridlar: {p['total_orders']}\n"
+            f"💰 Tejagan: {fmt(p['total_saved'])} so'm\n"
+            f"👥 Guruhlar: {p['groups_joined']}\n"
+            f"🎁 Cashback: {fmt(p['cashback'])} so'm\n"
+            f"👫 Taklif qilganlar: {ref_d['count']} kishi\n\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"🔗 Referral linkingiz:\n"
+            f"<code>{ref_link}</code>\n\n"
+            f"Har taklif uchun +10,000 so'm cashback!",
+            {'inline_keyboard': [
+                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
+            ]}
+        )
         return
 
     if text == '/shop':
         miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
         if miniapp_url:
             send_buyer(cid, "🛍 Do'konni ochish uchun tugmani bosing:",
-                {'inline_keyboard': [[{'text': '🛍 Joynshop ni ochish', 'web_app': {'url': miniapp_url}}]]}
+                {'inline_keyboard': [[{'text': '🛍 Xarid qilish', 'web_app': {'url': miniapp_url}}]]}
             )
         else:
             send_buyer(cid, "⚠️ Do'kon hozir mavjud emas.")
@@ -1731,7 +1760,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    # feedback reply handler
+    # Feedback reply handler
     prof = get_profile(uid)
     if prof.get('awaiting_feedback') and not text.startswith('/'):
         prof['awaiting_feedback'] = False
@@ -1747,41 +1776,6 @@ def buyer_handle_msg(msg):
         return
 
     if text == '🛍 Mening buyurtmalarim' or text == '/mystatus':
-        my = {k:v for k,v in orders.items() if v['user_id']==uid}
-        if not my:
-            send_buyer(cid, "📋 Buyurtma yo'q."); return
-        r  = "📋 <b>Buyurtmalaringiz:</b>\n\n"
-        em = {'pending':'⏳','confirming':'🔄','confirmed':'✅','rejected':'❌','cancelled':'🚫'}
-        st = {'pending':"To'lov kutilmoqda",'confirming':'Tekshirilmoqda',
-              'confirmed':'Tasdiqlandi','rejected':'Rad','cancelled':'Bekor'}
-        for k, o in list(my.items())[-5:]:
-            p  = products.get(o['product_id'],{})
-            r += f"{em.get(o['status'],'?')} <b>#{k}</b>\n{p.get('name','?')} — {fmt(o['amount'])} so'm\n{st.get(o['status'],'')}\n\n"
-        send_buyer(cid, r)
-        return
-
-    if text == '/myprofile':
-        p      = get_profile(uid)
-        ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
-        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
-        send_buyer(cid,
-            f"👤 <b>Profilingiz</b>\n\n"
-            f"🛒 Jami xaridlar: {p['total_orders']}\n"
-            f"💰 Tejagan: {fmt(p['total_saved'])} so'm\n"
-            f"👥 Guruhlar: {p['groups_joined']}\n"
-            f"🎁 Cashback: {fmt(p['cashback'])} so'm\n"
-            f"👫 Taklif qilganlar: {ref_d['count']} kishi\n\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"🔗 Referral linkingiz:\n"
-            f"<code>{ref_link}</code>\n\n"
-            f"Har taklif uchun +10,000 so'm cashback!",
-            {'inline_keyboard': [
-                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
-            ]}
-        )
-        return
-
-    if text == '/mystatus':
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(cid, "📋 Buyurtma yo'q."); return
