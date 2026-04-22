@@ -24,32 +24,42 @@ BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
 APP_URL            = os.environ.get('APP_URL', '')  # e.g. https://joynshop.uz
 
 def setup_bot_ui():
-    """Buyer bot uchun menu button va commandlarni o'rnatadi."""
-    if not BUYER_TOKEN:
-        return
+    """Buyer va Seller botlar uchun menu button va commandlarni o'rnatadi."""
     miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
 
-    # 1. Menu button (ko'k tugma) — miniapp ochadi
-    if miniapp_url:
-        requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton', json={
-            'menu_button': {
-                'type': 'web_app',
-                'text': '🛍 Joynshop',
-                'web_app': {'url': miniapp_url}
-            }
+    # ── BUYER BOT ──
+    if BUYER_TOKEN:
+        if miniapp_url:
+            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton', json={
+                'menu_button': {'type': 'web_app', 'text': '🛍 Joynshop', 'web_app': {'url': miniapp_url}}
+            })
+        requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setMyCommands', json={
+            'commands': [
+                {'command': 'start',     'description': '🏠 Bosh sahifa'},
+                {'command': 'shop',      'description': '🛍 Do\'konga o\'tish'},
+                {'command': 'mystatus',  'description': '🛍 Mening buyurtmalarim'},
+                {'command': 'myprofile', 'description': '👤 Profilim'},
+                {'command': 'feedback',  'description': '✍️ Fikr bildirish'},
+                {'command': 'settings',  'description': '⚙️ Sozlamalar'},
+            ]
         })
 
-    # 2. Bot commandlari
-    requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setMyCommands', json={
-        'commands': [
-            {'command': 'start',      'description': '🏠 Bosh sahifa'},
-            {'command': 'shop',       'description': '🛍 Do\'konga o\'tish'},
-            {'command': 'mystatus',   'description': '🛍 Mening buyurtmalarim'},
-            {'command': 'myprofile',  'description': '👤 Profilim'},
-            {'command': 'feedback',   'description': '✍️ Fikr bildirish'},
-            {'command': 'settings',   'description': '⚙️ Sozlamalar'},
-        ]
-    })
+    # ── SELLER BOT ──
+    if SELLER_TOKEN:
+        requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/setChatMenuButton', json={
+            'menu_button': {'type': 'commands'}
+        })
+        requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/setMyCommands', json={
+            'commands': [
+                {'command': 'start',      'description': '🏠 Bosh sahifa'},
+                {'command': 'addproduct', 'description': '➕ Mahsulot qo\'shish'},
+                {'command': 'myproducts', 'description': '📦 Mahsulotlarim'},
+                {'command': 'myorders',   'description': '📋 Buyurtmalar'},
+                {'command': 'mystats',    'description': '📊 Statistika'},
+                {'command': 'mychannels', 'description': '📢 Kanallarim'},
+                {'command': 'help',       'description': 'ℹ️ Yordam'},
+            ]
+        })
     logging.info("Bot UI setup done.")
 
 # ─── SHARED STORAGE ─────────────────────────────────────────────────
@@ -784,22 +794,17 @@ def seller_handle_msg(msg):
     if text == '/start':
         send_seller(cid,
             "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-            "Guruh savdosi orqali ko'proq soting!",
-            {'inline_keyboard': [
-                [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
-                [
-                    {'text': "📊 Statistika",      'callback_data': 'menu_mystats'},
-                    {'text': "📋 Buyurtmalar",     'callback_data': 'menu_myorders'},
-                ],
-                [
-                    {'text': "📦 Mahsulotlarim",   'callback_data': 'menu_myproducts'},
-                    {'text': "❓ Yordam",           'callback_data': 'menu_help'},
-                ],
-            ]}
+            "Guruh savdosi orqali ko'proq soting!\n\n"
+            "Pastdagi tugmalar orqali boshqaring 👇",
+            {'keyboard': [
+                [{'text': '➕ Mahsulot qo\'shish'}],
+                [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
+                [{'text': '📊 Statistika'},    {'text': '📢 Kanallarim'}],
+            ], 'resize_keyboard': True}
         )
         return
 
-    if text == '/myproducts':
+    if text == '/myproducts' or text == '📦 Mahsulotlarim':
         my = seller_products.get(uid, [])
         if not my:
             send_seller(cid, "📦 Mahsulot yo'q.\n\n/addproduct — qo'shish"); return
@@ -814,7 +819,7 @@ def seller_handle_msg(msg):
         send_seller(cid, r)
         return
 
-    if text == '/mystats':
+    if text == '/mystats' or text == '📊 Statistika':
         my = seller_products.get(uid, [])
         if not my:
             send_seller(cid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
@@ -833,7 +838,7 @@ def seller_handle_msg(msg):
         )
         return
 
-    if text == '/myorders':
+    if text == '/myorders' or text == '📋 Buyurtmalar':
         my_pids   = seller_products.get(uid, [])
         pending   = {k:v for k,v in orders.items() if v.get('product_id') in my_pids and v['status']=='confirming'}
         if not pending:
@@ -902,7 +907,7 @@ def seller_handle_msg(msg):
         )
         return
 
-    if text == '/addproduct':
+    if text == '/addproduct' or text == '➕ Mahsulot qo\'shish':
         seller_state[uid] = {'step': 'name'}
         send_seller(cid,
             "📦 <b>Yangi mahsulot qo'shish</b>\n\n"
@@ -910,7 +915,7 @@ def seller_handle_msg(msg):
         )
         return
 
-    if text == '/mychannels':
+    if text == '/mychannels' or text == '📢 Kanallarim':
         my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid or uid in data.get('moderators', [])]
         if not my_channels:
             send_seller(cid,
@@ -1681,29 +1686,24 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/start':
-        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
-            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!\n\n"
-            "Pastdagi tugmalar orqali boshqaring 👇",
-            {'keyboard': [
-                [{'text': '🛍 Mening buyurtmalarim'}],
-                [{'text': '✍️ Fikr bildirish'}, {'text': '⚙️ Sozlamalar'}],
-            ], 'resize_keyboard': True}
+            "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!",
+            {'inline_keyboard': [
+                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
+                [
+                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
+                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
+                ],
+                [
+                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
+                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
+                ],
+            ]}
         )
         return
 
-    if text == '/shop':
-        miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
-        if miniapp_url:
-            send_buyer(cid, "🛍 Do'konni ochish uchun tugmani bosing:",
-                {'inline_keyboard': [[{'text': '🛍 Joynshop ni ochish', 'web_app': {'url': miniapp_url}}]]}
-            )
-        else:
-            send_buyer(cid, "⚠️ Do'kon hozir mavjud emas.")
-        return
-
-    if text == '🛍 Mening buyurtmalarim' or text == '/mystatus':
+    if text == '/myprofile':
         p      = get_profile(uid)
         ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
         ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
@@ -1724,7 +1724,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    if text == '/mystatus' or text == '🛍 Mening buyurtmalarim':
+    if text == '/mystatus':
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(cid, "📋 Buyurtma yo'q."); return
@@ -1771,47 +1771,6 @@ def buyer_handle_msg(msg):
             "/refund     — Qaytarish so'rovi\n\n"
             "🆘 Yordam: @joynshop_support"
         )
-        return
-
-    if text == '/feedback' or text == '✍️ Fikr bildirish':
-        send_buyer(cid,
-            "✍️ <b>Fikr bildirish</b>\n\n"
-            "Joynshop haqida fikringizni yozing — har qanday taklif, shikoyat yoki maqtov!\n\n"
-            "Xabaringizni shu yerga yuboring 👇"
-        )
-        # Mark user as awaiting feedback
-        get_profile(uid)['awaiting_feedback'] = True
-        return
-
-    if text == '/settings' or text == '⚙️ Sozlamalar':
-        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
-        p = get_profile(uid)
-        send_buyer(cid,
-            f"⚙️ <b>Sozlamalar</b>\n\n"
-            f"👤 ID: <code>{uid}</code>\n"
-            f"🎁 Cashback: {fmt(p.get('cashback', 0))} so'm\n"
-            f"👫 Taklif qilganlar: {referrals.get(str(uid), {}).get('count', 0)} kishi\n\n"
-            f"🔗 Referral linkingiz:\n<code>{ref_link}</code>",
-            {'inline_keyboard': [
-                [{'text': "🔗 Referral linkni ulashish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
-            ]}
-        )
-        return
-
-    # Handle feedback reply
-    prof = get_profile(uid)
-    if prof.get('awaiting_feedback') and not text.startswith('/'):
-        prof['awaiting_feedback'] = False
-        # Forward to admin
-        if ADMIN_ID:
-            uname = msg.get('from', {}).get('first_name', 'Foydalanuvchi')
-            username = msg.get('from', {}).get('username', '')
-            requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendMessage', json={
-                'chat_id': ADMIN_ID,
-                'text': f"📩 <b>Yangi fikr!</b>\n\n👤 {uname} (@{username}, ID: {uid})\n\n💬 {text}",
-                'parse_mode': 'HTML'
-            })
-        send_buyer(cid, "✅ Fikringiz uchun rahmat! Tez orada ko'rib chiqamiz.")
         return
 
 @app.route('/', methods=['GET'])
@@ -2126,6 +2085,10 @@ import atexit, signal
 init_db()
 load_data()
 threading.Thread(target=setup_bot_ui, daemon=True).start()
+
+# shutdown save removed — DB persistence handles restarts
+
+# autosave loop removed — saving after each webhook request
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
