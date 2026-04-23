@@ -41,12 +41,12 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;}
-.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:90px;}
+.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:0;}
 @media(min-width:520px){.app-shell{min-height:100vh;}}
 
 /* HEADER */
 .header-wrap{position:fixed;top:0;left:0;right:0;width:100%;z-index:100;margin-bottom:0;}
-.header{background:var(--o500);padding:10px 16px 12px;border-radius:0;border:none;width:100%;padding-top:max(10px, env(safe-area-inset-top));}
+.header{background:var(--o500);padding:58px 16px 12px;border-radius:0;border:none;width:100%;}
 .header-inner{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .logo{font-size:20px;font-weight:800;color:var(--white);letter-spacing:-.02em;}
@@ -411,25 +411,34 @@ const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 if(tg){
   tg.ready();
   tg.expand();
-  function applyHeaderPadding(){
-    const safeTop = tg.safeAreaInsets?.top || 0;
-    const contentTop = tg.contentSafeAreaInsets?.top || 0;
-    const totalTop = Math.max(safeTop, contentTop);
+  function syncShellPadding(){
     const header = document.querySelector('.header');
     const shell = document.querySelector('.app-shell');
-    if(totalTop > 0 && header){
-      header.style.paddingTop = (totalTop + 10) + 'px';
-    }
     if(header && shell){
       shell.style.paddingTop = header.offsetHeight + 'px';
     }
   }
-  applyHeaderPadding();
-  setTimeout(applyHeaderPadding, 300);
-  // Header o'lchami o'zgarganda qayta hisoblash
+  syncShellPadding();
+  setTimeout(syncShellPadding, 200);
+  setTimeout(syncShellPadding, 600);
   const headerEl = document.querySelector('.header');
   if(headerEl && window.ResizeObserver){
-    new ResizeObserver(applyHeaderPadding).observe(headerEl);
+    new ResizeObserver(syncShellPadding).observe(headerEl);
+  }
+} else {
+  // Telegram bo'lmasa ham (brauzer, desktop)
+  function syncShellPadding(){
+    const header = document.querySelector('.header');
+    const shell = document.querySelector('.app-shell');
+    if(header && shell){
+      shell.style.paddingTop = header.offsetHeight + 'px';
+    }
+  }
+  window.addEventListener('load', syncShellPadding);
+  setTimeout(syncShellPadding, 100);
+  const headerEl = document.querySelector('.header');
+  if(headerEl && window.ResizeObserver){
+    new ResizeObserver(syncShellPadding).observe(headerEl);
   }
 }
 function fmt(n){return n.toLocaleString('uz-UZ');}
