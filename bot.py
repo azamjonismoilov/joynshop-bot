@@ -1990,6 +1990,151 @@ def api_products():
     result.sort(key=lambda x: x['count'], reverse=True)
     return jsonify(result)
 
+
+# ─── ADMIN API ENDPOINTS ────────────────────────────────────────────
+
+def admin_auth(req):
+    return req.args.get('pwd','') == DASHBOARD_PASSWORD
+
+@app.route('/api/admin/orders', methods=['GET'])
+def api_admin_orders():
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    page=int(request.args.get('page',1)); status=request.args.get('status',''); per=20
+    all_orders=list(orders.values())
+    if status: all_orders=[o for o in all_orders if o.get('status')==status]
+    all_orders.sort(key=lambda o:o.get('created',''),reverse=True)
+    total=len(all_orders); pages=max(1,(total+per-1)//per)
+    chunk=all_orders[(page-1)*per:page*per]
+    result=[]
+    for o in chunk:
+        result.append({'code':o.get('code',''),'product':products.get(o.get('product_id',''),{}).get('name','—'),
+            'shop':products.get(o.get('product_id',''),{}).get('shop_name',''),
+            'buyer_id':o.get('user_id',''),'buyer_name':o.get('user_name','—'),
+            'amount':o.get('amount',0),'type':o.get('type','group'),
+            'status':o.get('status',''),'status_icon':o.get('status_icon',''),
+            'status_text':o.get('status_text',o.get('status','')),
+            'created':o.get('created',''),'delivery':o.get('delivery',''),'address':o.get('address','')})
+    return jsonify({'orders':result,'total':total,'pages':pages,'page':page})
+
+@app.route('/api/admin/order/<code>/confirm', methods=['POST'])
+def api_admin_confirm(code):
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    o=orders.get(code)
+    if not o: return jsonify({'error':'Not found'}),404
+    o['status']='confirmed';o['status_text']='Tasdiqlandi';o['status_icon']='✅'
+    save_data(); return jsonify({'ok':True})
+
+@app.route('/api/admin/order/<code>/reject', methods=['POST'])
+def api_admin_reject(code):
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    o=orders.get(code)
+    if not o: return jsonify({'error':'Not found'}),404
+    o['status']='rejected';o['status_text']='Rad etildi';o['status_icon']='❌'
+    save_data(); return jsonify({'ok':True})
+
+@app.route('/api/admin/products', methods=['GET'])
+def api_admin_products():
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    result=[]
+    for pid,p in products.items():
+        count=len(groups.get(pid,[])); orig=p.get('original_price',0); grp=p.get('group_price',0)
+        disc=round((orig-grp)/orig*100) if orig else 0
+        result.append({'id':pid,'name':p.get('name',''),'shop_name':p.get('shop_name',''),
+            'group_price':grp,'original_price':orig,'grp_disc':disc,
+            'min_group':p.get('min_group',0),'count':count,'status':p.get('status','active'),
+            'deadline':p.get('deadline',''),'seller_id':p.get('seller_id','')})
+    result.sort(key=lambda x:x['status']!='active'); return jsonify(result)
+
+@app.route('/api/admin/product/<pid>/close', methods=['POST'])
+def api_admin_close(pid):
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    p=products.get(pid)
+    if not p: return jsonify({'error':'Not found'}),404
+    p['status']='closed'; save_data(); return jsonify({'ok':True})
+
+@app.route('/api/admin/product/<pid>/extend', methods=['POST'])
+def api_admin_extend(pid):
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    p=products.get(pid)
+    if not p: return jsonify({'error':'Not found'}),404
+    try: dt=datetime.strptime(p['deadline_dt'],'%Y-%m-%d %H:%M')+timedelta(hours=24)
+    except: dt=datetime.now()+timedelta(hours=24)
+    p['deadline']=dt.strftime('%d.%m.%Y %H:%M'); p['deadline_dt']=dt.strftime('%Y-%m-%d %H:%M')
+    save_data(); return jsonify({'ok':True,'deadline':p['deadline']})
+
+@app.route('/api/admin/buyers', methods=['GET'])
+def api_admin_buyers():
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    page=int(request.args.get('page',1)); per=20
+    stats={}
+    for o in orders.values():
+        uid=str(o.get('user_id',''))
+        if not uid: continue
+        if uid not in stats:
+            stats[uid]={'uid':uid,'total_spent':0,'confirmed':0,'cashback':0,'referrals':0,'last_order':''}
+        if o.get('status')=='confirmed':
+            stats[uid]['total_spent']+=o.get('amount',0)
+            stats[uid]['confirmed']+=1
+            stats[uid]['cashback']+=int(o.get('amount',0)*0.02)
+        if o.get('created','')>stats[uid]['last_order']:
+            stats[uid]['last_order']=o.get('created','')
+    for ref_uid,refs in referrals.items():
+        uid=str(ref_uid)
+        if uid in stats: stats[uid]['referrals']=len(refs)
+    buyers_list=sorted(stats.values(),key=lambda x:x['total_spent'],reverse=True)
+    total=len(buyers_list); pages=max(1,(total+per-1)//per)
+    chunk=buyers_list[(page-1)*per:page*per]
+    return jsonify({'buyers':chunk,'total':total,'pages':pages,'page':page})
+
+@app.route('/api/admin/sellers', methods=['GET'])
+def api_admin_sellers():
+    from flask import jsonify
+    if not admin_auth(request): return jsonify({'error':'Unauthorized'}),401
+    result=[]
+    for uid,pids in seller_products.items():
+        revenue=0; order_cnt=0; active_cnt=0; channels=[]
+        for pid in pids:
+            p=products.get(pid,{})
+            if not p: continue
+            if p.get('status')=='active': active_cnt+=1
+            ch=p.get('seller_channel','')
+            if ch and ch not in channels: channels.append(ch)
+            for o in orders.values():
+                if o.get('product_id')==pid and o.get('status')=='confirmed':
+                    revenue+=o.get('amount',0); order_cnt+=1
+        commission=int(revenue*COMMISSION_RATE); payout=revenue-commission
+        result.append({'uid':str(uid),'channels':channels,'products':len(pids),
+            'active':active_cnt,'revenue':revenue,'commission':commission,
+            'payout':payout,'orders':order_cnt})
+    result.sort(key=lambda x:x['revenue'],reverse=True); return jsonify(result)
+
+@app.route('/setup-menu', methods=['GET'])
+def setup_menu_route():
+    from flask import jsonify
+    if request.args.get('key','')!=DASHBOARD_PASSWORD:
+        return jsonify({'ok':False,'error':'unauthorized'}),403
+    miniapp_url=f"{APP_URL}/miniapp" if APP_URL else None
+    results={}
+    if BUYER_TOKEN and miniapp_url:
+        r=requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton',
+            json={'menu_button':{'type':'web_app','text':'🛍 Joynshop','web_app':{'url':miniapp_url}}}).json()
+        results['buyer_menu']=r
+    elif BUYER_TOKEN:
+        results['buyer_menu']='APP_URL not set'
+    if SELLER_TOKEN:
+        r=requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/setChatMenuButton',
+            json={'menu_button':{'type':'commands'}}).json()
+        results['seller_menu']=r
+    results['miniapp_url']=miniapp_url; results['APP_URL']=APP_URL
+    return jsonify({'ok':True,'results':results})
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from flask import Response
