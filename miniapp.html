@@ -5,19 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Joynshop</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 <style>
 :root {
-  --o500:#FA7319;--o600:#E16614;--o50:#FFF3EB;--o100:#FFE6D5;
-  --b500:#335CFF;--b50:#EBF1FF;
-  --g500:#1FC16B;--g800:#1A7544;--g50:#E3F7EC;
-  --r500:#FB3748;--r50:#FFEBEC;
-  --n900:#1C1C1C;--n700:#333333;--n600:#5C5C5C;--n500:#7B7B7B;
-  --n400:#A3A3A3;--n300:#D1D1D1;--n200:#EBEBEB;--n100:#F5F5F5;--n50:#F7F7F7;
-  --white:#FFFFFF;
-  --sxs:0 1px 2px rgba(23,23,23,0.04);
-  --ssm:0 2px 4px rgba(23,23,23,0.06);
+  --o950:#71330A;--o900:#96440D;--o800:#B75310;--o700:#CE5E12;
+  --o600:#E16614;--o500:#FA7319;--o400:#FFA468;--o100:#FFE6D5;--o50:#FFF3EB;
+  --b700:#1D3FD8;--b600:#2850F0;--b500:#335CFF;--b100:#D5E2FF;--b50:#EBF1FF;
+  --g800:#1A7544;--g500:#1FC16B;--g300:#84EBB4;--g50:#E3F7EC;
+  --r800:#AD1F2B;--r500:#FB3748;--r300:#FF97A0;--r50:#FFEBEC;
+  --y800:#A78025;--y500:#F6B51E;--y50:#FFFAEB;
+  --n900:#1C1C1C;--n800:#262626;--n700:#333333;--n600:#5C5C5C;
+  --n500:#7B7B7B;--n400:#A3A3A3;--n300:#D1D1D1;--n200:#EBEBEB;
+  --n100:#F5F5F5;--n50:#F7F7F7;--white:#FFFFFF;
+  --slate900:#181B25;--slate800:#222530;
+  --sxs:0 1px 2px rgba(23,23,23,.04);
+  --ssm:0 2px 4px rgba(23,23,23,.06);
+  --smd:0 4px 12px rgba(23,23,23,.08);
+  --sxl:0 16px 40px rgba(10,13,20,.03),0 8px 24px rgba(10,13,20,.06);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;padding-bottom:72px;-webkit-font-smoothing:antialiased;}
@@ -70,10 +75,10 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 .group-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);color:var(--white);font-size:10px;font-weight:600;padding:3px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .product-info{padding:10px;}
 .product-name{font-size:13px;font-weight:500;color:var(--n900);line-height:1.4;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.price-group{font-size:15px;font-weight:700;color:var(--o500);line-height:1;margin-bottom:2px;}
+.price-group{font-size:15px;font-weight:700;color:var(--o500);line-height:1;margin-bottom:2px;font-family:"DM Mono","Inter",sans-serif;}
 .price-orig{font-size:11px;color:var(--n400);text-decoration:line-through;margin-bottom:6px;}
 .progress-wrap{margin-bottom:8px;}
-.progress-track{height:4px;background:var(--n100);border-radius:99px;overflow:hidden;margin-bottom:3px;}
+.progress-track{height:6px;background:var(--n100);border-radius:99px;overflow:hidden;margin-bottom:3px;}
 .progress-fill{height:100%;background:var(--o500);border-radius:99px;transition:width .5s ease;}
 .progress-text{font-size:11px;color:var(--n500);}
 .highlight{color:var(--o500);font-weight:600;}
@@ -114,11 +119,11 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 .group-status-label{font-size:13px;color:var(--n600);}
 .group-status-value{font-size:13px;font-weight:700;color:var(--n900);}
 .group-status-value.orange{color:var(--o500);}
-.modal-progress-track{height:6px;background:var(--n200);border-radius:99px;overflow:hidden;margin-bottom:6px;}
+.modal-progress-track{height:8px;background:var(--n200);border-radius:99px;overflow:hidden;margin-bottom:6px;}
 .modal-progress-fill{height:100%;background:var(--o500);border-radius:99px;transition:width .5s;}
 .modal-desc{font-size:14px;color:var(--n600);line-height:1.65;margin-bottom:14px;}
 .modal-contact{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--n50);border-radius:10px;margin-bottom:14px;font-size:13px;color:var(--n700);}
-.btn-main{width:100%;height:52px;border-radius:14px;border:none;background:var(--o500);color:var(--white);font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;margin-bottom:8px;transition:background .15s;}
+.btn-main{width:100%;height:52px;border-radius:12px;border:none;background:var(--o500);color:var(--white);font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;margin-bottom:8px;transition:background .15s;}
 .btn-main:active{background:var(--o600);}
 .btn-secondary{width:100%;height:44px;border-radius:12px;border:1.5px solid var(--n200);background:transparent;color:var(--n700);font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;transition:all .15s;}
 .btn-secondary:active{background:var(--n100);}
