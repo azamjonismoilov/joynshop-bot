@@ -1248,12 +1248,11 @@ def seller_handle_msg(msg):
                     url = upload_photo_to_s3(fid, SELLER_TOKEN)
                     if url: s['photo_urls'].append(url)
                 count = len(s['photo_ids'])
-                if count < 5:
-                    send_seller(cid, f"✅ {count}/5 rasm. Yana yuboring yoki davom eting:",
-                        {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} rasm)", 'callback_data': 'prod_photo_done'}]]})
-                else:
-                    s['step'] = 'prod_price'
-                    send_seller(cid, "<b>3/4</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>")
+                # Har doim "Davom etish" tugmasi ko'rsatiladi — step o'zgarmaydi
+                send_seller(cid,
+                    f"✅ {count}/5 rasm. Yana yuboring yoki davom eting:",
+                    {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} rasm)", 'callback_data': 'prod_photo_done'}]]}
+                )
             else:
                 send_seller(cid, "❌ Rasm yuboring!")
 
