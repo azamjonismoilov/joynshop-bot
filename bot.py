@@ -212,7 +212,6 @@ def post_caption(p, pid):
     solo_disc = round((orig - solo) / orig * 100) if solo else 0
     grp_disc  = round((orig - group) / orig * 100)
     status    = '🔥' if count < min_g else '✅'
-    bar_str   = bar(count, min_g)
 
     lines = [f"<b>{p['name']}</b>\n"]
     lines.append(f"💰 Asl narx: <s>{fmt(orig)} so'm</s>")
@@ -222,10 +221,32 @@ def post_caption(p, pid):
     lines.append(f"Guruh: {count}/{min_g} {status}")
     lines.append(f"⏳ Kerak: {max(0, min_g - count)} kishi")
     lines.append(f"🕐 {p.get('deadline','')}")
-    lines.append(f"\n📝 {p['description']}")
-    lines.append(f"\n🏪 <b>{p['shop_name']}</b>  |  📞 {p.get('contact','')}")
-    return "\n".join(lines)
+    if p.get('description'):
+        lines.append(f"\n📝 {p['description']}")
+    if p.get('variants'):
+        lines.append(f"🎨 {', '.join(p['variants'])}")
 
+    # Do'kon ma'lumotlari
+    contact = p.get('contact', '')
+    phone2  = p.get('phone2', '')
+    address = p.get('address', '')
+    social  = p.get('social', {})
+
+    shop_line = f"\n🏪 <b>{p['shop_name']}</b>"
+    if contact:
+        shop_line += f"  |  📞 {contact}"
+    lines.append(shop_line)
+    if phone2:
+        lines.append(f"📱 {phone2}")
+    if address:
+        lines.append(f"📍 {address}")
+    if social:
+        icons = {'instagram':'📸','telegram':'✈️','youtube':'▶️','website':'🌐','tiktok':'🎵'}
+        for k, v in social.items():
+            icon = icons.get(k.lower(), '🔗')
+            lines.append(f"{icon} {k.capitalize()}: {v}")
+
+    return "\n".join(lines)
 def join_kb(pid, count, min_g, has_solo=False):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
@@ -434,11 +455,121 @@ def seller_handle_cb(cb):
     if d.startswith('ob_delivery_'):
         s = seller_state.get(uid)
         if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['ob_delivery'] = 'deliver' if d == 'ob_delivery_deliver' else 'pickup'
+        delivery_map = {'ob_delivery_deliver': 'deliver', 'ob_delivery_pickup': 'pickup', 'ob_delivery_both': 'both'}
+        s['ob_delivery'] = delivery_map.get(d, 'pickup')
         s['step'] = 'ob_channel'; answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid,
-            "<b>4/4</b> Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
+            "<b>6/6</b> ✅\n\n📢 Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
             "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!")
+        return
+
+    if d in ('ob_skip_phone2', 'ob_keep_phone'):
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        if d == 'ob_keep_phone':
+            # Eski telefon saqlansin
+            idx = s.get('edit_shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            s['ob_phone'] = shops[idx].get('phone', '') if idx < len(shops) else s.get('ob_phone', '')
+        else:
+            s['ob_phone2'] = ''
+        s['step'] = 'ob_address'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "<b>4/6</b> Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor yoki /skip</i>",
+            {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]})
+        return
+
+    if d == 'ob_skip_address':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['ob_address'] = ''; s['step'] = 'ob_social'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            "<b>5/6</b> Ijtimoiy tarmoqlar (ixtiyoriy):\n\n"
+            "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz</code>",
+            {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_social'}]]})
+        return
+
+    if d == 'ob_skip_social':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['ob_social'] = {}; s['step'] = 'ob_delivery'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "<b>6/6</b> Yetkazib berish turi:",
+            {'inline_keyboard': [
+                [{'text': "🚚 Yetkazib beraman", 'callback_data': 'ob_delivery_deliver'}],
+                [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
+                [{'text': "🚚🏪 Ikkalasi ham", 'callback_data': 'ob_delivery_both'}],
+            ]})
+        return
+
+    if d.startswith('edit_shop_'):
+        idx = int(d.split('_')[2])
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops): answer_cb(cbid, token=SELLER_TOKEN); return
+        shop = shops[idx]; answer_cb(cbid, token=SELLER_TOKEN)
+        social_text = '\n'.join(f"🔗 {k}: {v}" for k, v in shop.get('social', {}).items())
+        send_seller(uid,
+            f"✏️ <b>Do'kon tahrirlash</b>\n\n"
+            f"🏪 {shop['name']}\n📞 {shop['phone']}"
+            f"{chr(10)+'📱 '+shop.get('phone2','') if shop.get('phone2') else ''}"
+            f"{chr(10)+'📍 '+shop.get('address','') if shop.get('address') else ''}"
+            f"{chr(10)+social_text if social_text else ''}\n📢 {shop.get('channel','')}",
+            {'inline_keyboard': [
+                [{'text': "✏️ Qayta to'ldirish", 'callback_data': f'edit_shop_full_{idx}'}],
+                [{'text': "📱 Tel qo'shish/o'zgartirish", 'callback_data': f'edit_shop_phone_{idx}'}],
+                [{'text': "📍 Manzil", 'callback_data': f'edit_shop_address_{idx}'}],
+                [{'text': "🌐 Ijtimoiy tarmoqlar", 'callback_data': f'edit_shop_social_{idx}'}],
+                [{'text': "❌ Bekor", 'callback_data': 'noop'}],
+            ]})
+        return
+
+    if d.startswith('edit_shop_full_'):
+        idx = int(d.split('_')[3])
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'ob_shop_name', 'edit_shop_idx': idx}
+        shops = seller_shops.get(uid, [])
+        shop = shops[idx] if idx < len(shops) else {}
+        send_seller(uid,
+            f"✏️ Do'kon nomini kiriting:\n<i>Hozir: {shop.get('name', '')}</i>")
+        return
+
+    if d.startswith('edit_shop_phone_'):
+        idx = int(d.split('_')[3])
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'edit_phone_direct', 'edit_shop_idx': idx,
+                             'ob_shop_name': seller_shops[uid][idx]['name'],
+                             'ob_delivery': seller_shops[uid][idx].get('delivery','pickup'),
+                             'ob_channel': seller_shops[uid][idx].get('channel',''),
+                             'ob_address': seller_shops[uid][idx].get('address',''),
+                             'ob_social': seller_shops[uid][idx].get('social',{})}
+        send_seller(uid, "📞 Yangi telefon raqam:\n<i>+998XXXXXXXXX</i>")
+        return
+
+    if d.startswith('edit_shop_address_'):
+        idx = int(d.split('_')[3])
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'edit_address_direct', 'edit_shop_idx': idx,
+                             'ob_shop_name': seller_shops[uid][idx]['name'],
+                             'ob_phone': seller_shops[uid][idx].get('phone',''),
+                             'ob_phone2': seller_shops[uid][idx].get('phone2',''),
+                             'ob_delivery': seller_shops[uid][idx].get('delivery','pickup'),
+                             'ob_channel': seller_shops[uid][idx].get('channel',''),
+                             'ob_social': seller_shops[uid][idx].get('social',{})}
+        send_seller(uid, "📍 Do'kon manzili:\n<i>Toshkent, Chilonzor, 3-mavze</i>")
+        return
+
+    if d.startswith('edit_shop_social_'):
+        idx = int(d.split('_')[3])
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'edit_social_direct', 'edit_shop_idx': idx,
+                             'ob_shop_name': seller_shops[uid][idx]['name'],
+                             'ob_phone': seller_shops[uid][idx].get('phone',''),
+                             'ob_phone2': seller_shops[uid][idx].get('phone2',''),
+                             'ob_address': seller_shops[uid][idx].get('address',''),
+                             'ob_delivery': seller_shops[uid][idx].get('delivery','pickup'),
+                             'ob_channel': seller_shops[uid][idx].get('channel','')}
+        send_seller(uid,
+            "🌐 Ijtimoiy tarmoqlar:\n\n"
+            "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz\nyoutube: @kanal</code>\n\n"
+            "<i>Faqat mavjudlarini yozing</i>")
         return
 
     if d.startswith('sel_shop_'):
@@ -591,6 +722,49 @@ def seller_handle_cb(cb):
                 ],
             ]}
         )
+        return
+
+    if d.startswith('boost_') and not d.startswith('boost_confirm_'):
+        pid = d[6:]
+        p = products.get(pid)
+        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"📢 <b>{p['name']}</b> ni qayta e'lon qilmoqchimisiz?\n\n"
+            f"🆔 <code>{pid}</code>",
+            {'inline_keyboard': [[
+                {'text': "✅ Ha, e'lon qil", 'callback_data': f'boost_confirm_{pid}'},
+                {'text': '❌ Bekor', 'callback_data': 'noop'},
+            ]]}
+        )
+        return
+
+    if d.startswith('delete_prod_'):
+        pid = d[12:]
+        p = products.get(pid)
+        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+        if p.get('seller_id') != uid and uid != ADMIN_ID:
+            answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"🗑 <b>{p['name']}</b> ni o'chirishni tasdiqlaysizmi?",
+            {'inline_keyboard': [[
+                {'text': "✅ O'chirish", 'callback_data': f'delete_confirm_{pid}'},
+                {'text': '❌ Bekor', 'callback_data': 'noop'},
+            ]]}
+        )
+        return
+
+    if d.startswith('delete_confirm_'):
+        pid = d[15:]
+        p = products.get(pid)
+        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+        if p.get('seller_id') != uid and uid != ADMIN_ID:
+            answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
+        p['status'] = 'closed'
+        save_data()
+        answer_cb(cbid, "✅ O'chirildi!", token=SELLER_TOKEN)
+        send_seller(uid, f"🗑 <b>{p['name']}</b> o'chirildi.")
         return
 
     if d.startswith('boost_confirm_'):
@@ -877,17 +1051,22 @@ def publish_product(uid, cid, s):
         shop  = shops[shop_idx] if shop_idx < len(shops) else {}
         channel  = shop.get('channel', s.get('seller_channel',''))
         contact  = shop.get('phone', s.get('contact',''))
+        phone2   = shop.get('phone2', '')
+        address  = shop.get('address', '')
+        social   = shop.get('social', {})
         delivery = shop.get('delivery', s.get('delivery_type','pickup'))
         shop_name= shop.get('name', s.get('shop_name',''))
     else:
         channel  = s.get('seller_channel','')
         contact  = s.get('contact','')
+        phone2   = ''
+        address  = ''
+        social   = {}
         delivery = s.get('delivery_type','pickup')
         shop_name= s.get('shop_name','')
     _ = channel  # use below
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
     deadline = datetime.now() + timedelta(hours=int(s.get('deadline_hours', 48)))
-    # Support both old (photo_id) and new (photo_ids) flow
     photo_ids  = s.get('photo_ids') or ([s['photo_id']] if s.get('photo_id') else [])
     photo_urls = s.get('photo_urls', [])
     first_photo = photo_ids[0] if photo_ids else None
@@ -907,6 +1086,9 @@ def publish_product(uid, cid, s):
         'photo_url':     first_url,
         'photo_urls':    photo_urls,
         'contact':       contact,
+        'phone2':        phone2,
+        'address':       address,
+        'social':        social,
         'delivery_type': delivery,
         'variants':      s.get('variants', []),
         'seller_channel':channel,
@@ -943,14 +1125,14 @@ def publish_product(uid, cid, s):
             'media': media,
         }).json()
         if result.get('ok') and result.get('result'):
-            # sendMediaGroup returns array — get first message id
             first_msg = result['result'][0]
-            # Send buttons as separate message
-            btn_result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+            # Ko'p media uchun caption alohida xabar sifatida
+            requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
                 'chat_id': channel,
-                'text': f'👆 Yuqoridagi mahsulot uchun:',
+                'text': caption,
+                'parse_mode': 'HTML',
                 'reply_markup': kb,
-            }).json()
+            })
             products[pid]['channel_message_id'] = first_msg.get('message_id')
             products[pid]['channel_chat_id']    = channel
     else:
@@ -969,10 +1151,14 @@ def publish_product(uid, cid, s):
         save_data()
         send_seller(cid,
             f"✅ <b>E'lon qilindi!</b>\n\n"
-            f"📦 {s['name']}\n📢 Kanal: {channel}\n"
-            f"🆔 <code>{pid}</code>\n⏰ {deadline.strftime('%d.%m.%Y %H:%M')}\n\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📊 /mystats\n📢 /boost {pid}\n🗑 /delete {pid}"
+            f"📦 {s['name']}\n📢 {channel}\n"
+            f"🆔 <code>{pid}</code>\n⏰ {deadline.strftime('%d.%m.%Y %H:%M')}",
+            {'inline_keyboard': [
+                [{'text': '📊 Statistika', 'callback_data': f'menu_mystats'},
+                 {'text': '📢 Qayta e\'lon', 'callback_data': f'boost_{pid}'}],
+                [{'text': '✏️ Tahrirlash', 'callback_data': f'edit_prod_{pid}'},
+                 {'text': '🗑 O\'chirish', 'callback_data': f'delete_prod_{pid}'}],
+            ]}
         )
     else:
         del products[pid]
@@ -1155,9 +1341,18 @@ def seller_handle_msg(msg):
         shops = seller_shops.get(uid, [])
         if shops:
             r = "🏪 <b>Do'konlaringiz:</b>\n\n"
-            for i,s in enumerate(shops):
-                r += f"━━━━━━━━━━━━━\n🏪 <b>{s['name']}</b>\n📞 {s['phone']}\n📢 {s.get('channel','—')}\n"
-            btns = [[{'text': "➕ Yangi do'kon qo'shish", 'callback_data': 'add_new_shop'}]]
+            btns = []
+            for i, sh in enumerate(shops):
+                social_text = ' | '.join(f"{k}: {v}" for k,v in sh.get('social',{}).items())
+                r += (f"━━━━━━━━━━━━━━\n"
+                      f"🏪 <b>{sh['name']}</b>\n"
+                      f"📞 {sh['phone']}"
+                      + (f"\n📱 {sh['phone2']}" if sh.get('phone2') else '')
+                      + (f"\n📍 {sh['address']}" if sh.get('address') else '')
+                      + (f"\n🌐 {social_text}" if social_text else '')
+                      + f"\n📢 {sh.get('channel','—')}\n")
+                btns.append([{'text': f"✏️ {sh['name']} ni tahrirlash", 'callback_data': f'edit_shop_{i}'}])
+            btns.append([{'text': "➕ Yangi do'kon qo'shish", 'callback_data': 'add_new_shop'}])
             send_seller(cid, r, {'inline_keyboard': btns})
             return
     if False and text == '📢 Kanallarim_OLD':
@@ -1244,14 +1439,45 @@ def seller_handle_msg(msg):
         # ── ONBOARDING ──
         if step == 'ob_shop_name':
             s['ob_shop_name'] = text; s['step'] = 'ob_phone'
-            send_seller(cid, "<b>2/4</b> Telefon raqamingiz:\n<i>+998XXXXXXXXX</i>")
+            send_seller(cid, "<b>1/6</b> ✅\n\n<b>2/6</b> Asosiy telefon raqam:\n<i>+998XXXXXXXXX</i>")
 
         elif step == 'ob_phone':
-            s['ob_phone'] = text.strip(); s['step'] = 'ob_delivery'
-            send_seller(cid, "<b>3/4</b> Yetkazib berish turi:",
+            s['ob_phone'] = text.strip(); s['step'] = 'ob_phone2'
+            send_seller(cid, "<b>2/6</b> ✅\n\n<b>3/6</b> Qo'shimcha telefon (ixtiyoriy):\n<i>+998XXXXXXXXX yoki /skip</i>",
+                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_phone2'}]]})
+
+        elif step == 'ob_phone2':
+            s['ob_phone2'] = text.strip() if text != '/skip' else ''
+            s['step'] = 'ob_address'
+            send_seller(cid, "<b>3/6</b> ✅\n\n<b>4/6</b> Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor, 3-mavze yoki /skip</i>",
+                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]})
+
+        elif step == 'ob_address':
+            s['ob_address'] = text.strip() if text != '/skip' else ''
+            s['step'] = 'ob_social'
+            send_seller(cid,
+                "<b>4/6</b> ✅\n\n<b>5/6</b> Ijtimoiy tarmoqlar (ixtiyoriy):\n\n"
+                "Quyidagi formatda yuboring:\n"
+                "<code>instagram: @dokon_uz\ntelegram: @dokon_kanal\nwebsite: dokon.uz</code>\n\n"
+                "<i>Mavjud bo'lmaganlarini yozmang yoki /skip bosing</i>",
+                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_social'}]]})
+
+        elif step == 'ob_social':
+            if text != '/skip':
+                social = {}
+                for line in text.strip().splitlines():
+                    if ':' in line:
+                        k, v = line.split(':', 1)
+                        social[k.strip().lower()] = v.strip()
+                s['ob_social'] = social
+            else:
+                s['ob_social'] = {}
+            s['step'] = 'ob_delivery'
+            send_seller(cid, "<b>5/6</b> ✅\n\n<b>6/6</b> Yetkazib berish turi:",
                 {'inline_keyboard': [
                     [{'text': "🚚 Yetkazib beraman", 'callback_data': 'ob_delivery_deliver'}],
                     [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
+                    [{'text': "🚚🏪 Ikkalasi ham", 'callback_data': 'ob_delivery_both'}],
                 ]})
 
         elif step == 'ob_channel':
@@ -1261,14 +1487,33 @@ def seller_handle_msg(msg):
                 if channel not in verified_channels:
                     verified_channels[channel] = {'owner_id': uid, 'moderators': []}
                 if uid not in seller_shops: seller_shops[uid] = []
-                seller_shops[uid].append({
-                    'name': s['ob_shop_name'], 'phone': s['ob_phone'],
-                    'delivery': s.get('ob_delivery','pickup'), 'channel': channel, 'verified': True
-                })
+                shop = {
+                    'name':     s['ob_shop_name'],
+                    'phone':    s['ob_phone'],
+                    'phone2':   s.get('ob_phone2', ''),
+                    'address':  s.get('ob_address', ''),
+                    'social':   s.get('ob_social', {}),
+                    'delivery': s.get('ob_delivery', 'pickup'),
+                    'channel':  channel,
+                    'verified': True,
+                }
+                # Tahrirlash uchun idx
+                edit_idx = s.get('edit_shop_idx')
+                if edit_idx is not None and edit_idx < len(seller_shops[uid]):
+                    seller_shops[uid][edit_idx] = shop
+                else:
+                    seller_shops[uid].append(shop)
                 save_data(); del seller_state[uid]
+                social_lines = ''
+                if shop['social']:
+                    for k, v in shop['social'].items():
+                        social_lines += f"\n🔗 {k}: {v}"
                 send_seller(cid,
                     f"✅ <b>Do'kon profili saqlandi!</b>\n\n"
-                    f"🏪 {s['ob_shop_name']}\n📞 {s['ob_phone']}\n📢 {channel}\n\n"
+                    f"🏪 {shop['name']}\n📞 {shop['phone']}"
+                    f"{chr(10)+'📱 '+shop['phone2'] if shop['phone2'] else ''}"
+                    f"{chr(10)+'📍 '+shop['address'] if shop['address'] else ''}"
+                    f"{social_lines}\n📢 {channel}\n\n"
                     "Endi mahsulot qo'sha olasiz!",
                     {'keyboard': [
                         [{'text': '➕ Mahsulot qo\'shish'}],
@@ -1279,6 +1524,47 @@ def seller_handle_msg(msg):
                 send_seller(cid,
                     f"❌ <b>{channel}</b> kanalining admini emassiz!\n\n"
                     "Seller bot kanalga admin sifatida qo'shilganmi?\n\nQayta kiriting:")
+
+        # ── DO'KON TAHRIRLASH STEPLARI ──
+        elif step == 'edit_shop_name':
+            s['ob_shop_name'] = text; s['step'] = 'ob_phone'
+            send_seller(cid, f"✅ Do'kon nomi yangilandi.\n\n📞 Telefon raqam:\n<i>+998XXXXXXXXX yoki /skip</i>",
+                {'inline_keyboard': [[{'text': "⏭ O'zgartirmaslik", 'callback_data': 'ob_keep_phone'}]]})
+
+        elif step == 'edit_phone_direct':
+            s['ob_phone'] = text.strip()
+            idx = s.get('edit_shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            if idx < len(shops):
+                shops[idx]['phone'] = s['ob_phone']
+                save_data()
+            del seller_state[uid]
+            send_seller(cid, f"✅ Telefon yangilandi: {s['ob_phone']}")
+
+        elif step == 'edit_address_direct':
+            s['ob_address'] = text.strip()
+            idx = s.get('edit_shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            if idx < len(shops):
+                shops[idx]['address'] = s['ob_address']
+                save_data()
+            del seller_state[uid]
+            send_seller(cid, f"✅ Manzil yangilandi: {s['ob_address']}")
+
+        elif step == 'edit_social_direct':
+            social = {}
+            for line in text.strip().splitlines():
+                if ':' in line:
+                    k, v = line.split(':', 1)
+                    social[k.strip().lower()] = v.strip()
+            idx = s.get('edit_shop_idx', 0)
+            shops = seller_shops.get(uid, [])
+            if idx < len(shops):
+                shops[idx]['social'] = social
+                save_data()
+            del seller_state[uid]
+            lines = '\n'.join(f"🔗 {k}: {v}" for k, v in social.items())
+            send_seller(cid, f"✅ Ijtimoiy tarmoqlar yangilandi:\n{lines}")
 
         # ── YANGI MAHSULOT (5 STEP) ──
         elif step == 'prod_name':
