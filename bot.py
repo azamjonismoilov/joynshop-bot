@@ -2670,6 +2670,37 @@ def miniapp():
     html = open('miniapp.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/manifest.json', methods=['GET'])
+def manifest():
+    from flask import Response
+    import json as _json
+    data = {
+        "name": "Joynshop",
+        "short_name": "Joynshop",
+        "description": "Guruh xarid platformasi — 40% gacha tejang!",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#FA7319",
+        "orientation": "portrait-primary",
+        "icons": [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ],
+        "categories": ["shopping"],
+        "lang": "uz"
+    }
+    return Response(_json.dumps(data), mimetype='application/manifest+json')
+
+@app.route('/sw.js', methods=['GET'])
+def service_worker():
+    from flask import Response
+    try:
+        sw = open('sw.js').read()
+    except:
+        sw = "self.addEventListener('fetch',()=>{});"
+    return Response(sw, mimetype='application/javascript')
+
 @app.route('/api/buyer_stats', methods=['GET'])
 def api_buyer_stats():
     from flask import jsonify
