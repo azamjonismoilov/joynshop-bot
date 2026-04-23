@@ -60,7 +60,7 @@ def upload_photo_to_s3(file_id, bot_token):
         img_data = requests.get(tg_url, timeout=20).content
         key = f'products/{file_id}.{ext}'
         s3.put_object(Bucket=AWS_BUCKET_NAME, Key=key, Body=img_data,
-                      ContentType=f'image/{ext}', ACL='public-read')
+                      ContentType=f'image/{ext}')
         if CDN_BASE_URL:
             return f'{CDN_BASE_URL}/{key}'
         return f'https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{key}'
