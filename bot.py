@@ -1287,7 +1287,8 @@ def seller_handle_msg(msg):
             elif video:
                 media_id = video['file_id']
             if media_id:
-                if len(s['photo_ids']) < 5:
+                # Duplicate tekshirish
+                if media_id not in s['photo_ids'] and len(s['photo_ids']) < 5:
                     s['photo_ids'].append(media_id)
                     url = upload_photo_to_s3(media_id, SELLER_TOKEN)
                     if url: s['photo_urls'].append(url)
