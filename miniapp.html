@@ -41,22 +41,23 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;}
-.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:env(safe-area-inset-top,0px);}
+.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:90px;}
 @media(min-width:520px){.app-shell{min-height:100vh;}}
 
 /* HEADER */
-.header-wrap{position:sticky;top:8px;z-index:100;padding:0 12px;margin-bottom:8px;margin-top:8px;}
-.header{background:var(--white);padding:10px 14px;border-radius:20px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid var(--n200);}
+.header-wrap{position:fixed;top:0;left:0;right:0;width:100%;z-index:100;margin-bottom:0;}
+.header{background:var(--o500);padding:10px 16px 10px;border-radius:0;border:none;width:100%;}
+.header-inner{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.logo{font-size:20px;font-weight:800;color:var(--o500);letter-spacing:-.02em;}
+.logo{font-size:20px;font-weight:800;color:var(--white);letter-spacing:-.02em;}
 .logo span{color:var(--n900);}
 .header-icons{display:flex;gap:6px;}
-.icon-btn{width:36px;height:36px;border-radius:10px;background:var(--n100);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--n600);}
+.icon-btn{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.2);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--white);}
 .search-wrap{position:relative;}
-.search-input{width:100%;height:40px;background:var(--n100);border:1.5px solid transparent;border-radius:10px;padding:0 16px 0 38px;font-size:14px;font-family:'Inter',sans-serif;color:var(--n900);outline:none;transition:border-color .15s;}
+.search-input{width:100%;height:40px;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.3);border-radius:10px;padding:0 16px 0 38px;font-size:14px;font-family:'Inter',sans-serif;color:var(--white);outline:none;transition:all .15s;}
 .search-input:focus{border-color:var(--b500);background:var(--white);}
-.search-input::placeholder{color:var(--n400);}
-.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--n400);}
+.search-input::placeholder{color:rgba(255,255,255,.6);}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:16px;color:rgba(255,255,255,.7);}
 
 /* BANNER */
 .banner{margin:12px 16px;background:linear-gradient(135deg,var(--o500),#F04E23);border-radius:16px;padding:16px;display:flex;align-items:center;justify-content:space-between;overflow:hidden;position:relative;}
@@ -220,15 +221,17 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <!-- HEADER -->
 <div class="header-wrap">
 <div class="header">
-  <div class="header-top">
-    <div class="logo">Joy<span>nshop</span></div>
-    <div class="header-icons">
-      <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-shopping-bag-3-fill" style="color:var(--o500)"></i></button>
+  <div class="header-inner">
+    <div class="header-top">
+      <div class="logo">Joy<span>nshop</span></div>
+      <div class="header-icons">
+        <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-shopping-bag-3-fill" style="color:var(--white)"></i></button>
+      </div>
     </div>
-  </div>
-  <div class="search-wrap">
-    <i class="ri-search-line search-icon"></i>
-    <input class="search-input" type="text" placeholder="Mahsulot qidiring..." id="searchInput" oninput="filterProducts()">
+    <div class="search-wrap">
+      <i class="ri-search-line search-icon"></i>
+      <input class="search-input" type="text" placeholder="Mahsulot qidiring..." id="searchInput" oninput="filterProducts()">
+    </div>
   </div>
 </div>
 </div><!-- /header-wrap -->
@@ -331,7 +334,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
   <div class="profile-menu">
     <div class="profile-group"><div class="profile-group-title">Faoliyat</div>
       <div class="profile-menu-card">
-        <a class="profile-menu-item" id="ordersLink"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-shopping-bag-3-line" style="color:var(--o500)"></i></div><div class="profile-menu-label">Buyurtmalarim</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
+        <a class="profile-menu-item" id="ordersLink"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-shopping-bag-3-line" style="color:var(--white)"></i></div><div class="profile-menu-label">Buyurtmalarim</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
         <a class="profile-menu-item" id="saqlanganLink"><div class="profile-menu-icon" style="background:var(--r50)"><i class="ri-heart-line" style="color:var(--r500)"></i></div><div class="profile-menu-label">Saqlanganlar</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
         <a class="profile-menu-item" id="refundLink"><div class="profile-menu-icon" style="background:var(--b50)"><i class="ri-refund-2-line" style="color:var(--b500)"></i></div><div class="profile-menu-label">Qaytarish</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
       </div>
@@ -339,7 +342,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
     <div class="profile-group"><div class="profile-group-title">Referral</div>
       <div class="profile-menu-card">
         <div class="profile-menu-item" id="refLinkItem" onclick="copyRefLink()"><div class="profile-menu-icon" style="background:var(--g50)"><i class="ri-links-line" style="color:var(--g800)"></i></div><div class="profile-menu-label">Do'stni taklif qilish</div><div class="profile-menu-badge" id="refCount">0</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></div>
-        <div class="profile-menu-item" onclick="shareRefLink()"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-share-line" style="color:var(--o500)"></i></div><div class="profile-menu-label">Ulashish</div><span style="font-size:12px;color:var(--n400);margin-right:8px">+10,000 so'm</span><i class="ri-arrow-right-s-line profile-menu-arrow"></i></div>
+        <div class="profile-menu-item" onclick="shareRefLink()"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-share-line" style="color:var(--white)"></i></div><div class="profile-menu-label">Ulashish</div><span style="font-size:12px;color:var(--n400);margin-right:8px">+10,000 so'm</span><i class="ri-arrow-right-s-line profile-menu-arrow"></i></div>
       </div>
     </div>
     <div class="profile-group"><div class="profile-group-title">Boshqa</div>
@@ -382,14 +385,14 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
   </div>
   <div class="profile-group-title">Faoliyat</div>
   <div class="profile-page-card">
-    <div class="profile-page-item" onclick="setPage('orders')"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-shopping-bag-3-line" style="color:var(--o500)"></i></div><span style="flex:1;font-size:15px">Buyurtmalarim</span><i class="ri-arrow-right-s-line" style="color:var(--n300)"></i></div>
+    <div class="profile-page-item" onclick="setPage('orders')"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-shopping-bag-3-line" style="color:var(--white)"></i></div><span style="flex:1;font-size:15px">Buyurtmalarim</span><i class="ri-arrow-right-s-line" style="color:var(--n300)"></i></div>
     <div class="profile-page-item" onclick="showToast('Tez kunda!')"><div class="profile-menu-icon" style="background:var(--r50)"><i class="ri-heart-line" style="color:var(--r500)"></i></div><span style="flex:1;font-size:15px">Saqlanganlar</span><i class="ri-arrow-right-s-line" style="color:var(--n300)"></i></div>
     <div class="profile-page-item" onclick="openBuyerBot('refund')"><div class="profile-menu-icon" style="background:var(--b50)"><i class="ri-refund-2-line" style="color:var(--b500)"></i></div><span style="flex:1;font-size:15px">Qaytarish</span><i class="ri-arrow-right-s-line" style="color:var(--n300)"></i></div>
   </div>
   <div class="profile-group-title">Referral</div>
   <div class="profile-page-card">
     <div class="profile-page-item"><div class="profile-menu-icon" style="background:var(--g50)"><i class="ri-links-line" style="color:var(--g800)"></i></div><span style="flex:1;font-size:15px">Do'stni taklif qilish</span><span id="refCount2" style="background:var(--o500);color:var(--white);font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px">0</span></div>
-    <div class="profile-page-item" onclick="shareRef()"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-share-line" style="color:var(--o500)"></i></div><span style="flex:1;font-size:15px">Ulashish</span><span style="color:var(--o500);font-size:13px;font-weight:600">+10,000 so'm ›</span></div>
+    <div class="profile-page-item" onclick="shareRef()"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-share-line" style="color:var(--white)"></i></div><span style="flex:1;font-size:15px">Ulashish</span><span style="color:var(--o500);font-size:13px;font-weight:600">+10,000 so'm ›</span></div>
   </div>
 </div>
 
@@ -411,12 +414,11 @@ const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 if(tg){
   tg.ready();
   tg.expand();
-  // Telegram full screen da yopish tugmalari uchun top padding
   const safeTop = tg.safeAreaInsets?.top || 0;
   const contentTop = tg.contentSafeAreaInsets?.top || 0;
   const totalTop = Math.max(safeTop, contentTop);
   if(totalTop > 0){
-    document.querySelector('.app-shell').style.paddingTop = totalTop + 'px';
+    document.querySelector('.header').style.paddingTop = (totalTop + 10) + 'px';
   }
 }
 function fmt(n){return n.toLocaleString('uz-UZ');}
