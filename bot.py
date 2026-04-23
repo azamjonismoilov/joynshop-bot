@@ -1463,12 +1463,14 @@ def seller_handle_msg(msg):
         # ── ONBOARDING ──
         if step == 'ob_shop_name':
             s['ob_shop_name'] = text; s['step'] = 'ob_phone'
+            s.pop('ob_msg_id', None)  # yangi xabar kerak
             send_or_edit_seller(cid,
                 "📞 Asosiy telefon raqam:\n<i>+998XXXXXXXXX</i>",
                 state=s)
 
         elif step == 'ob_phone':
             s['ob_phone'] = text.strip(); s['step'] = 'ob_phone2'
+            s.pop('ob_msg_id', None)  # yangi xabar kerak
             send_or_edit_seller(cid,
                 "📱 Qo'shimcha telefon (ixtiyoriy):\n<i>+998XXXXXXXXX</i>",
                 {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_phone2'}]]},
@@ -1477,6 +1479,7 @@ def seller_handle_msg(msg):
         elif step == 'ob_phone2':
             s['ob_phone2'] = text.strip() if text != '/skip' else ''
             s['step'] = 'ob_address'
+            s.pop('ob_msg_id', None)  # yangi xabar kerak
             send_or_edit_seller(cid,
                 "📍 Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor, 3-mavze</i>",
                 {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]},
@@ -1485,6 +1488,7 @@ def seller_handle_msg(msg):
         elif step == 'ob_address':
             s['ob_address'] = text.strip() if text != '/skip' else ''
             s['step'] = 'ob_social'
+            s.pop('ob_msg_id', None)  # yangi xabar kerak
             send_or_edit_seller(cid,
                 "🌐 Ijtimoiy tarmoqlar (ixtiyoriy):\n"
                 "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz</code>",
@@ -1502,6 +1506,7 @@ def seller_handle_msg(msg):
             else:
                 s['ob_social'] = {}
             s['step'] = 'ob_delivery'
+            s.pop('ob_msg_id', None)  # yangi xabar kerak
             send_or_edit_seller(cid,
                 "🚚 Yetkazib berish turini tanlang:",
                 {'inline_keyboard': [
