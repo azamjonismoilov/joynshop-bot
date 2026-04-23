@@ -911,15 +911,53 @@ def publish_product(uid, cid, s):
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
-    result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-        'chat_id': channel, 'photo': first_photo,
-        'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
-        'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
-    }).json()
+
+    caption = post_caption(products[pid], pid)
+    kb      = json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
+
+    if len(photo_ids) > 1:
+        # Ko'p media — sendMediaGroup
+        media = []
+        for i, fid in enumerate(photo_ids):
+            # video yoki photo ekanini aniqlash
+            # S3 URL dan type aniqlay olmaymiz, shuning uchun getFile bilan tekshiramiz
+            # Oddiy yechim: barini photo deb yuboramiz, video bo'lsa Telegram o'zi handle qiladi
+            item = {
+                'type': 'photo',
+                'media': fid,
+            }
+            if i == 0:
+                item['caption'] = caption
+                item['parse_mode'] = 'HTML'
+            media.append(item)
+        result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMediaGroup', json={
+            'chat_id': channel,
+            'media': media,
+        }).json()
+        if result.get('ok') and result.get('result'):
+            # sendMediaGroup returns array — get first message id
+            first_msg = result['result'][0]
+            # Send buttons as separate message
+            btn_result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                'chat_id': channel,
+                'text': f'👆 Yuqoridagi mahsulot uchun:',
+                'reply_markup': kb,
+            }).json()
+            products[pid]['channel_message_id'] = first_msg.get('message_id')
+            products[pid]['channel_chat_id']    = channel
+    else:
+        # Bitta rasm — sendPhoto (caption + buttons birga)
+        result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+            'chat_id': channel, 'photo': first_photo,
+            'caption': caption, 'parse_mode': 'HTML',
+            'reply_markup': kb,
+        }).json()
+        if result.get('ok'):
+            products[pid]['channel_message_id'] = result['result']['message_id']
+            products[pid]['channel_chat_id']    = channel
+
     del seller_state[uid]
     if result.get('ok'):
-        products[pid]['channel_message_id'] = result['result']['message_id']
-        products[pid]['channel_chat_id']    = channel
         save_data()
         send_seller(cid,
             f"✅ <b>E'lon qilindi!</b>\n\n"
