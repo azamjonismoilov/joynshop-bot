@@ -2664,6 +2664,16 @@ def api_photo(file_id):
     except: pass
     return '', 404
 
+@app.route('/fonts/<path:filename>', methods=['GET'])
+def serve_font(filename):
+    from flask import send_from_directory, Response
+    import os
+    font_path = os.path.join(os.getcwd(), 'fonts')
+    try:
+        return send_from_directory(font_path, filename, mimetype='font/truetype')
+    except:
+        return Response('', 404)
+
 @app.route('/miniapp', methods=['GET'])
 def miniapp():
     from flask import Response
