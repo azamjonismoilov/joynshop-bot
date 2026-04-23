@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Joynshop</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -41,12 +41,12 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;}
-.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:8px;}
+.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:env(safe-area-inset-top,0px);}
 @media(min-width:520px){.app-shell{min-height:100vh;}}
 
 /* HEADER */
-.header-wrap{position:sticky;top:12px;z-index:100;padding:0 12px;margin-bottom:8px;}
-.header{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);padding:10px 14px;border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid rgba(255,255,255,.8);}
+.header-wrap{position:sticky;top:8px;z-index:100;padding:0 12px;margin-bottom:8px;margin-top:8px;}
+.header{background:var(--white);padding:10px 14px;border-radius:20px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid var(--n200);}
 .header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .logo{font-size:20px;font-weight:800;color:var(--o500);letter-spacing:-.02em;}
 .logo span{color:var(--n900);}
@@ -193,12 +193,12 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 
 /* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:auto;z-index:100;display:flex;align-items:center;gap:6px;background:rgba(28,28,28,.92);backdrop-filter:blur(20px);border-radius:9999px;padding:8px 12px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
-.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;padding:6px 14px;border-radius:9999px;transition:all .2s;}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;padding:6px 10px;border-radius:9999px;transition:all .2s;min-width:56px;}
 .nav-item.active{background:var(--o500);}
 .nav-icon{font-size:20px;line-height:1;color:rgba(255,255,255,.5);transition:color .2s;}
 .nav-item.active .nav-icon{color:var(--white);}
 .nav-label{font-size:10px;font-weight:500;color:var(--n400);}
-.nav-label{font-size:10px;font-weight:500;color:rgba(255,255,255,.5);transition:color .2s;}
+.nav-label{font-size:9px;font-weight:500;color:rgba(255,255,255,.5);transition:color .2s;white-space:nowrap;}
 .nav-item.active .nav-label{color:var(--white);}
 
 /* LOADING */
@@ -408,7 +408,17 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <script>
 let allProducts=[],currentFilter='all',searchQuery='';
 const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
-if(tg){tg.ready();tg.expand();}
+if(tg){
+  tg.ready();
+  tg.expand();
+  // Telegram full screen da yopish tugmalari uchun top padding
+  const safeTop = tg.safeAreaInsets?.top || 0;
+  const contentTop = tg.contentSafeAreaInsets?.top || 0;
+  const totalTop = Math.max(safeTop, contentTop);
+  if(totalTop > 0){
+    document.querySelector('.app-shell').style.paddingTop = totalTop + 'px';
+  }
+}
 function fmt(n){return n.toLocaleString('uz-UZ');}
 
 async function loadProducts(){
