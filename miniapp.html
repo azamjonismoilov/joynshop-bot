@@ -49,8 +49,9 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 .header{background:var(--o500);padding:58px 16px 12px;border-radius:0;border:none;width:100%;}
 .header-inner{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .header-top{display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
-.logo{font-size:20px;font-weight:800;color:var(--white);letter-spacing:-.02em;}
-.logo span{color:var(--n900);}
+.logo{font-size:20px;font-weight:800;letter-spacing:-.02em;}
+.logo .joyn{color:var(--white);}
+.logo .shop{color:rgba(255,255,255,.65);}
 .header-icons{display:flex;gap:6px;}
 .icon-btn{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.2);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;color:var(--white);}
 .search-wrap{position:relative;}
@@ -79,7 +80,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 
 /* STATS */
 .stat-card{background:var(--white);border-radius:14px;padding:12px 8px;text-align:center;border:1px solid var(--n200);box-shadow:var(--sxs);}
-.stat-icon{font-size:20px;margin-bottom:4px;}
+.stat-icon{font-size:24px;margin-bottom:4px;line-height:1;}
 .stat-num{font-size:20px;font-weight:700;color:var(--n900);line-height:1;margin-bottom:3px;}
 .stat-label{font-size:10px;color:var(--n400);font-weight:500;line-height:1.3;}
 
@@ -223,7 +224,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <div class="header">
   <div class="header-inner">
     <div class="header-top">
-      <div class="logo">Joy<span>nshop</span></div>
+      <div class="logo"><span class="joyn">Joyn</span><span class="shop">shop</span></div>
     </div>
     <div class="search-wrap">
       <i class="ri-search-line search-icon"></i>
@@ -239,15 +240,15 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <!-- BANNER -->
 <div class="banner">
   <div class="banner-text"><h3>Guruhda arzonroq!</h3><p>Do'stlaringiz bilan birgalikda<br>40% gacha tejang</p></div>
-  <div class="banner-emoji">🛍️</div>
+  <div class="banner-emoji"><i class="ri-shopping-bag-3-fill" style="font-size:40px;color:var(--white)"></i></div>
 </div>
 
 <!-- FILTER -->
 <div class="filter-wrap" id="filterWrap">
   <button class="filter-btn active" onclick="setFilter('all',this)">Barchasi</button>
-  <button class="filter-btn" onclick="setFilter('hot',this)">🔥 Ommabop</button>
-  <button class="filter-btn" onclick="setFilter('almost',this)">⚡️ Tugayapti</button>
-  <button class="filter-btn" onclick="setFilter('new',this)">✨ Yangi</button>
+  <button class="filter-btn" onclick="setFilter('hot',this)"><i class="ri-fire-fill"></i> Ommabop</button>
+  <button class="filter-btn" onclick="setFilter('almost',this)"><i class="ri-flashlight-fill"></i> Tugayapti</button>
+  <button class="filter-btn" onclick="setFilter('new',this)"><i class="ri-sparkling-fill"></i> Yangi</button>
 </div>
 
 <!-- PRODUCTS -->
@@ -271,7 +272,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
         <div style="font-size:13px;color:var(--n500);margin-bottom:16px" id="co-delivery-sub"></div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div class="co-choice selected" id="co-del-pickup" onclick="selectDelivery('pickup')"><div style="font-size:22px">🏪</div><div><div style="font-size:15px;font-weight:600">Olib ketish</div><div style="font-size:12px;color:var(--n500)">Sotuvchi manzilidan</div></div></div>
-          <div class="co-choice" id="co-del-deliver" onclick="selectDelivery('deliver')"><div style="font-size:22px">🚚</div><div><div style="font-size:15px;font-weight:600">Yetkazib berish</div><div style="font-size:12px;color:var(--n500)">Manzilingizga olib kelinadi</div></div></div>
+          <div class="co-choice" id="co-del-deliver" onclick="selectDelivery('deliver')"><div style="font-size:22px"><i class="ri-truck-fill" style="color:var(--o500)"></i></div><div><div style="font-size:15px;font-weight:600">Yetkazib berish</div><div style="font-size:12px;color:var(--n500)">Manzilingizga olib kelinadi</div></div></div>
         </div>
         <div id="co-address-wrap" style="display:none;margin-top:14px"><textarea id="co-address" placeholder="Manzilingizni kiriting..." style="width:100%;min-height:80px;border:1.5px solid var(--n200);border-radius:12px;padding:12px;font-size:14px;font-family:'Inter',sans-serif;resize:none;outline:none;color:var(--n900);"></textarea></div>
         <button class="btn-main" style="margin-top:16px" onclick="coStepNext()">Davom etish <i class="ri-arrow-right-line"></i></button>
@@ -279,12 +280,12 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
       <div id="co-step-confirm" style="display:none">
         <div style="font-size:17px;font-weight:700;margin-bottom:16px">Buyurtmani tasdiqlash</div>
         <div style="background:var(--n50);border-radius:14px;padding:14px;margin-bottom:16px"><div id="co-confirm-rows" style="display:flex;flex-direction:column;gap:8px"></div></div>
-        <div style="background:var(--o50);border-radius:12px;padding:12px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;color:var(--o500);margin-bottom:4px">💳 To'lov</div><div style="font-size:13px;color:var(--n700)">Payme orqali to'laysiz. Buyurtma berganingizdan so'ng Telegram botdan to'lov ma'lumotlari yuboriladi.</div></div>
+        <div style="background:var(--o50);border-radius:12px;padding:12px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;color:var(--o500);margin-bottom:4px"><i class="ri-bank-card-fill"></i> To'lov</div><div style="font-size:13px;color:var(--n700)">Payme orqali to'laysiz. Buyurtma berganingizdan so'ng Telegram botdan to'lov ma'lumotlari yuboriladi.</div></div>
         <button class="btn-main" id="co-confirm-btn" onclick="submitCheckout()"><i class="ri-check-line"></i> Buyurtma berish</button>
         <button class="btn-secondary" style="margin-top:8px" onclick="coStepBack()"><i class="ri-arrow-left-line"></i> Orqaga</button>
       </div>
       <div id="co-step-success" style="display:none;text-align:center;padding:24px 0">
-        <div style="font-size:64px;margin-bottom:12px">✅</div>
+        <div style="font-size:56px;margin-bottom:12px;color:var(--g500)"><i class="ri-checkbox-circle-fill"></i></div>
         <div style="font-size:20px;font-weight:700;margin-bottom:8px">Buyurtma berildi!</div>
         <div style="font-size:14px;color:var(--n500);margin-bottom:8px">Telegram botdan to'lov ma'lumotlari yuborildi.</div>
         <div style="font-size:14px;color:var(--n700);font-weight:600;margin-bottom:20px" id="co-success-code"></div>
@@ -319,8 +320,8 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
       <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-settings-3-line"></i></button>
     </div>
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-      <div class="profile-avatar" id="profileAvatar">👤</div>
-      <div><div style="font-size:17px;font-weight:700;margin-bottom:2px" id="profileName">Yuklanmoqda...</div><div style="font-size:13px;color:var(--n500);margin-bottom:5px" id="profileSub">Joynshop foydalanuvchisi</div><div class="profile-chip">⭐ Joynshop a'zosi</div></div>
+      <div class="profile-avatar" id="profileAvatar"><i class="ri-user-fill"></i></div>
+      <div><div style="font-size:17px;font-weight:700;margin-bottom:2px" id="profileName">Yuklanmoqda...</div><div style="font-size:13px;color:var(--n500);margin-bottom:5px" id="profileSub">Joynshop foydalanuvchisi</div><div class="profile-chip"><i class="ri-medal-fill"></i> Joynshop a'zosi</div></div>
     </div>
     <div class="profile-stats">
       <div class="profile-stat"><div class="profile-stat-num" id="pStatGroups">—</div><div class="profile-stat-label">Guruhlar</div></div>
@@ -353,7 +354,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 
 <!-- ORDERS PAGE -->
 <div id="ordersPage" style="display:none;padding:16px;min-height:60vh">
-  <div style="font-size:18px;font-weight:700;margin-bottom:16px">📋 Buyurtmalarim</div>
+  <div style="font-size:18px;font-weight:700;margin-bottom:16px"><i class="ri-file-list-3-fill" style="color:var(--o500)"></i> Buyurtmalarim</div>
   <div id="ordersList"></div>
 </div>
 
@@ -370,7 +371,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
         <div>
           <div id="profileName2" style="font-size:17px;font-weight:700;color:var(--n900)">Foydalanuvchi</div>
           <div id="profileUsername" style="font-size:13px;color:var(--n500);margin-top:2px"></div>
-          <div class="profile-chip" style="margin-top:4px">⭐ Joynshop a'zosi</div>
+          <div class="profile-chip" style="margin-top:4px"><i class="ri-medal-fill"></i> Joynshop a'zosi</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--n200);border-top:1px solid var(--n200)">
@@ -460,7 +461,7 @@ function getFilteredProducts(){
 function renderProducts(){
   const list=getFilteredProducts();
   const grid=document.getElementById('productGrid');
-  if(!list.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="emoji">📦</div><p>Mahsulot topilmadi</p></div>';return;}
+  if(!list.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="emoji"><i class="ri-inbox-fill"></i></div><p>Mahsulot topilmadi</p></div>';return;}
   grid.innerHTML=list.map(p=>{
     const pct=Math.min(100,Math.round(p.count/p.min_group*100));
     const needed=p.min_group-p.count;
@@ -471,7 +472,7 @@ function renderProducts(){
         <div class="product-name">${p.name}</div>
         <div class="price-group">${fmt(p.group_price)} so'm</div>
         <div class="price-orig">${fmt(p.original_price)} so'm</div>
-        <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-text">${needed>0?`<span class="highlight">${needed} kishi</span> kerak`:`✅ Guruh to'ldi!`}</div></div>
+        <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-text">${needed>0?`<span class="highlight">${needed} kishi</span> kerak`:`<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to'ldi!`}</div></div>
         <a class="btn-buy" href="${p.join_url}"><i class="ri-group-line"></i> Qo'shilish</a>
       </div>
     </div>`;
@@ -496,7 +497,7 @@ function openProduct(pid){
   document.getElementById('groupStatus').innerHTML=`
     <div class="group-status-row"><span class="group-status-label">Guruh holati</span><span class="group-status-value orange">${p.count}/${p.min_group} kishi</span></div>
     <div class="modal-progress-track"><div class="modal-progress-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:12px;color:var(--n500)">${needed>0?'⏳ Yana <strong>'+needed+' kishi</strong> kerak':"✅ Guruh to'ldi!"}</div>
+    <div style="font-size:12px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':"<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to'ldi!"}</div>
     <div style="font-size:12px;color:var(--n400);margin-top:4px">🕐 ${p.deadline}</div>`;
   const btns=document.getElementById('modalBtns');
   btns.innerHTML=`
@@ -508,7 +509,7 @@ function openProduct(pid){
 
 function closeModal(e){if(e.target===document.getElementById('modalOverlay')){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';}}
 
-function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={all:'Barcha mahsulotlar',hot:'🔥 Ommabop mahsulotlar',almost:'⚡️ Tugayotgan guruhlar',new:'✨ Yangi mahsulotlar'};document.getElementById('sectionTitle').textContent=titles[f];renderProducts();}
+function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={all:'Barcha mahsulotlar',hot:'Ommabop mahsulotlar',almost:'Tugayotgan guruhlar',new:'Yangi mahsulotlar'};document.getElementById('sectionTitle').textContent=titles[f];renderProducts();}
 function filterProducts(){searchQuery=document.getElementById('searchInput').value.toLowerCase();renderProducts();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
 
@@ -538,7 +539,7 @@ async function loadProfileStats(uid){
   }catch(e){}
 }
 function closeProfile(){document.getElementById('profileScreen').classList.remove('open');}
-function copyRefLink(){if(!refLink){showToast('Avval botga kiring');return;}if(navigator.clipboard){navigator.clipboard.writeText(refLink).then(()=>showToast('✅ Link nusxalandi!'));}else showToast('Link: '+refLink);}
+function copyRefLink(){if(!refLink){showToast('Avval botga kiring');return;}if(navigator.clipboard){navigator.clipboard.writeText(refLink).then(()=>showToast('Link nusxalandi!'));}else showToast('Link: '+refLink);}
 function shareRefLink(){if(!refLink){showToast('Avval botga kiring');return;}const text=encodeURIComponent("🛍 Do'stlarim bilan birgalikda xarid qilib 40% gacha tejayapman! Sen ham ulab ko'r 👇");const url=encodeURIComponent(refLink);if(tg)tg.openTelegramLink('https://t.me/share/url?url='+url+'&text='+text);else window.open('https://t.me/share/url?url='+url+'&text='+text);}
 
 let currentPage='home',tgUser=null;
@@ -566,7 +567,7 @@ function renderSaqlangan(){
   const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
   const items=allProducts.filter(p=>saved.includes(p.id));
   if(!items.length){
-    el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:48px;margin-bottom:12px">🤍</div><div style="font-size:15px;font-weight:600;color:var(--n600)">Saqlangan bo&#39;sh</div><div style="font-size:13px;margin-top:4px">Yoqtirgan mahsulotlaringizni saqlang</div></div>';
+    el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px"><i class=\"ri-heart-3-fill\" style=\"color:var(--r500)\"></i></div><div style="font-size:15px;font-weight:600;color:var(--n600)">Saqlangan bo&#39;sh</div><div style="font-size:13px;margin-top:4px">Yoqtirgan mahsulotlaringizni saqlang</div></div>';
     return;
   }
   el.innerHTML='<div style="padding:12px 16px;font-size:15px;font-weight:700">Saqlanganlar ('+items.length+')</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px">'+items.map(p=>productCard(p)).join('')+'</div>';
@@ -574,12 +575,12 @@ function renderSaqlangan(){
 
 async function renderOrders(){
   const el=document.getElementById('ordersList');
-  if(!tgUser){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px">🔒</div><div style="font-size:14px">Telegram orqali kiring</div></div>';return;}
+  if(!tgUser){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px"><i class=\"ri-lock-fill\"></i></div><div style="font-size:14px">Telegram orqali kiring</div></div>';return;}
   el.innerHTML='<div style="text-align:center;padding:24px"><div class="loader" style="margin:0 auto"></div></div>';
   try{
     const res=await fetch('/api/user/'+tgUser.id+'/orders');
     const data=await res.json();
-    if(!data.length){el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400)"><div style="font-size:48px;margin-bottom:12px">📦</div><div style="font-size:14px">Hali buyurtma yo\'q</div></div>';return;}
+    if(!data.length){el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400)"><div style="font-size:48px;margin-bottom:12px"><i class=\"ri-inbox-fill\"></i></div><div style="font-size:14px">Hali buyurtma yo\'q</div></div>';return;}
     const sc={confirmed:'var(--g500)',confirming:'var(--o500)',pending:'var(--n400)',rejected:'var(--r500)',cancelled:'var(--n300)'};
     el.innerHTML=data.map(o=>`
       <div class="orders-card">
@@ -588,10 +589,10 @@ async function renderOrders(){
           <div style="font-size:13px;font-weight:700;color:var(--o500)">${o.amount.toLocaleString()} so'm</div>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-          <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:3px 8px;border-radius:99px">${o.type==='solo'?'👤 Yakka':'👥 Guruh'}</span>
-          <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:3px 8px;border-radius:99px">${o.delivery==='deliver'?'🚚 Yetkazib berish':'🏪 Olib ketish'}</span>
+          <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:3px 8px;border-radius:99px">${o.type==='solo'?'Yakka':'Guruh'}</span>
+          <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:3px 8px;border-radius:99px">${o.delivery==='deliver'?'Yetkazib berish':'Olib ketish'}</span>
         </div>
-        ${o.address?`<div style="font-size:12px;color:var(--n500);margin-bottom:6px">📍 ${o.address}</div>`:''}
+        ${o.address?`<div style="font-size:12px;color:var(--n500);margin-bottom:6px"><i class="ri-map-pin-fill" style="color:var(--o500)"></i> ${o.address}</div>`:''}
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:11px;color:var(--n400)">${o.created} · #${o.code}</span>
           <span style="font-size:12px;font-weight:600;color:${sc[o.status]||'var(--n400)'}">${o.status_icon} ${o.status_text}</span>
@@ -624,8 +625,8 @@ function openBuyerBot(action){const url='https://t.me/'+(window._buyerBot||'joyn
 
 // GALLERY
 function buildGallery(el,photos){
-  if(!photos||!photos.length){el.innerHTML='<div class="gallery-slide">📦</div>';return;}
-  const slides=photos.map(fid=>`<div class="gallery-slide"><img src="/api/photo/${fid}" onerror="this.parentElement.innerHTML='<span>📦</span>'"></div>`).join('');
+  if(!photos||!photos.length){el.innerHTML='<div class="gallery-slide"><i class="ri-inbox-fill" style="font-size:48px;color:var(--n300)"></i></div>';return;}
+  const slides=photos.map(fid=>`<div class="gallery-slide"><img src="/api/photo/${fid}" onerror="this.parentElement.innerHTML='<i class=ri-inbox-fill></i>'"></div>`).join('');
   const dots=photos.length>1?`<div class="gallery-dots">${photos.map((_,i)=>`<div class="gallery-dot ${i===0?'active':''}" id="gdot-${el.id}-${i}"></div>`).join('')}</div>`:'';
   const arrows=photos.length>1?`<button class="gallery-arrow left" onclick="galleryMove('${el.id}',-1)">‹</button><button class="gallery-arrow right" onclick="galleryMove('${el.id}',1)">›</button>`:'';
   el.innerHTML=`<div class="gallery-track" id="gtrack-${el.id}">${slides}</div>${dots}${arrows}`;
@@ -660,9 +661,9 @@ function coShowStep(step){
   if(step==='delivery'){const price=co.type==='solo'?p.solo_price:p.group_price;document.getElementById('co-delivery-sub').textContent=p.name+' · '+fmt(price)+' so\'m';document.getElementById('co-del-pickup').classList.add('selected');document.getElementById('co-del-deliver').classList.remove('selected');document.getElementById('co-address-wrap').style.display='none';co.delivery='pickup';}
   if(step==='confirm'){
     const price=co.type==='solo'?p.solo_price:p.group_price;
-    const rows=[{label:'Mahsulot',value:p.name},{label:"Do'kon",value:p.shop_name},{label:'Tur',value:co.type==='solo'?'👤 Yakka':'👥 Guruh'}];
+    const rows=[{label:'Mahsulot',value:p.name},{label:"Do'kon",value:p.shop_name},{label:'Tur',value:co.type==='solo'?'Yakka':'Guruh'}];
     if(co.variant)rows.push({label:'Variant',value:co.variant});
-    rows.push({label:'Yetkazish',value:co.delivery==='deliver'?'🚚 Yetkazib berish':'🏪 Olib ketish'});
+    rows.push({label:'Yetkazish',value:co.delivery==='deliver'?'Yetkazib berish':'Olib ketish'});
     if(co.delivery==='deliver')rows.push({label:'Manzil',value:document.getElementById('co-address').value||'—'});
     rows.push({label:'Narx',value:fmt(price)+' so\'m',price:true});
     document.getElementById('co-confirm-rows').innerHTML=rows.map(r=>`<div class="co-confirm-row"><span class="label">${r.label}</span><span class="${r.price?'price':'value'}">${r.value}</span></div>`).join('');
@@ -675,14 +676,14 @@ function coStepBack(){coShowStep('delivery');}
 async function submitCheckout(){
   const user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
   if(!user){showToast('Telegram orqali kiring');return;}
-  const btn=document.getElementById('co-confirm-btn');btn.textContent='⏳ Yuborilmoqda...';btn.disabled=true;
+  const btn=document.getElementById('co-confirm-btn');btn.textContent='Yuborilmoqda...';btn.disabled=true;
   const address=co.delivery==='deliver'?document.getElementById('co-address').value.trim():'';
   try{
     const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:co.product.id,user_id:user.id,user_name:[user.first_name,user.last_name].filter(Boolean).join(' '),type:co.type,variant:co.variant,delivery:co.delivery,address:address})});
     const d=await res.json();
     if(d.ok){document.getElementById('co-success-code').textContent='Buyurtma kodi: #'+d.code;coShowStep('success');loadProducts();}
-    else{showToast('❌ '+(d.error||'Xato yuz berdi'));btn.textContent='✅ Buyurtma berish';btn.disabled=false;}
-  }catch(e){showToast('❌ Serverga ulanib bo\'lmadi');btn.textContent='✅ Buyurtma berish';btn.disabled=false;}
+    else{showToast('Xato: '+(d.error||'Xato yuz berdi'));btn.textContent='Buyurtma berish';btn.disabled=false;}
+  }catch(e){showToast('Serverga ulanib bo\'lmadi');btn.innerHTML='<i class="ri-check-fill"></i> Buyurtma berish';btn.disabled=false;}
 }
 function closeCheckout(e,force){if(force||!e||e.target===document.getElementById('checkoutOverlay')){document.getElementById('checkoutOverlay').classList.remove('open');document.body.style.overflow='';}}
 
@@ -695,9 +696,9 @@ async function loadStats(){
     const almost=prods.filter(p=>p.min_group-p.count<=2&&p.count<p.min_group).length;
     const avgDisc=active>0?Math.round(prods.reduce((s,p)=>s+p.grp_disc,0)/active):0;
     document.getElementById('statsRow').innerHTML=`
-      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-num">${active}</div><div class="stat-label">Faol guruhlar</div></div>
-      <div class="stat-card"><div class="stat-icon">⚡️</div><div class="stat-num">${almost}</div><div class="stat-label">Yopilish arafasida</div></div>
-      <div class="stat-card"><div class="stat-icon">🏷️</div><div class="stat-num">${avgDisc}%</div><div class="stat-label">O'rtacha chegirma</div></div>`;
+      <div class="stat-card"><div class="stat-icon"><i class="ri-fire-fill" style="color:var(--o500)"></i></div><div class="stat-num">${active}</div><div class="stat-label">Faol guruhlar</div></div>
+      <div class="stat-card"><div class="stat-icon"><i class="ri-flashlight-fill" style="color:var(--y500)"></i></div><div class="stat-num">${almost}</div><div class="stat-label">Yopilish arafasida</div></div>
+      <div class="stat-card"><div class="stat-icon"><i class="ri-price-tag-3-fill" style="color:var(--g500)"></i></div><div class="stat-num">${avgDisc}%</div><div class="stat-label">O'rtacha chegirma</div></div>`;
   }catch(e){}
 }
 loadStats();
