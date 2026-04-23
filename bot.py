@@ -878,25 +878,41 @@ def publish_product(uid, cid, s):
         shop_name= s.get('shop_name','')
     _ = channel  # use below
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-    deadline = datetime.now() + timedelta(hours=48)
+    deadline = datetime.now() + timedelta(hours=int(s.get('deadline_hours', 48)))
+    # Support both old (photo_id) and new (photo_ids) flow
+    photo_ids  = s.get('photo_ids') or ([s['photo_id']] if s.get('photo_id') else [])
+    photo_urls = s.get('photo_urls', [])
+    first_photo = photo_ids[0] if photo_ids else None
+    first_url   = photo_urls[0] if photo_urls else None
+    if not first_photo:
+        send_seller(cid, "❌ Rasm topilmadi!"); return
     products[pid] = {
-        'name': s['name'], 'shop_name': s['shop_name'],
-        'description': s['description'], 'original_price': s['original_price'],
-        'group_price': s['group_price'], 'solo_price': s.get('solo_price', 0),
-        'min_group': s['min_group'],
-        'photo_id': s['photo_id'], 'contact': s['contact'],
-        'delivery_type': s.get('delivery_type', 'pickup'),
-        'variants': s.get('variants', []),
-        'seller_channel': channel, 'seller_id': uid,
-        'deadline': deadline.strftime('%d.%m.%Y %H:%M'),
-        'deadline_dt': deadline.strftime('%Y-%m-%d %H:%M'),
-        'channel_message_id': None, 'channel_chat_id': None, 'status': 'active'
+        'name':          s['name'],
+        'shop_name':     shop_name,
+        'description':   s.get('description', ''),
+        'original_price':s['original_price'],
+        'group_price':   s['group_price'],
+        'solo_price':    s.get('solo_price', 0),
+        'min_group':     s['min_group'],
+        'photo_id':      first_photo,
+        'photo_ids':     photo_ids,
+        'photo_url':     first_url,
+        'photo_urls':    photo_urls,
+        'contact':       contact,
+        'delivery_type': delivery,
+        'variants':      s.get('variants', []),
+        'seller_channel':channel,
+        'seller_id':     uid,
+        'deadline':      deadline.strftime('%d.%m.%Y %H:%M'),
+        'deadline_dt':   deadline.strftime('%Y-%m-%d %H:%M'),
+        'channel_message_id': None, 'channel_chat_id': None,
+        'status': 'active', 'solo_available': True,
     }
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
     seller_products[uid].append(pid)
     result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-        'chat_id': channel, 'photo': s['photo_id'],
+        'chat_id': channel, 'photo': first_photo,
         'caption': post_caption(products[pid], pid), 'parse_mode': 'HTML',
         'reply_markup': json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
     }).json()
