@@ -745,11 +745,11 @@ function openDetail(pid){
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
 
   // Update OG meta for sharing
-  const imgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
+  const detailImgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
   document.title=`${p.name} — ${fmt(p.group_price)} so'm | Joynshop`;
   document.querySelector('meta[property="og:title"]').content=`${p.name} — ${fmt(p.group_price)} so'm (-${p.grp_disc}%)`;
   document.querySelector('meta[property="og:description"]').content=`${p.shop_name} | Guruh narxi: ${fmtFull(p.group_price)} so'm. ${p.min_group-p.count} kishi kerak!`;
-  if(imgSrc) document.querySelector('meta[property="og:image"]').content=imgSrc;
+  if(detailImgSrc) document.querySelector('meta[property="og:image"]').content=detailImgSrc;
   document.querySelector('meta[property="og:url"]').content=window.location.origin+'?p='+pid;
   history.replaceState(null,'','?p='+pid);
 
@@ -764,15 +764,15 @@ function openDetail(pid){
   document.getElementById('detailPage').style.display='block';
   window.scrollTo(0,0);
 
-  const imgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
-  document.getElementById('detailMedia').innerHTML=imgSrc
-    ?`<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder>📦</div>'">`
+  const detailImg=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
+  document.getElementById('detailMedia').innerHTML=detailImg
+    ?`<img src="${detailImg}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder>📦</div>'">`
     :`<div class="detail-main-placeholder">📦</div>`;
 
   // Thumbnails
   const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls
     :(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`)
-    :imgSrc?[imgSrc]:[];
+    :detailImg?[detailImg]:[];
   const thumbs=document.getElementById('detailThumbs');
   thumbs.innerHTML=urls.length>1?urls.map((u,i)=>`<div class="detail-thumb ${i===0?'active':''}" onclick="switchImg('${u}',this)"><img src="${u}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join(''):'';
 
