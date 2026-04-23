@@ -2393,22 +2393,31 @@ def buyer_handle_msg(msg):
         return
 
     if text == '/start':
+        BUYER_KB = {'keyboard': [
+            [{'text': '🛍 Do\'kon'}, {'text': '📋 Buyurtmalarim'}],
+            [{'text': '👤 Profilim'}, {'text': '🤍 Wishlist'}],
+            [{'text': '❓ Yordam'}, {'text': '↩️ Qaytarish'}],
+        ], 'resize_keyboard': True}
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
             "🛍 Do'stlaringiz bilan xarid qiling — 40% gacha tejang!",
-            {'inline_keyboard': [
-                [{'text': "📋 Buyurtmalarim",  'callback_data': 'buyer_mystatus'}],
-                [
-                    {'text': "👤 Profilim",    'callback_data': 'buyer_myprofile'},
-                    {'text': "🤍 Wishlist",    'callback_data': 'buyer_mywishlist'},
-                ],
-                [
-                    {'text': "↩️ Qaytarish",  'callback_data': 'buyer_refund'},
-                    {'text': "❓ Yordam",      'callback_data': 'buyer_help'},
-                ],
-            ]}
+            BUYER_KB
         )
         return
+
+    # Sticky keyboard button handlers
+    if text == '🛍 Do\'kon':
+        text = '/shop'
+    elif text == '📋 Buyurtmalarim':
+        text = '/mystatus'
+    elif text == '👤 Profilim':
+        text = '/myprofile'
+    elif text == '🤍 Wishlist':
+        text = '/mywishlist'
+    elif text == '❓ Yordam':
+        text = '/help'
+    elif text == '↩️ Qaytarish':
+        text = '/refund'
 
     if text == '/myprofile':
         p      = get_profile(uid)
