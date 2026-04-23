@@ -147,6 +147,7 @@ def save_data():
             'pending_moderator_codes': pending_moderator_codes,
             'referrals':       referrals,
             'referral_map':    {str(k): v for k, v in referral_map.items()},
+            'seller_shops':    {str(k): v for k, v in seller_shops.items()},
         }
         tmp = DATA_FILE + '.tmp'
         with open(tmp, 'w', encoding='utf-8') as f:
