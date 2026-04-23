@@ -798,20 +798,42 @@ def seller_handle_cb(cb):
         p = products[pid]
         if p.get('seller_id') != uid and uid != ADMIN_ID:
             answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
-        count   = len(groups.get(pid, []))
-        channel = p.get('seller_channel')
-        result  = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-            'chat_id': channel, 'photo': p['photo_id'],
-            'caption': post_caption(p, pid), 'parse_mode': 'HTML',
-            'reply_markup': json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
-        }).json()
-        if result.get('ok'):
-            products[pid]['channel_message_id'] = result['result']['message_id']
-            products[pid]['channel_chat_id']    = channel
-            answer_cb(cbid, "✅ Qayta e'lon qilindi!", token=SELLER_TOKEN)
-            send_seller(uid, f"📢 <b>{p['name']}</b> qayta e'lon qilindi!")
+        count    = len(groups.get(pid, []))
+        channel  = p.get('seller_channel')
+        caption  = post_caption(p, pid)
+        kb       = json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
+        photo_ids = p.get('photo_ids') or ([p['photo_id']] if p.get('photo_id') else [])
+
+        if len(photo_ids) > 1:
+            media = [{'type': 'photo', 'media': fid} for fid in photo_ids]
+            media[0]['caption'] = caption
+            media[0]['parse_mode'] = 'HTML'
+            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMediaGroup', json={
+                'chat_id': channel, 'media': media,
+            }).json()
+            if result.get('ok') and result.get('result'):
+                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                    'chat_id': channel, 'text': caption,
+                    'parse_mode': 'HTML', 'reply_markup': kb,
+                })
+                products[pid]['channel_message_id'] = result['result'][0].get('message_id')
+                products[pid]['channel_chat_id']    = channel
+                answer_cb(cbid, "✅ Qayta e'lon qilindi!", token=SELLER_TOKEN)
+                send_seller(uid, f"📢 <b>{p['name']}</b> qayta e'lon qilindi!")
+            else:
+                answer_cb(cbid, '❌ Xato!', token=SELLER_TOKEN)
         else:
-            answer_cb(cbid, '❌ Xato! Bot kanalga admin sifatida qo\'shilganmi?', token=SELLER_TOKEN)
+            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+                'chat_id': channel, 'photo': photo_ids[0] if photo_ids else p.get('photo_id'),
+                'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
+            }).json()
+            if result.get('ok'):
+                products[pid]['channel_message_id'] = result['result']['message_id']
+                products[pid]['channel_chat_id']    = channel
+                answer_cb(cbid, "✅ Qayta e'lon qilindi!", token=SELLER_TOKEN)
+                send_seller(uid, f"📢 <b>{p['name']}</b> qayta e'lon qilindi!")
+            else:
+                answer_cb(cbid, "❌ Xato! Bot kanalga admin sifatida qo'shilganmi?", token=SELLER_TOKEN)
         return
 
     if d.startswith('seller_ac_'):
@@ -2268,7 +2290,10 @@ def buyer_handle_msg(msg):
                 return
             p = products[pid]
             if p.get('status') == 'closed':
-                send_buyer(cid, "⛔️ Bu guruh yopilgan.")
+                if action == 'solo':
+                    send_buyer(cid, "⛔️ Sotuv tugatilgan.")
+                else:
+                    send_buyer(cid, "⛔️ Bu guruh yopilgan.")
                 return
 
             if action == 'solo':
