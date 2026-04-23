@@ -3,6 +3,14 @@ from datetime import datetime, timedelta
 from flask import Flask, request
 import pg8000
 
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    S3_AVAILABLE = True
+except ImportError:
+    S3_AVAILABLE = False
+    logging.warning("boto3 not installed — S3 disabled")
+
 logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 
@@ -42,35 +50,34 @@ def upload_photo_to_s3(file_id, bot_token):
     if not s3:
         return None
     try:
-        # 1. Telegram dan file_path olish
         r = requests.get(f'https://api.telegram.org/bot{bot_token}/getFile',
-                         params={'file_id': file_id}).json()
+                         params={'file_id': file_id}, timeout=10).json()
         if not r.get('ok'):
             return None
         file_path = r['result']['file_path']
         ext = file_path.rsplit('.', 1)[-1].lower() if '.' in file_path else 'jpg'
-
-        # 2. Faylni Telegram dan yuklab olish
         tg_url = f'https://api.telegram.org/file/bot{bot_token}/{file_path}'
-        img_data = requests.get(tg_url, timeout=30).content
-
-        # 3. S3 ga yuklash
+        img_data = requests.get(tg_url, timeout=20).content
         key = f'products/{file_id}.{ext}'
-        s3.put_object(
-            Bucket=AWS_BUCKET_NAME,
-            Key=key,
-            Body=img_data,
-            ContentType=f'image/{ext}',
-            ACL='public-read'
-        )
-
-        # 4. URL qaytarish
+        s3.put_object(Bucket=AWS_BUCKET_NAME, Key=key, Body=img_data,
+                      ContentType=f'image/{ext}', ACL='public-read')
         if CDN_BASE_URL:
             return f'{CDN_BASE_URL}/{key}'
         return f'https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{key}'
     except Exception as e:
         logging.error(f'S3 upload error: {e}')
         return None
+
+def upload_photo_async(file_id, bot_token, state_ref):
+    """S3 ga background da yuklash — webhook ni bloklamaydi"""
+    def _upload():
+        url = upload_photo_to_s3(file_id, bot_token)
+        if url and state_ref is not None:
+            if 'photo_urls' not in state_ref: state_ref['photo_urls'] = []
+            if url not in state_ref['photo_urls']:
+                state_ref['photo_urls'].append(url)
+            logging.info(f'S3 async done: {url}')
+    threading.Thread(target=_upload, daemon=True).start()
 DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
 BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
 APP_URL            = os.environ.get('APP_URL', '')  # e.g. https://joynshop.uz
@@ -83,7 +90,7 @@ def setup_bot_ui():
     if BUYER_TOKEN:
         if miniapp_url:
             requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton', json={
-                'menu_button': {'type': 'web_app', 'text': '🛍 Joynshop', 'web_app': {'url': miniapp_url}}
+                'menu_button': {'type': 'web_app', 'text': 'Joynshop', 'web_app': {'url': miniapp_url}}
             })
         requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setMyCommands', json={
             'commands': [
@@ -1291,8 +1298,8 @@ def seller_handle_msg(msg):
                 # Duplicate tekshirish
                 if media_id not in s['photo_ids'] and len(s['photo_ids']) < 5:
                     s['photo_ids'].append(media_id)
-                    url = upload_photo_to_s3(media_id, SELLER_TOKEN)
-                    if url: s['photo_urls'].append(url)
+                    # Async S3 upload — webhook ni bloklamaydi
+                    upload_photo_async(media_id, SELLER_TOKEN, s)
                 count = len(s['photo_ids'])
                 # Album yuborilganda faqat birinchi xabarda javob ber
                 last_group = s.get('last_media_group')
@@ -2776,68 +2783,6 @@ def expire_product(pid):
                 f"👥 {count}/{p['min_group']} kishi\n\n"
                 f"Qayta urinib ko'ring: /addproduct"
             )
-
-# ─── REMINDER & LIVE UPDATE ──────────────────────────────────────────
-def reminder_loop():
-    while True:
-        time.sleep(1800)
-        try:
-            now = datetime.now()
-            for pid, p in list(products.items()):
-                if p.get('status') == 'closed': continue
-                ddt = p.get('deadline_dt')
-                if not ddt: continue
-                deadline  = datetime.strptime(ddt, '%Y-%m-%d %H:%M')
-                remaining = (deadline - now).total_seconds()
-                count     = len(groups.get(pid, []))
-                needed    = p['min_group'] - count
-                if remaining <= 0:
-                    expire_product(pid)
-                    continue
-                hours = remaining / 3600
-                if needed > 0 and (11.5 <= hours <= 12.5 or 1.5 <= hours <= 2.5):
-                    for uid in groups.get(pid, []):
-                        try:
-                            send_buyer(uid,
-                                f"⚡️ <b>SHOSHILING!</b>\n\n"
-                                f"<b>{p['name']}</b>\n"
-                                f"{needed} kishi kerak!\n"
-                                f"⏰ {int(hours)} soat qoldi!"
-                            )
-                        except: pass
-                    sid = p.get('seller_id')
-                    if sid:
-                        send_seller(sid,
-                            f"📢 <b>Eslatma!</b>\n\n"
-                            f"<b>{p['name']}</b>\n"
-                            f"👥 {count}/{p['min_group']} kishi\n"
-                            f"⏰ {int(hours)} soat qoldi\n\n"
-                            f"Kanalda qayta e'lon qiling: /boost {pid}"
-                        )
-        except Exception as e:
-            logging.error(f"Reminder error: {e}")
-
-def live_update_loop():
-    while True:
-        time.sleep(30)
-        try:
-            for pid, p in list(products.items()):
-                if p.get('status') == 'closed': continue
-                cid = p.get('channel_chat_id')
-                mid = p.get('channel_message_id')
-                if not cid or not mid: continue
-                count = len(groups.get(pid, []))
-                try:
-                    edit_caption(cid, mid,
-                        post_caption(p, pid),
-                        join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price')))
-                    )
-                except: pass
-        except Exception as e:
-            logging.error(f"Live update: {e}")
-
-threading.Thread(target=reminder_loop, daemon=True).start()
-threading.Thread(target=live_update_loop, daemon=True).start()
 
 # ─── SPAM ────────────────────────────────────────────────────────────
 def is_spam(text):
