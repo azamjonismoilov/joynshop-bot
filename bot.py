@@ -1241,20 +1241,31 @@ def seller_handle_msg(msg):
 
         elif step == 'prod_photo':
             photo = msg.get('photo')
+            video = msg.get('video')
+            media_group_id = msg.get('media_group_id')
+            media_id = None
             if photo:
+                media_id = photo[-1]['file_id']
+            elif video:
+                media_id = video['file_id']
+            if media_id:
                 if len(s['photo_ids']) < 5:
-                    fid = photo[-1]['file_id']
-                    s['photo_ids'].append(fid)
-                    url = upload_photo_to_s3(fid, SELLER_TOKEN)
+                    s['photo_ids'].append(media_id)
+                    url = upload_photo_to_s3(media_id, SELLER_TOKEN)
                     if url: s['photo_urls'].append(url)
                 count = len(s['photo_ids'])
-                # Har doim "Davom etish" tugmasi ko'rsatiladi — step o'zgarmaydi
-                send_seller(cid,
-                    f"✅ {count}/5 rasm. Yana yuboring yoki davom eting:",
-                    {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} rasm)", 'callback_data': 'prod_photo_done'}]]}
-                )
+                # Album yuborilganda faqat birinchi xabarda javob ber
+                last_group = s.get('last_media_group')
+                if media_group_id and media_group_id == last_group:
+                    pass  # Album davomi — javob berma
+                else:
+                    s['last_media_group'] = media_group_id
+                    send_seller(cid,
+                        f"✅ {count}/5 media. Yana yuboring yoki davom eting:",
+                        {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
+                    )
             else:
-                send_seller(cid, "❌ Rasm yuboring!")
+                send_seller(cid, "❌ Rasm yoki video yuboring!")
 
         elif step == 'prod_price':
             try:
