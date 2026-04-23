@@ -40,13 +40,14 @@
   --sxl:0 16px 40px rgba(10,13,20,.03),0 8px 24px rgba(10,13,20,.06);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;}
-.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:72px;}
-@media(min-width:520px){.app-shell{min-height:100vh;box-shadow:0 0 60px rgba(0,0,0,.4);}}
+body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;align-items:flex-start;}
+.app-shell{width:100%;max-width:480px;min-height:100vh;background:var(--n50);position:relative;padding-bottom:100px;padding-top:8px;}
+@media(min-width:520px){.app-shell{min-height:100vh;}}
 
 /* HEADER */
-.header{background:var(--white);padding:12px 16px 10px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--n200);box-shadow:var(--sxs);}
-.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.header-wrap{position:sticky;top:12px;z-index:100;padding:0 12px;margin-bottom:8px;}
+.header{background:rgba(255,255,255,.95);backdrop-filter:blur(20px);padding:10px 14px;border-radius:20px;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid rgba(255,255,255,.8);}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
 .logo{font-size:20px;font-weight:800;color:var(--o500);letter-spacing:-.02em;}
 .logo span{color:var(--n900);}
 .header-icons{display:flex;gap:6px;}
@@ -191,11 +192,14 @@ body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min
 .profile-page-item:last-child{border-bottom:none;}
 
 /* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:64px;background:rgba(255,255,255,.96);backdrop-filter:blur(20px);border-top:1px solid var(--n200);display:flex;z-index:100;}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;}
-.nav-icon{font-size:22px;line-height:1;}
+.bottom-nav{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:auto;z-index:100;display:flex;align-items:center;gap:6px;background:rgba(28,28,28,.92);backdrop-filter:blur(20px);border-radius:9999px;padding:8px 12px;box-shadow:0 8px 32px rgba(0,0,0,.25);}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;padding:6px 14px;border-radius:9999px;transition:all .2s;}
+.nav-item.active{background:var(--o500);}
+.nav-icon{font-size:20px;line-height:1;color:rgba(255,255,255,.5);transition:color .2s;}
+.nav-item.active .nav-icon{color:var(--white);}
 .nav-label{font-size:10px;font-weight:500;color:var(--n400);}
-.nav-item.active .nav-label{color:var(--o500);}
+.nav-label{font-size:10px;font-weight:500;color:rgba(255,255,255,.5);transition:color .2s;}
+.nav-item.active .nav-label{color:var(--white);}
 
 /* LOADING */
 .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
@@ -214,12 +218,12 @@ body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min
 <div class="app-shell">
 
 <!-- HEADER -->
+<div class="header-wrap">
 <div class="header">
   <div class="header-top">
     <div class="logo">Joy<span>nshop</span></div>
     <div class="header-icons">
-      <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-heart-line"></i></button>
-      <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-shopping-cart-line"></i></button>
+      <button class="icon-btn" onclick="showToast('Tez kunda!')"><i class="ri-shopping-bag-3-fill" style="color:var(--o500)"></i></button>
     </div>
   </div>
   <div class="search-wrap">
@@ -227,6 +231,7 @@ body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min
     <input class="search-input" type="text" placeholder="Mahsulot qidiring..." id="searchInput" oninput="filterProducts()">
   </div>
 </div>
+</div><!-- /header-wrap -->
 
 <!-- STATS -->
 <div id="statsRow" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px 16px;"></div>
@@ -327,7 +332,7 @@ body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min
     <div class="profile-group"><div class="profile-group-title">Faoliyat</div>
       <div class="profile-menu-card">
         <a class="profile-menu-item" id="ordersLink"><div class="profile-menu-icon" style="background:var(--o50)"><i class="ri-shopping-bag-3-line" style="color:var(--o500)"></i></div><div class="profile-menu-label">Buyurtmalarim</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
-        <a class="profile-menu-item" id="wishlistLink"><div class="profile-menu-icon" style="background:var(--r50)"><i class="ri-heart-line" style="color:var(--r500)"></i></div><div class="profile-menu-label">Saqlanganlar</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
+        <a class="profile-menu-item" id="saqlanganLink"><div class="profile-menu-icon" style="background:var(--r50)"><i class="ri-heart-line" style="color:var(--r500)"></i></div><div class="profile-menu-label">Saqlanganlar</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
         <a class="profile-menu-item" id="refundLink"><div class="profile-menu-icon" style="background:var(--b50)"><i class="ri-refund-2-line" style="color:var(--b500)"></i></div><div class="profile-menu-label">Qaytarish</div><i class="ri-arrow-right-s-line profile-menu-arrow"></i></a>
       </div>
     </div>
@@ -389,11 +394,13 @@ body{font-family:'Inter',sans-serif;background:var(--n900);color:var(--n900);min
 </div>
 
 <!-- BOTTOM NAV -->
+<div id="saqlanganPage" style="display:none;min-height:60vh"></div>
+
 <div class="bottom-nav">
-  <button class="nav-item active" id="nav-home" onclick="setPage('home')"><div class="nav-icon">🏠</div><div class="nav-label">Bosh sahifa</div></button>
-  <button class="nav-item" id="nav-search" onclick="setPage('search')"><div class="nav-icon">🔍</div><div class="nav-label">Qidiruv</div></button>
-  <button class="nav-item" id="nav-orders" onclick="setPage('orders')"><div class="nav-icon">📋</div><div class="nav-label">Buyurtmalar</div></button>
-  <button class="nav-item" id="nav-profile" onclick="setPage('profile')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></button>
+  <button class="nav-item active" id="nav-home" onclick="setPage('home')"><div class="nav-icon"><i class="ri-home-5-fill"></i></div><div class="nav-label">Bosh sahifa</div></button>
+  <button class="nav-item" id="nav-saqlangan" onclick="setPage('saqlangan')"><div class="nav-icon"><i class="ri-heart-3-fill"></i></div><div class="nav-label">Saqlangan</div></button>
+  <button class="nav-item" id="nav-orders" onclick="setPage('orders')"><div class="nav-icon"><i class="ri-file-list-3-fill"></i></div><div class="nav-label">Buyurtmalar</div></button>
+  <button class="nav-item" id="nav-profile" onclick="setPage('profile')"><div class="nav-icon"><i class="ri-user-fill"></i></div><div class="nav-label">Profil</div></button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -485,7 +492,7 @@ function openProfile(){
     const bot='joynshop_bot';
     refLink='https://t.me/'+bot+'?start=ref_'+user.id;
     document.getElementById('ordersLink').href='https://t.me/'+bot+'?start=mystatus';
-    document.getElementById('wishlistLink').href='https://t.me/'+bot+'?start=mywishlist';
+    document.getElementById('saqlanganLink').href='https://t.me/'+bot+'?start=mysaqlangan';
     document.getElementById('refundLink').href='https://t.me/'+bot+'?start=refund';
     loadProfileStats(user.id);
   }else{document.getElementById('profileName').textContent='Mehmon';document.getElementById('profileSub').textContent='Kirish uchun botni oching';}
@@ -505,20 +512,32 @@ function shareRefLink(){if(!refLink){showToast('Avval botga kiring');return;}con
 let currentPage='home',tgUser=null;
 function setPage(page){
   currentPage=page;
-  ['productGrid','statsRow','ordersPage','profilePage'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  ['productGrid','statsRow','ordersPage','profilePage','saqlanganPage'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const banner=document.querySelector('.banner');if(banner)banner.style.display='none';
   const filterWrap=document.getElementById('filterWrap');if(filterWrap)filterWrap.style.display='none';
   const sectionEl=document.querySelector('.section');if(sectionEl)sectionEl.style.display='none';
-  ['home','search','orders','profile'].forEach(p=>{const el=document.getElementById('nav-'+p);if(el){el.classList.toggle('active',p===page);const lbl=el.querySelector('.nav-label');if(lbl)lbl.style.color=p===page?'var(--o500)':'';}});
-  if(page==='home'||page==='search'){
+  ['home','saqlangan','orders','profile'].forEach(p=>{const el=document.getElementById('nav-'+p);if(el)el.classList.toggle('active',p===page);});
+  if(page==='home'){
     document.getElementById('productGrid').style.display='grid';
     const sr=document.getElementById('statsRow');if(sr)sr.style.display='grid';
     if(banner)banner.style.display='flex';
     if(filterWrap)filterWrap.style.display='flex';
     if(sectionEl)sectionEl.style.display='block';
     renderProducts();
-  }else if(page==='orders'){document.getElementById('ordersPage').style.display='block';renderOrders();}
+  }else if(page==='saqlangan'){document.getElementById('saqlanganPage').style.display='block';renderSaqlangan();}
+  else if(page==='orders'){document.getElementById('ordersPage').style.display='block';renderOrders();}
   else if(page==='profile'){document.getElementById('profilePage').style.display='block';loadProfile();}
+}
+
+function renderSaqlangan(){
+  const el=document.getElementById('saqlanganPage');
+  const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
+  const items=allProducts.filter(p=>saved.includes(p.id));
+  if(!items.length){
+    el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:48px;margin-bottom:12px">🤍</div><div style="font-size:15px;font-weight:600;color:var(--n600)">Saqlangan bo&#39;sh</div><div style="font-size:13px;margin-top:4px">Yoqtirgan mahsulotlaringizni saqlang</div></div>';
+    return;
+  }
+  el.innerHTML='<div style="padding:12px 16px;font-size:15px;font-weight:700">Saqlanganlar ('+items.length+')</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px">'+items.map(p=>productCard(p)).join('')+'</div>';
 }
 
 async function renderOrders(){
