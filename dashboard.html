@@ -3,921 +3,434 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Joynshop — Investor Dashboard</title>
+<title>Joynshop Admin</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --o500:#FA7319;--o600:#E16614;--o700:#CE5E12;--o50:#FFF3EB;--o100:#FFE6D5;
+  --b500:#335CFF;--b600:#2850F0;--b50:#EBF1FF;--b100:#D5E2FF;
+  --g500:#1FC16B;--g800:#1A7544;--g50:#E3F7EC;
+  --r500:#FB3748;--r50:#FFEBEC;
+  --y500:#F6B51E;--y50:#FFFAEB;
+  --n900:#1C1C1C;--n800:#262626;--n700:#333333;--n600:#5C5C5C;
+  --n500:#7B7B7B;--n400:#A3A3A3;--n300:#D1D1D1;--n200:#EBEBEB;
+  --n100:#F5F5F5;--n50:#F7F7F7;--white:#FFFFFF;
+  --slate900:#181B25;
+  --sxs:0 1px 2px rgba(23,23,23,0.04);
+  --ssm:0 2px 4px rgba(23,23,23,0.06);
+  --smd:0 4px 12px rgba(23,23,23,0.08);
+  --sxl:0 16px 40px rgba(10,13,20,0.03),0 8px 24px rgba(10,13,20,0.06);
+  --sidebar:248px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-height:100vh;-webkit-font-smoothing:antialiased;}
 
-  :root {
-    --bg: #F5F4F0;
-    --surface: #FFFFFF;
-    --surface2: #F0EDE8;
-    --border: #E8E4DC;
-    --text: #1A1814;
-    --text2: #6B6560;
-    --text3: #A09890;
-    --accent: #2D6A4F;
-    --accent2: #52B788;
-    --accent-light: #D8F3DC;
-    --red: #E63946;
-    --red-light: #FFE8EA;
-    --amber: #F4A261;
-    --amber-light: #FFF0E0;
-    --blue: #2B6CB0;
-    --blue-light: #EBF4FF;
-    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
-    --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
-  }
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--n50),var(--g50));}
+.lcard{background:var(--white);border-radius:24px;padding:48px 40px;width:380px;box-shadow:var(--sxl);text-align:center;}
+.llogo{width:60px;height:60px;background:var(--o500);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:26px;}
+.lcard h1{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px;}
+.lcard p{color:var(--n500);font-size:14px;margin-bottom:28px;}
+.lcard input{width:100%;height:48px;padding:0 16px;border:1.5px solid var(--n200);border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;outline:none;background:var(--n100);transition:border-color .15s;margin-bottom:12px;}
+.lcard input:focus{border-color:var(--b500);background:var(--white);}
+.lbtn{width:100%;height:48px;background:var(--o500);color:var(--white);border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s;}
+.lbtn:hover{background:var(--o600);}
+.lerr{color:var(--r500);font-size:13px;margin-top:10px;display:none;}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+#app{display:none;}
+.topbar{background:var(--white);border-bottom:1px solid var(--n200);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px 0 0;position:sticky;top:0;z-index:200;box-shadow:var(--sxs);}
+.tl{display:flex;align-items:center;height:100%;}
+.ham{width:60px;height:60px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;color:var(--n500);font-size:20px;transition:background .15s;flex-shrink:0;}
+.ham:hover{background:var(--n100);}
+.brand{display:flex;align-items:center;gap:10px;}
+.bmark{width:32px;height:32px;background:var(--o500);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.bname{font-size:16px;font-weight:700;letter-spacing:-.02em;}
+.tr{display:flex;align-items:center;gap:10px;}
+.ts{font-size:11px;color:var(--n400);font-variant-numeric:tabular-nums;}
+.btnref{display:flex;align-items:center;gap:6px;padding:0 14px;height:36px;background:var(--g50);color:var(--g800);border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;}
+.btnref:hover{background:var(--g500);color:var(--white);}
+.btnout{height:36px;padding:0 12px;background:var(--n100);color:var(--n600);border:none;border-radius:8px;font-size:13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;}
+.btnout:hover{background:var(--r50);color:var(--r500);}
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+.layout{display:flex;min-height:calc(100vh - 60px);}
+.sidebar{width:var(--sidebar);background:var(--white);border-right:1px solid var(--n200);padding:16px 10px;flex-shrink:0;transition:width .2s,padding .2s;overflow:hidden;}
+.sidebar.col{width:0;padding:0;}
+.nlbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--n400);padding:8px 10px 4px;}
+.ni{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:8px;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--n600);cursor:pointer;white-space:nowrap;text-align:left;transition:all .15s;}
+.ni i{font-size:17px;flex-shrink:0;width:20px;text-align:center;}
+.ni:hover{background:var(--n100);color:var(--n900);}
+.ni.act{background:var(--o50);color:var(--o600);}
+.ni.act i{color:var(--o500);}
+.ndiv{height:1px;background:var(--n200);margin:8px 2px;}
 
-  /* LOGIN */
-  #login-screen {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #F5F4F0 0%, #E8F5E9 100%);
-  }
+.content{flex:1;min-width:0;}
+.page{display:none;padding:28px;}
+.page.act{display:block;}
 
-  .login-box {
-    background: var(--surface);
-    border-radius: 20px;
-    padding: 48px 40px;
-    width: 380px;
-    box-shadow: var(--shadow-lg);
-    text-align: center;
-  }
+.phdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;}
+.ptitle{font-size:20px;font-weight:700;letter-spacing:-.02em;}
+.psub{font-size:13px;color:var(--n500);margin-top:2px;}
+.slbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--n400);margin-bottom:12px;margin-top:24px;}
+.slbl:first-child{margin-top:0;}
 
-  .login-logo {
-    width: 64px;
-    height: 64px;
-    background: var(--accent);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 24px;
-    font-size: 28px;
-  }
+.g{display:grid;gap:14px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
 
-  .login-box h1 {
-    font-size: 22px;
-    font-weight: 700;
-    margin-bottom: 4px;
-    color: var(--text);
-  }
+.card{background:var(--white);border-radius:16px;padding:20px;box-shadow:var(--ssm);border:1px solid var(--n200);}
+.hero{background:var(--o500);color:var(--white);border-color:transparent;}
+.hero .clbl{color:rgba(255,255,255,.75);}
+.hero .csub{color:rgba(255,255,255,.85);}
+.cic{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:14px;}
+.ic-o{background:var(--o50);color:var(--o600);}
+.ic-b{background:var(--b50);color:var(--b600);}
+.ic-g{background:var(--g50);color:var(--g800);}
+.ic-r{background:var(--r50);color:var(--r500);}
+.ic-y{background:var(--y50);color:#C99A2C;}
+.clbl{font-size:12px;font-weight:500;color:var(--n400);margin-bottom:6px;}
+.cval{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:6px;}
+.csub{font-size:12px;color:var(--n500);}
 
-  .login-box p {
-    color: var(--text2);
-    font-size: 14px;
-    margin-bottom: 28px;
-  }
+.bdg{display:inline-flex;align-items:center;gap:4px;font-weight:500;border-radius:4px;font-size:11px;padding:2px 7px;white-space:nowrap;}
+.bp{border-radius:9999px;}
+.bo{background:var(--o50);color:var(--o700);}
+.bb{background:var(--b50);color:var(--b600);}
+.bg{background:var(--g50);color:var(--g800);}
+.br{background:var(--r50);color:var(--r500);}
+.by{background:var(--y50);color:#C99A2C;}
+.bx{background:var(--n100);color:var(--n600);}
+.bso{background:var(--o500);color:var(--white);}
+.bsg{background:var(--g500);color:var(--white);}
+.bsr{background:var(--r500);color:var(--white);}
 
-  .login-box input {
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    font-family: 'DM Mono', monospace;
-    font-size: 15px;
-    outline: none;
-    background: var(--surface2);
-    transition: border-color 0.2s;
-    margin-bottom: 12px;
-  }
+.prow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--n200);}
+.prow:last-child{border-bottom:none;padding-bottom:0;}
+.prow:first-child{padding-top:0;}
+.plbl{font-size:13px;font-weight:500;width:160px;flex-shrink:0;}
+.ptrk{flex:1;height:6px;background:var(--n100);border-radius:99px;overflow:hidden;}
+.pfil{height:100%;background:var(--o500);border-radius:99px;transition:width 1s;}
+.pval{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;width:52px;text-align:right;color:var(--n700);}
 
-  .login-box input:focus { border-color: var(--accent); background: #fff; }
+.chard{background:var(--white);border-radius:16px;padding:24px;box-shadow:var(--ssm);border:1px solid var(--n200);}
+.chdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;}
+.chtitle{font-size:15px;font-weight:700;letter-spacing:-.02em;}
+.chsub{font-size:12px;color:var(--n500);margin-top:2px;}
+.chleg{display:flex;gap:14px;font-size:12px;color:var(--n500);}
+.chlegdot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+.chwrap{position:relative;height:240px;}
 
-  .login-btn {
-    width: 100%;
-    padding: 14px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-  }
+.twrap{background:var(--white);border-radius:16px;border:1px solid var(--n200);overflow:hidden;box-shadow:var(--ssm);}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);padding:12px 16px;text-align:left;border-bottom:1px solid var(--n200);background:var(--n50);white-space:nowrap;}
+tbody td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--n200);color:var(--n900);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--n50);}
+.tfoot{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--n200);font-size:13px;color:var(--n500);}
+.pgn{display:flex;gap:4px;}
+.pgb{height:32px;min-width:32px;padding:0 10px;border-radius:6px;border:1.5px solid var(--n200);background:var(--white);font-size:12px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;color:var(--n600);transition:all .15s;}
+.pgb:hover{border-color:var(--o500);color:var(--o600);}
+.pgb.act{background:var(--o500);color:var(--white);border-color:var(--o500);}
 
-  .login-btn:hover { background: #235c42; }
-  .login-btn:active { transform: scale(0.98); }
+.btn{display:inline-flex;align-items:center;gap:5px;font-family:'Inter',sans-serif;font-weight:500;border:none;cursor:pointer;transition:all .15s;white-space:nowrap;border-radius:8px;}
+.bmd{height:36px;padding:0 16px;font-size:13px;}
+.bsm{height:30px;padding:0 12px;font-size:12px;border-radius:6px;}
+.bpri{background:var(--o500);color:var(--white);}
+.bpri:hover{background:var(--o600);}
+.bsuc{background:var(--g500);color:var(--white);}
+.bsuc:hover{background:var(--g800);}
+.bdan{background:transparent;color:var(--r500);border:1.5px solid var(--n200);}
+.bdan:hover{background:var(--r50);border-color:var(--r500);}
+.bgh{background:transparent;color:var(--n600);border:1.5px solid var(--n200);}
+.bgh:hover{background:var(--n100);}
 
-  .login-error {
-    color: var(--red);
-    font-size: 13px;
-    margin-top: 10px;
-    display: none;
-  }
+.filts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.fb{height:34px;padding:0 14px;border-radius:99px;border:1.5px solid var(--n200);background:var(--white);font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;color:var(--n600);transition:all .15s;}
+.fb:hover{border-color:var(--o500);color:var(--o600);}
+.fb.act{background:var(--o500);color:var(--white);border-color:var(--o500);}
 
-  /* DASHBOARD */
-  #dashboard { display: none; }
+.mono{font-variant-numeric:tabular-nums;font-weight:600;}
+.code{font-size:11px;background:var(--n100);color:var(--n600);padding:2px 6px;border-radius:4px;}
+.lwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;gap:14px;}
+.spin{width:36px;height:36px;border:3px solid var(--n200);border-top-color:var(--o500);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:48px;color:var(--n400);font-size:14px;}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--n200);}
+.srow:last-child{border-bottom:none;}
+.slabel{font-size:14px;font-weight:500;}
+.ssub{font-size:12px;color:var(--n500);margin-top:2px;}
 
-  .topbar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 32px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .logo-mark {
-    width: 36px;
-    height: 36px;
-    background: var(--accent);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-  }
-
-  .topbar h1 {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  .topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .lang-switch {
-    display: flex;
-    background: var(--surface2);
-    border-radius: 8px;
-    padding: 3px;
-    gap: 2px;
-  }
-
-  .lang-btn {
-    padding: 5px 12px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--text2);
-    transition: all 0.2s;
-  }
-
-  .lang-btn.active {
-    background: var(--surface);
-    color: var(--text);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-  }
-
-  .refresh-btn {
-    padding: 8px 16px;
-    background: var(--accent-light);
-    color: var(--accent);
-    border: none;
-    border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background 0.2s;
-  }
-
-  .refresh-btn:hover { background: #c8ebcc; }
-
-  .last-updated {
-    font-size: 12px;
-    color: var(--text3);
-    font-family: 'DM Mono', monospace;
-  }
-
-  /* MAIN */
-  .main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 32px 24px;
-  }
-
-  .section-title {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 14px;
-    margin-top: 32px;
-  }
-
-  .section-title:first-child { margin-top: 0; }
-
-  /* CARDS GRID */
-  .cards-grid {
-    display: grid;
-    gap: 16px;
-  }
-
-  .cards-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
-  .cards-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
-  .cards-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
-
-  .card {
-    background: var(--surface);
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-
-  .card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .card-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text3);
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .card-value {
-    font-size: 32px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .card-sub {
-    font-size: 13px;
-    color: var(--text2);
-  }
-
-  .card-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .badge-green { background: var(--accent-light); color: var(--accent); }
-  .badge-red   { background: var(--red-light); color: var(--red); }
-  .badge-amber { background: var(--amber-light); color: #c47a1e; }
-  .badge-blue  { background: var(--blue-light); color: var(--blue); }
-
-  .card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    margin-bottom: 16px;
-  }
-
-  .icon-green { background: var(--accent-light); }
-  .icon-blue  { background: var(--blue-light); }
-  .icon-amber { background: var(--amber-light); }
-  .icon-red   { background: var(--red-light); }
-
-  /* HIGHLIGHT CARD */
-  .card.highlight {
-    background: var(--accent);
-    color: white;
-    border-color: transparent;
-  }
-
-  .card.highlight .card-label { color: rgba(255,255,255,0.7); }
-  .card.highlight .card-sub   { color: rgba(255,255,255,0.8); }
-  .card.highlight .card-value { color: white; }
-
-  /* CHART CARD */
-  .chart-card {
-    background: var(--surface);
-    border-radius: 16px;
-    padding: 28px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-  }
-
-  .chart-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 24px;
-  }
-
-  .chart-title {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  .chart-subtitle {
-    font-size: 13px;
-    color: var(--text2);
-    margin-top: 2px;
-  }
-
-  .chart-container { position: relative; height: 260px; }
-
-  /* PROGRESS BAR */
-  .progress-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .progress-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .progress-row:first-child { padding-top: 0; }
-
-  .progress-label {
-    font-size: 13px;
-    font-weight: 500;
-    width: 140px;
-    flex-shrink: 0;
-  }
-
-  .progress-bar-wrap {
-    flex: 1;
-    height: 8px;
-    background: var(--surface2);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 99px;
-    transition: width 1s ease;
-  }
-
-  .progress-val {
-    font-size: 13px;
-    font-weight: 600;
-    font-family: 'DM Mono', monospace;
-    width: 50px;
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  /* TABLE */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .data-table th {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    text-transform: uppercase;
-    color: var(--text3);
-    padding: 0 0 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .data-table td {
-    padding: 14px 0;
-    font-size: 14px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-  }
-
-  .data-table tr:last-child td { border-bottom: none; }
-
-  /* LOADING */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .fmt-money {
-    font-family: 'DM Mono', monospace;
-    font-weight: 600;
-  }
-
-  /* RESPONSIVE */
-  @media (max-width: 900px) {
-    .cards-grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
-    .cards-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
-  }
-
-  @media (max-width: 600px) {
-    .topbar { padding: 0 16px; }
-    .main { padding: 20px 16px; }
-    .cards-grid.cols-4,
-    .cards-grid.cols-3,
-    .cards-grid.cols-2 { grid-template-columns: 1fr; }
-  }
+@media(max-width:1024px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.g4,.g3,.g2{grid-template-columns:1fr}.page{padding:16px}.sidebar{position:fixed;height:100%;z-index:150;top:60px;left:0;}}
 </style>
 </head>
 <body>
-
-<!-- LOGIN -->
 <div id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">🏪</div>
-    <h1>Joynshop Dashboard</h1>
-    <p id="login-sub">Investor Panel · Kirish uchun parol yozing</p>
-    <input type="password" id="pwd-input" placeholder="••••••••" />
-    <button class="login-btn" onclick="doLogin()" id="login-btn">Kirish / Sign In</button>
-    <div class="login-error" id="login-error">❌ Noto'g'ri parol / Wrong password</div>
+  <div class="lcard">
+    <div class="llogo">🏪</div>
+    <h1>Joynshop Admin</h1>
+    <p>Kirish uchun parolni yozing</p>
+    <input type="password" id="pwd-input" placeholder="••••••••">
+    <button class="lbtn" id="lbtn" onclick="doLogin()">Kirish</button>
+    <div class="lerr" id="lerr">❌ Noto'g'ri parol</div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard">
+<div id="app">
   <nav class="topbar">
-    <div class="topbar-left">
-      <div class="logo-mark">🏪</div>
-      <h1>Joynshop Dashboard</h1>
+    <div class="tl">
+      <button class="ham" onclick="toggleSidebar()"><i class="ri-menu-line"></i></button>
+      <div class="brand"><div class="bmark">🏪</div><span class="bname">Joynshop Admin</span></div>
     </div>
-    <div class="topbar-right">
-      <div class="lang-switch">
-        <button class="lang-btn active" onclick="setLang('uz')" id="lang-uz">UZ</button>
-        <button class="lang-btn" onclick="setLang('en')" id="lang-en">EN</button>
-      </div>
-      <button class="refresh-btn" onclick="loadData()">
-        <span>↻</span> <span data-uz="Yangilash" data-en="Refresh">Yangilash</span>
-      </button>
-      <span class="last-updated" id="last-updated"></span>
+    <div class="tr">
+      <span class="ts" id="ts"></span>
+      <button class="btnref" onclick="refreshCurrent()"><i class="ri-refresh-line"></i> Yangilash</button>
+      <button class="btnout" onclick="doLogout()"><i class="ri-logout-box-line"></i></button>
     </div>
   </nav>
-
-  <div class="main" id="main-content">
-    <div class="loading">
-      <div class="spinner"></div>
-      <span style="color:var(--text3);font-size:14px">Ma'lumotlar yuklanmoqda...</span>
-    </div>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="nlbl">Asosiy</div>
+      <button class="ni act" onclick="goPage('overview')"><i class="ri-dashboard-line"></i> Overview</button>
+      <button class="ni" onclick="goPage('orders')"><i class="ri-shopping-bag-3-line"></i> Buyurtmalar</button>
+      <button class="ni" onclick="goPage('products')"><i class="ri-box-3-line"></i> Mahsulotlar</button>
+      <div class="ndiv"></div>
+      <div class="nlbl">Foydalanuvchilar</div>
+      <button class="ni" onclick="goPage('buyers')"><i class="ri-group-line"></i> Xaridorlar</button>
+      <button class="ni" onclick="goPage('sellers')"><i class="ri-store-2-line"></i> Sotuvchilar</button>
+      <div class="ndiv"></div>
+      <div class="nlbl">Hisobot</div>
+      <button class="ni" onclick="goPage('finance')"><i class="ri-money-dollar-circle-line"></i> Moliya</button>
+      <button class="ni" onclick="goPage('channels')"><i class="ri-megaphone-line"></i> Kanallar</button>
+      <div class="ndiv"></div>
+      <button class="ni" onclick="goPage('settings')"><i class="ri-settings-3-line"></i> Sozlamalar</button>
+    </aside>
+    <main class="content">
+      <div class="page act" id="page-overview"></div>
+      <div class="page" id="page-orders"></div>
+      <div class="page" id="page-products"></div>
+      <div class="page" id="page-buyers"></div>
+      <div class="page" id="page-sellers"></div>
+      <div class="page" id="page-finance"></div>
+      <div class="page" id="page-channels"></div>
+      <div class="page" id="page-settings"></div>
+    </main>
   </div>
 </div>
 
 <script>
-let currentLang = 'uz';
-let statsData = null;
-let pwd = '';
-let gmvChart = null;
-let ordersChart = null;
+let pwd='',statsData=null,currentPage='overview',sidebarOpen=true,gmvChart=null,oFilter='',oPage=1,pFilter='all';
+const fmtM=n=>{if(!n)return'0';if(n>=1e9)return(n/1e9).toFixed(1)+' mlrd';if(n>=1e6)return(n/1e6).toFixed(1)+' mln';if(n>=1e3)return(n/1e3).toFixed(0)+' ming';return''+n;};
+const fmtF=n=>(n||0).toLocaleString('uz-UZ')+" so'm";
+const fmtN=n=>(n||0).toLocaleString('uz-UZ');
+const updTs=()=>document.getElementById('ts').textContent=new Date().toLocaleTimeString('uz-UZ',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-const T = {
-  uz: {
-    kpi_title: 'Asosiy Ko\'rsatkichlar',
-    sellers_title: 'Sotuvchilar',
-    finance_title: 'Moliyaviy Ko\'rsatkichlar',
-    funnel_title: 'Konversiya',
-    chart_title: 'O\'sish Grafigi (14 kun)',
-    chart_sub: 'Kunlik GMV va buyurtmalar',
-    total_sellers: 'Jami sotuvchilar',
-    channels: 'Tasdiqlangan kanallar',
-    total_buyers: 'Jami xaridorlar',
-    today_buyers: 'Bugun yangi xaridorlar',
-    total_orders: 'Jami buyurtmalar',
-    today_orders: 'Bugungi buyurtmalar',
-    week_orders: 'Haftalik buyurtmalar',
-    conversion: 'Konversiya',
-    gmv_total: 'Jami GMV',
-    gmv_today: 'Bugungi GMV',
-    gmv_week: 'Haftalik GMV',
-    commission: 'Joynshop daromadi (5%)',
-    commission_week: 'Haftalik daromad',
-    avg_order: "O'rtacha chek",
-    active_products: 'Aktiv mahsulotlar',
-    filled_groups: "To'lgan guruhlar",
-    total_products: 'Jami e\'lonlar',
-    fill_rate: "Guruh to'lish foizi",
-    order_conv: 'Buyurtma → To\'lov',
-    daily_active: 'Bugungi aktivlik',
-    gmv_label: 'GMV (so\'m)',
-    orders_label: 'Buyurtmalar',
-  },
-  en: {
-    kpi_title: 'Key Metrics',
-    sellers_title: 'Sellers',
-    finance_title: 'Financial Metrics',
-    funnel_title: 'Conversion Funnel',
-    chart_title: 'Growth Chart (14 days)',
-    chart_sub: 'Daily GMV and orders',
-    total_sellers: 'Total sellers',
-    channels: 'Verified channels',
-    total_buyers: 'Total buyers',
-    today_buyers: "Today's new buyers",
-    total_orders: 'Total orders',
-    today_orders: "Today's orders",
-    week_orders: 'Weekly orders',
-    conversion: 'Conversion rate',
-    gmv_total: 'Total GMV',
-    gmv_today: "Today's GMV",
-    gmv_week: 'Weekly GMV',
-    commission: 'Joynshop revenue (5%)',
-    commission_week: 'Weekly revenue',
-    avg_order: 'Average order value',
-    active_products: 'Active products',
-    filled_groups: 'Filled groups',
-    total_products: 'Total listings',
-    fill_rate: 'Group fill rate',
-    order_conv: 'Order → Payment',
-    daily_active: 'Daily activity',
-    gmv_label: 'GMV (UZS)',
-    orders_label: 'Orders',
-  }
-};
+function doLogin(){
+  pwd=document.getElementById('pwd-input').value;
+  document.getElementById('lbtn').textContent='...';
+  fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`).then(r=>{if(!r.ok)throw 0;return r.json();})
+    .then(d=>{statsData=d;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';goPage('overview');})
+    .catch(()=>{document.getElementById('lerr').style.display='block';document.getElementById('lbtn').textContent='Kirish';});
+}
+document.getElementById('pwd-input').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+function doLogout(){pwd='';statsData=null;document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';document.getElementById('pwd-input').value='';document.getElementById('lbtn').textContent='Kirish';document.getElementById('lerr').style.display='none';}
+function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').classList.toggle('col',!sidebarOpen);}
 
-function t(key) { return T[currentLang][key] || key; }
-
-function setLang(lang) {
-  currentLang = lang;
-  document.getElementById('lang-uz').classList.toggle('active', lang === 'uz');
-  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
-  document.getElementById('login-sub').textContent =
-    lang === 'uz' ? 'Investor Panel · Kirish uchun parol yozing'
-                  : 'Investor Panel · Enter password to continue';
-  if (statsData) renderDashboard(statsData);
+const pageOrder=['overview','orders','products','buyers','sellers','finance','channels','settings'];
+function goPage(name){
+  currentPage=name;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('act'));
+  document.getElementById('page-'+name).classList.add('act');
+  document.querySelectorAll('.ni').forEach((b,i)=>b.classList.toggle('act',pageOrder[i]===name));
+  loadPage(name);updTs();
+}
+function refreshCurrent(){loadPage(currentPage);updTs();}
+function loadPage(n){
+  var fns={overview:loadOv,orders:function(){loadOrders(oPage,oFilter);},products:function(){loadProducts(pFilter);},buyers:function(){loadBuyers(1);},sellers:loadSellers,finance:loadFinance,channels:loadChannels,settings:loadSettings};
+  if(fns[n])fns[n]();
 }
 
-function fmtMoney(n) {
-  if (n >= 1_000_000_000) return (n/1_000_000_000).toFixed(1) + ' mlrd';
-  if (n >= 1_000_000) return (n/1_000_000).toFixed(1) + ' mln';
-  if (n >= 1_000) return (n/1_000).toFixed(0) + ' ming';
-  return n.toString();
-}
-
-function fmtFull(n) {
-  return n.toLocaleString('uz-UZ') + " so'm";
-}
-
-function doLogin() {
-  pwd = document.getElementById('pwd-input').value;
-  document.getElementById('login-btn').textContent = '...';
-  fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`)
-    .then(r => {
-      if (!r.ok) throw new Error('wrong');
-      return r.json();
-    })
-    .then(data => {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      statsData = data;
-      renderDashboard(data);
-    })
-    .catch(() => {
-      document.getElementById('login-error').style.display = 'block';
-      document.getElementById('login-btn').textContent = 'Kirish / Sign In';
-    });
-}
-
-function loadData() {
-  fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`)
-    .then(r => r.json())
-    .then(data => {
-      statsData = data;
-      renderDashboard(data);
-    });
-}
-
-document.getElementById('pwd-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
-
-function renderDashboard(d) {
-  const now = new Date();
-  document.getElementById('last-updated').textContent =
-    now.toLocaleTimeString('uz-UZ', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-
-  const html = `
-    <!-- KPI -->
-    <div class="section-title">${t('kpi_title')}</div>
-    <div class="cards-grid cols-4">
-      <div class="card highlight">
-        <div class="card-icon icon-green" style="background:rgba(255,255,255,0.15)">💰</div>
-        <div class="card-label">${t('gmv_total')}</div>
-        <div class="card-value">${fmtMoney(d.finance.gmv_total)}</div>
-        <div class="card-sub">${fmtFull(d.finance.gmv_total)}</div>
+// OVERVIEW
+function loadOv(){
+  fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`).then(r=>r.json()).then(d=>{
+    statsData=d;
+    document.getElementById('page-overview').innerHTML=`
+      <div class="phdr"><div><div class="ptitle">Overview</div><div class="psub">Joynshop umumiy statistikasi</div></div></div>
+      <div class="slbl">Asosiy ko'rsatkichlar</div>
+      <div class="g g4">
+        <div class="card hero"><div class="cic" style="background:rgba(255,255,255,.15);color:white"><i class="ri-money-dollar-circle-line"></i></div><div class="clbl">Jami GMV</div><div class="cval">${fmtM(d.finance.gmv_total)}</div><div class="csub">${fmtF(d.finance.gmv_total)}</div></div>
+        <div class="card"><div class="cic ic-g"><i class="ri-shopping-bag-3-line"></i></div><div class="clbl">Jami buyurtmalar</div><div class="cval">${fmtN(d.orders.total)}</div><div class="csub"><span class="bdg bg bp">+${d.orders.today} bugun</span></div></div>
+        <div class="card"><div class="cic ic-b"><i class="ri-group-line"></i></div><div class="clbl">Jami xaridorlar</div><div class="cval">${fmtN(d.buyers.total)}</div><div class="csub"><span class="bdg bb bp">+${d.buyers.today} bugun</span></div></div>
+        <div class="card"><div class="cic ic-y"><i class="ri-bar-chart-2-line"></i></div><div class="clbl">Daromad (5%)</div><div class="cval">${fmtM(d.finance.commission_total)}</div><div class="csub">${fmtF(d.finance.commission_total)}</div></div>
       </div>
-      <div class="card">
-        <div class="card-icon icon-green">📦</div>
-        <div class="card-label">${t('total_orders')}</div>
-        <div class="card-value">${d.orders.total.toLocaleString()}</div>
-        <div class="card-sub">
-          <span class="card-badge badge-green">+${d.orders.today} ${currentLang==='uz'?'bugun':'today'}</span>
+      <div class="slbl">O'sish grafigi</div>
+      <div class="chard"><div class="chdr"><div><div class="chtitle">14 kunlik GMV va buyurtmalar</div><div class="chsub">Kunlik dinamika</div></div><div class="chleg"><div style="display:flex;align-items:center;gap:5px"><div class="chlegdot" style="background:var(--o500)"></div>GMV</div><div style="display:flex;align-items:center;gap:5px"><div class="chlegdot" style="background:var(--b500)"></div>Buyurtmalar</div></div></div><div class="chwrap"><canvas id="gmvChart"></canvas></div></div>
+      <div class="g g2" style="margin-top:14px">
+        <div class="card"><div class="slbl" style="margin:0 0 14px">Moliyaviy ko'rsatkichlar</div>
+          <div class="prow"><div class="plbl">Bugungi GMV</div><div class="ptrk"><div class="pfil" style="width:${d.finance.gmv_total?Math.min(100,d.finance.gmv_today/d.finance.gmv_total*100*20):0}%"></div></div><div class="pval mono">${fmtM(d.finance.gmv_today)}</div></div>
+          <div class="prow"><div class="plbl">Haftalik GMV</div><div class="ptrk"><div class="pfil" style="width:${d.finance.gmv_total?Math.min(100,d.finance.gmv_week/d.finance.gmv_total*100*2):0}%;background:var(--b500)"></div></div><div class="pval mono">${fmtM(d.finance.gmv_week)}</div></div>
+          <div class="prow"><div class="plbl">O'rtacha chek</div><div class="ptrk"><div class="pfil" style="width:55%;background:var(--g500)"></div></div><div class="pval mono">${fmtM(d.finance.avg_order)}</div></div>
+          <div class="prow"><div class="plbl">Haftalik daromad</div><div class="ptrk"><div class="pfil" style="width:${d.finance.commission_total?Math.min(100,d.finance.commission_week/d.finance.commission_total*100*2):0}%;background:#7D52F4"></div></div><div class="pval mono">${fmtM(d.finance.commission_week)}</div></div>
+        </div>
+        <div class="card"><div class="slbl" style="margin:0 0 14px">Konversiya</div>
+          <div class="prow"><div class="plbl">Guruh to'lish foizi</div><div class="ptrk"><div class="pfil" style="width:${d.products.total?(d.products.filled/d.products.total*100):0}%"></div></div><div class="pval">${d.products.total?Math.round(d.products.filled/d.products.total*100):0}%</div></div>
+          <div class="prow"><div class="plbl">Buyurtma → To'lov</div><div class="ptrk"><div class="pfil" style="width:${d.orders.conversion}%;background:var(--b500)"></div></div><div class="pval">${d.orders.conversion}%</div></div>
+          <div class="prow"><div class="plbl">Haftalik buyurtmalar</div><div class="ptrk"><div class="pfil" style="width:${d.orders.total?Math.min(100,d.orders.week/d.orders.total*100*4):0}%;background:var(--g500)"></div></div><div class="pval">${d.orders.week}</div></div>
+          <div class="prow"><div class="plbl">Bugungi buyurtmalar</div><div class="ptrk"><div class="pfil" style="width:${d.orders.week?Math.min(100,d.orders.today/d.orders.week*100*7):0}%;background:#7D52F4"></div></div><div class="pval">${d.orders.today}</div></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-icon icon-blue">👥</div>
-        <div class="card-label">${t('total_buyers')}</div>
-        <div class="card-value">${d.buyers.total.toLocaleString()}</div>
-        <div class="card-sub">
-          <span class="card-badge badge-blue">+${d.buyers.today} ${currentLang==='uz'?'bugun':'today'}</span>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-icon icon-amber">📊</div>
-        <div class="card-label">${t('commission')}</div>
-        <div class="card-value">${fmtMoney(d.finance.commission_total)}</div>
-        <div class="card-sub">${fmtFull(d.finance.commission_total)}</div>
-      </div>
-    </div>
-
-    <!-- CHART -->
-    <div class="section-title">${t('chart_title')}</div>
-    <div class="chart-card">
-      <div class="chart-header">
-        <div>
-          <div class="chart-title">${t('chart_title')}</div>
-          <div class="chart-subtitle">${t('chart_sub')}</div>
-        </div>
-        <div style="display:flex;gap:16px;align-items:center">
-          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)">
-            <div style="width:12px;height:12px;background:var(--accent);border-radius:3px"></div>
-            ${t('gmv_label')}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)">
-            <div style="width:12px;height:12px;background:var(--amber);border-radius:3px"></div>
-            ${t('orders_label')}
-          </div>
-        </div>
-      </div>
-      <div class="chart-container">
-        <canvas id="gmvChart"></canvas>
-      </div>
-    </div>
-
-    <!-- FINANCE + SELLERS -->
-    <div class="cards-grid cols-2" style="margin-top:24px">
-      <!-- Finance -->
-      <div class="card">
-        <div class="section-title" style="margin-top:0">${t('finance_title')}</div>
-        <div class="progress-row">
-          <div class="progress-label">${t('gmv_today')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.finance.gmv_total?Math.min(100,d.finance.gmv_today/d.finance.gmv_total*100*20):0}%"></div>
-          </div>
-          <div class="progress-val fmt-money">${fmtMoney(d.finance.gmv_today)}</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('gmv_week')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.finance.gmv_total?Math.min(100,d.finance.gmv_week/d.finance.gmv_total*100*2):0}%;background:var(--amber)"></div>
-          </div>
-          <div class="progress-val fmt-money">${fmtMoney(d.finance.gmv_week)}</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('avg_order')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:60%;background:var(--blue)"></div>
-          </div>
-          <div class="progress-val fmt-money">${fmtMoney(d.finance.avg_order)}</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('commission_week')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.finance.commission_total?Math.min(100,d.finance.commission_week/d.finance.commission_total*100*2):0}%;background:#9b59b6"></div>
-          </div>
-          <div class="progress-val fmt-money">${fmtMoney(d.finance.commission_week)}</div>
-        </div>
-      </div>
-
-      <!-- Conversion -->
-      <div class="card">
-        <div class="section-title" style="margin-top:0">${t('funnel_title')}</div>
-        <div class="progress-row">
-          <div class="progress-label">${t('fill_rate')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.products.total?(d.products.filled/d.products.total*100):0}%"></div>
-          </div>
-          <div class="progress-val">${d.products.total?Math.round(d.products.filled/d.products.total*100):0}%</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('order_conv')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.orders.conversion}%;background:var(--amber)"></div>
-          </div>
-          <div class="progress-val">${d.orders.conversion}%</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('week_orders')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.orders.total?Math.min(100,d.orders.week/d.orders.total*100*4):0}%;background:var(--blue)"></div>
-          </div>
-          <div class="progress-val">${d.orders.week}</div>
-        </div>
-        <div class="progress-row">
-          <div class="progress-label">${t('today_orders')}</div>
-          <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width:${d.orders.week?Math.min(100,d.orders.today/d.orders.week*100*7):0}%;background:#9b59b6"></div>
-          </div>
-          <div class="progress-val">${d.orders.today}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BOTTOM STATS -->
-    <div class="cards-grid cols-4" style="margin-top:16px">
-      <div class="card">
-        <div class="card-label">🏪 ${t('total_sellers')}</div>
-        <div class="card-value" style="font-size:28px">${d.sellers.total}</div>
-        <div class="card-sub">${d.sellers.channels} ${t('channels')}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">📢 ${t('active_products')}</div>
-        <div class="card-value" style="font-size:28px">${d.products.active}</div>
-        <div class="card-sub">${t('total_products')}: ${d.products.total}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">✅ ${t('filled_groups')}</div>
-        <div class="card-value" style="font-size:28px">${d.products.filled}</div>
-        <div class="card-sub"><span class="card-badge badge-green">${d.products.total?Math.round(d.products.filled/d.products.total*100):0}%</span></div>
-      </div>
-      <div class="card">
-        <div class="card-label">💎 ${t('commission')}</div>
-        <div class="card-value" style="font-size:28px">${fmtMoney(d.finance.commission_total)}</div>
-        <div class="card-sub">${currentLang==='uz'?'Haftalik':'Weekly'}: ${fmtMoney(d.finance.commission_week)}</div>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('main-content').innerHTML = html;
-  renderChart(d.chart);
-
-  // Kanallar ro'yxati
-  const channelList = d.sellers.channel_list || [];
-  if (channelList.length > 0) {
-    const channelHtml = `
-      <div class="section-title" style="margin-top:32px">${currentLang==='uz' ? 'Faol kanallar' : 'Active Channels'}</div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <table class="data-table" style="padding:0">
-          <thead>
-            <tr>
-              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Kanal':'Channel'}</th>
-              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Aktiv mahsulot':'Active products'}</th>
-              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Moderatorlar':'Moderators'}</th>
-              <th style="padding:16px 24px 12px">${currentLang==='uz'?'Egasi ID':'Owner ID'}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${channelList.map(ch => `
-              <tr>
-                <td style="padding:14px 24px">
-                  <a href="https://t.me/${ch.username.replace('@','')}" target="_blank"
-                     style="color:var(--accent);font-weight:600;text-decoration:none">
-                    ${ch.username}
-                  </a>
-                </td>
-                <td style="padding:14px 24px">
-                  <span style="background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">
-                    ${ch.products}
-                  </span>
-                </td>
-                <td style="padding:14px 24px;color:var(--text2)">${ch.mods}</td>
-                <td style="padding:14px 24px">
-                  <code style="font-size:12px;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:6px">${ch.owner}</code>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+      <div class="g g4" style="margin-top:14px">
+        <div class="card"><div class="clbl"><i class="ri-store-2-line"></i> Sotuvchilar</div><div class="cval" style="font-size:26px">${d.sellers.total}</div><div class="csub">${d.sellers.channels} kanal</div></div>
+        <div class="card"><div class="clbl"><i class="ri-megaphone-line"></i> Aktiv mahsulotlar</div><div class="cval" style="font-size:26px">${d.products.active}</div><div class="csub">Jami: ${d.products.total}</div></div>
+        <div class="card"><div class="clbl"><i class="ri-checkbox-circle-line"></i> To'lgan guruhlar</div><div class="cval" style="font-size:26px">${d.products.filled}</div><div class="csub"><span class="bdg bg bp">${d.products.total?Math.round(d.products.filled/d.products.total*100):0}% success</span></div></div>
+        <div class="card"><div class="clbl"><i class="ri-links-line"></i> Referrallar</div><div class="cval" style="font-size:26px">${(d.referrals&&d.referrals.total_referred?d.referrals.total_referred:0)||0}</div><div class="csub">${(d.referrals&&d.referrals.total_referrers?d.referrals.total_referrers:0)||0} referrer</div></div>
       </div>`;
-    document.getElementById('main-content').innerHTML += channelHtml;
-  }
+    renderChart(d.chart);
+  });
 }
 
-function renderChart(chartData) {
-  const ctx = document.getElementById('gmvChart');
-  if (!ctx) { setTimeout(() => renderChart(chartData), 100); return; }
-  if (gmvChart) { gmvChart.destroy(); gmvChart = null; }
-
-  const labels = chartData.map(d => d.date);
-  const gmvData = chartData.map(d => d.gmv);
-  const ordersData = chartData.map(d => d.orders);
-
-  gmvChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: t('gmv_label'),
-          data: gmvData,
-          backgroundColor: 'rgba(45, 106, 79, 0.15)',
-          borderColor: 'rgba(45, 106, 79, 0.8)',
-          borderWidth: 2,
-          borderRadius: 6,
-          yAxisID: 'y',
-        },
-        {
-          label: t('orders_label'),
-          data: ordersData,
-          type: 'line',
-          borderColor: '#F4A261',
-          backgroundColor: 'rgba(244, 162, 97, 0.1)',
-          borderWidth: 2.5,
-          pointBackgroundColor: '#F4A261',
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          fill: true,
-          tension: 0.4,
-          yAxisID: 'y2',
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1A1814',
-          titleColor: '#fff',
-          bodyColor: 'rgba(255,255,255,0.8)',
-          padding: 12,
-          cornerRadius: 10,
-          callbacks: {
-            label: ctx => {
-              if (ctx.datasetIndex === 0)
-                return ` GMV: ${ctx.raw.toLocaleString()} so'm`;
-              return ` ${t('orders_label')}: ${ctx.raw}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { font: { family: 'DM Mono', size: 11 }, color: '#A09890' }
-        },
-        y: {
-          position: 'left',
-          grid: { color: 'rgba(0,0,0,0.04)' },
-          ticks: {
-            font: { family: 'DM Mono', size: 11 },
-            color: '#A09890',
-            callback: v => fmtMoney(v)
-          }
-        },
-        y2: {
-          position: 'right',
-          grid: { display: false },
-          ticks: {
-            font: { family: 'DM Mono', size: 11 },
-            color: '#F4A261',
-          }
-        }
+function renderChart(data){
+  setTimeout(()=>{
+    const ctx=document.getElementById('gmvChart');
+    if(!ctx)return;
+    if(gmvChart){gmvChart.destroy();gmvChart=null;}
+    gmvChart=new Chart(ctx,{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
+      {label:'GMV',data:data.map(d=>d.gmv),backgroundColor:'rgba(250,115,25,0.12)',borderColor:'rgba(250,115,25,0.8)',borderWidth:2,borderRadius:5,yAxisID:'y'},
+      {label:'Buyurtmalar',data:data.map(d=>d.orders),type:'line',borderColor:'#335CFF',backgroundColor:'rgba(51,92,255,0.06)',borderWidth:2,pointBackgroundColor:'#335CFF',pointRadius:3,fill:true,tension:0.4,yAxisID:'y2'}
+    ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1C1C1C',titleColor:'#fff',bodyColor:'rgba(255,255,255,.8)',padding:10,cornerRadius:8}},
+      scales:{
+        x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#A3A3A3'}},
+        y:{position:'left',grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{family:'Inter',size:10},color:'#A3A3A3',callback:v=>fmtM(v)}},
+        y2:{position:'right',grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#335CFF'}}
       }
-    }
+    }});
+  },50);
+}
+
+// ORDERS
+function loadOrders(page=1,status=oFilter){
+  oFilter=status;oPage=page;
+  const el=document.getElementById('page-orders');
+  el.innerHTML=`<div class="phdr"><div><div class="ptitle">Buyurtmalar</div></div></div><div class="lwrap"><div class="spin"></div></div>`;
+  fetch(`/api/admin/orders?pwd=${encodeURIComponent(pwd)}&page=${page}&status=${status}`).then(r=>r.json()).then(d=>{
+    const sm={'':'Barchasi',pending:"To'lov kutilmoqda",confirming:'Tekshirilmoqda',confirmed:'Tasdiqlandi',rejected:'Rad etildi',cancelled:'Bekor'};
+    const filts=Object.entries(sm).map(([k,v])=>`<button class="fb ${oFilter===k?'act':''}" onclick="loadOrders(1,'${k}')">${v}</button>`).join('');
+    const sc={confirmed:'bg',confirming:'by',pending:'bx',rejected:'br',cancelled:'bx'};
+    const rows=d.orders.map(o=>{
+      const act=o.status==='confirming'
+        ?`<div style="display:flex;gap:5px"><button class="btn bsm bsuc" onclick="confirmOrder('${o.code}')"><i class="ri-check-line"></i> Tasdiqlash</button><button class="btn bsm bdan" onclick="rejectOrder('${o.code}')"><i class="ri-close-line"></i></button></div>`
+        :`<span class="bdg ${sc[o.status]||'bx'} bp">${o.status_icon} ${o.status_text}</span>`;
+      return `<tr><td><span class="code">${o.code}</span></td><td><div style="font-weight:500">${o.product||'—'}</div><div style="font-size:11px;color:var(--n400)">${o.shop||''}</div></td><td><div>${o.buyer_name||'—'}</div><div style="font-size:11px;color:var(--n400)">${o.buyer_id||''}</div></td><td><span class="mono">${fmtF(o.amount)}</span></td><td><span class="bdg ${o.type==='solo'?'bb':'bo'} bp">${o.type==='solo'?'👤 Yakka':'👥 Guruh'}</span></td><td style="font-size:11px;color:var(--n500)">${o.created||''}</td><td>${act}</td></tr>`;
+    }).join('');
+    const pages=Array.from({length:d.pages},(_,i)=>i+1).map(p=>`<button class="pgb ${p===d.page?'act':''}" onclick="loadOrders(${p},'${oFilter}')">${p}</button>`).join('');
+    el.innerHTML=`<div class="phdr"><div><div class="ptitle">Buyurtmalar</div><div class="psub">Jami: ${d.total} ta</div></div></div>
+      <div class="filts">${filts}</div>
+      <div class="twrap"><table><thead><tr><th>Kod</th><th>Mahsulot</th><th>Xaridor</th><th>Summa</th><th>Tur</th><th>Vaqt</th><th>Amal</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" class="empty">Buyurtma yo&#39;q</td></tr>'}</tbody></table>
+      <div class="tfoot"><span>${d.total} ta</span><div class="pgn">${pages}</div></div></div>`;
   });
+}
+function confirmOrder(c){if(!confirm(`#${c} tasdiqlaysizmi?`))return;fetch(`/api/admin/order/${c}/confirm?pwd=${encodeURIComponent(pwd)}`,{method:'POST'}).then(()=>loadOrders(oPage,oFilter));}
+function rejectOrder(c){if(!confirm(`#${c} rad etasizmi?`))return;fetch(`/api/admin/order/${c}/reject?pwd=${encodeURIComponent(pwd)}`,{method:'POST'}).then(()=>loadOrders(oPage,oFilter));}
+
+// PRODUCTS
+function loadProducts(f='all'){
+  pFilter=f;
+  const el=document.getElementById('page-products');
+  el.innerHTML=`<div class="phdr"><div><div class="ptitle">Mahsulotlar</div></div></div><div class="lwrap"><div class="spin"></div></div>`;
+  fetch(`/api/admin/products?pwd=${encodeURIComponent(pwd)}`).then(r=>r.json()).then(all=>{
+    let list=f==='active'?all.filter(p=>p.status!=='closed'):f==='closed'?all.filter(p=>p.status==='closed'):all;
+    const filts=[['all','Barchasi'],['active','Aktiv'],['closed','Yopilgan']].map(([k,v])=>`<button class="fb ${pFilter===k?'act':''}" onclick="loadProducts('${k}')">${v}</button>`).join('');
+    const rows=list.map(p=>{
+      const pct=Math.min(100,Math.round(p.count/p.min_group*100));
+      const ia=p.status!=='closed';
+      const acts=ia?`<div style="display:flex;gap:5px"><button class="btn bsm bgh" onclick="extendProduct('${p.id}')"><i class="ri-time-add-line"></i> +24h</button><button class="btn bsm bdan" onclick="closeProduct('${p.id}')"><i class="ri-lock-line"></i></button></div>`:`<span style="font-size:12px;color:var(--n400)">—</span>`;
+      return `<tr><td><span class="code">${p.id}</span></td><td><div style="font-weight:500">${p.name}</div><div style="font-size:11px;color:var(--n400)">${p.shop_name}</div></td><td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:100px;height:5px;background:var(--n200);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--o500);border-radius:99px"></div></div><span style="font-size:12px;color:var(--n500)">${p.count}/${p.min_group}</span></div></td><td><span class="mono">${fmtF(p.group_price)}</span></td><td><span class="bdg bso bp">−${p.grp_disc}%</span></td><td style="font-size:11px;color:var(--n500)">${p.deadline||'—'}</td><td><span class="bdg ${ia?'bg':'bx'} bp">${ia?'🔥 Aktiv':'Yopilgan'}</span></td><td>${acts}</td></tr>`;
+    }).join('');
+    el.innerHTML=`<div class="phdr"><div><div class="ptitle">Mahsulotlar</div><div class="psub">Jami: ${all.length} ta</div></div></div>
+      <div class="filts">${filts}</div>
+      <div class="twrap"><table><thead><tr><th>ID</th><th>Mahsulot</th><th>Guruh</th><th>Narx</th><th>Chegirma</th><th>Deadline</th><th>Holat</th><th>Amal</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="empty">Mahsulot yo&#39;q</td></tr>'}</tbody></table></div>`;
+  });
+}
+function extendProduct(pid){fetch(`/api/admin/product/${pid}/extend?pwd=${encodeURIComponent(pwd)}`,{method:'POST'}).then(r=>r.json()).then(d=>{if(d.ok){alert('✅ +24 soat: '+d.deadline);loadProducts(pFilter);}});}
+function closeProduct(pid){if(!confirm('Yopmoqchimisiz?'))return;fetch(`/api/admin/product/${pid}/close?pwd=${encodeURIComponent(pwd)}`,{method:'POST'}).then(()=>loadProducts(pFilter));}
+
+// BUYERS
+function loadBuyers(page=1){
+  const el=document.getElementById('page-buyers');
+  el.innerHTML=`<div class="phdr"><div><div class="ptitle">Xaridorlar</div></div></div><div class="lwrap"><div class="spin"></div></div>`;
+  fetch(`/api/admin/buyers?pwd=${encodeURIComponent(pwd)}&page=${page}`).then(r=>r.json()).then(d=>{
+    const rows=d.buyers.map(b=>`<tr><td><span class="code">${b.uid}</span></td><td><span class="mono">${fmtF(b.total_spent)}</span></td><td>${b.confirmed}</td><td><span class="bdg bg bp">${fmtF(b.cashback)}</span></td><td>${b.referrals}</td><td style="font-size:11px;color:var(--n500)">${b.last_order||'—'}</td></tr>`).join('');
+    const pages=Array.from({length:d.pages},(_,i)=>i+1).map(p=>`<button class="pgb ${p===d.page?'act':''}" onclick="loadBuyers(${p})">${p}</button>`).join('');
+    el.innerHTML=`<div class="phdr"><div><div class="ptitle">Xaridorlar</div><div class="psub">Jami: ${d.total} ta</div></div></div>
+      <div class="twrap"><table><thead><tr><th>Telegram ID</th><th>Jami xarid</th><th>Buyurtmalar</th><th>Cashback</th><th>Referrallar</th><th>Oxirgi xarid</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="6" class="empty">Xaridor yo&#39;q</td></tr>'}</tbody></table>
+      <div class="tfoot"><span>${d.total} ta</span><div class="pgn">${pages}</div></div></div>`;
+  });
+}
+
+// SELLERS
+function loadSellers(){
+  const el=document.getElementById('page-sellers');
+  el.innerHTML=`<div class="phdr"><div><div class="ptitle">Sotuvchilar</div></div></div><div class="lwrap"><div class="spin"></div></div>`;
+  fetch(`/api/admin/sellers?pwd=${encodeURIComponent(pwd)}`).then(r=>r.json()).then(list=>{
+    const rows=list.map((s,i)=>`<tr><td><span class="bdg bx">#${i+1}</span></td><td><span class="code">${s.uid}</span></td><td>${s.channels.join(', ')||'—'}</td><td><span class="bdg bg bp">${s.active}</span>/${s.products}</td><td><span class="mono">${fmtF(s.revenue)}</span></td><td style="color:var(--o600);font-weight:600">${fmtF(s.commission)}</td><td><span class="bdg bsg bp">${fmtF(s.payout)}</span></td><td>${s.orders}</td></tr>`).join('');
+    el.innerHTML=`<div class="phdr"><div><div class="ptitle">Sotuvchilar</div><div class="psub">Jami: ${list.length} ta</div></div></div>
+      <div class="twrap"><table><thead><tr><th>#</th><th>ID</th><th>Kanallar</th><th>Mahsulotlar</th><th>Sotuv</th><th>Komissiya</th><th>To'lov</th><th>Buyurtmalar</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="empty">Sotuvchi yo&#39;q</td></tr>'}</tbody></table></div>`;
+  });
+}
+
+// FINANCE
+function loadFinance(){if(!statsData){fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`).then(r=>r.json()).then(d=>{statsData=d;renderFin(d)});}else renderFin(statsData);}
+function renderFin(d){
+  document.getElementById('page-finance').innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Moliya</div><div class="psub">Moliyaviy hisobot</div></div></div>
+    <div class="g g4"><div class="card hero"><div class="cic" style="background:rgba(255,255,255,.15);color:white"><i class="ri-money-dollar-circle-line"></i></div><div class="clbl">Jami GMV</div><div class="cval">${fmtM(d.finance.gmv_total)}</div><div class="csub">${fmtF(d.finance.gmv_total)}</div></div>
+    <div class="card"><div class="cic ic-y"><i class="ri-calendar-todo-line"></i></div><div class="clbl">Bugungi GMV</div><div class="cval">${fmtM(d.finance.gmv_today)}</div><div class="csub">${fmtF(d.finance.gmv_today)}</div></div>
+    <div class="card"><div class="cic ic-b"><i class="ri-calendar-check-line"></i></div><div class="clbl">Haftalik GMV</div><div class="cval">${fmtM(d.finance.gmv_week)}</div><div class="csub">${fmtF(d.finance.gmv_week)}</div></div>
+    <div class="card"><div class="cic ic-g"><i class="ri-gem-line"></i></div><div class="clbl">Jami komissiya</div><div class="cval">${fmtM(d.finance.commission_total)}</div><div class="csub">Haftalik: ${fmtM(d.finance.commission_week)}</div></div></div>
+    <div class="g g2" style="margin-top:14px">
+      <div class="card"><div class="slbl" style="margin:0 0 14px">Buyurtma statistikasi</div>
+        <div class="prow"><div class="plbl">Jami buyurtmalar</div><div class="ptrk"><div class="pfil" style="width:100%"></div></div><div class="pval">${d.orders.total}</div></div>
+        <div class="prow"><div class="plbl">Haftalik</div><div class="ptrk"><div class="pfil" style="width:${d.orders.total?Math.min(100,d.orders.week/d.orders.total*100*4):0}%;background:var(--b500)"></div></div><div class="pval">${d.orders.week}</div></div>
+        <div class="prow"><div class="plbl">Bugun</div><div class="ptrk"><div class="pfil" style="width:${d.orders.week?Math.min(100,d.orders.today/d.orders.week*100*7):0}%;background:var(--g500)"></div></div><div class="pval">${d.orders.today}</div></div>
+        <div class="prow"><div class="plbl">O'rtacha chek</div><div class="ptrk"><div class="pfil" style="width:50%;background:#7D52F4"></div></div><div class="pval mono">${fmtM(d.finance.avg_order)}</div></div>
+      </div>
+      <div class="card"><div class="slbl" style="margin:0 0 14px">Referral daromadi</div>
+        <div class="prow"><div class="plbl">Jami referrerlar</div><div class="ptrk"><div class="pfil" style="width:100%"></div></div><div class="pval">${(d.referrals&&d.referrals.total_referrers?d.referrals.total_referrers:0)||0}</div></div>
+        <div class="prow"><div class="plbl">Taklif qilinganlar</div><div class="ptrk"><div class="pfil" style="width:${((d.referrals&&d.referrals.total_referrers?d.referrals.total_referrers:0)&&(d.referrals&&d.referrals.total_referred?d.referrals.total_referred:0))?d.referrals.total_referred/d.referrals.total_referrers*100:0}%;background:var(--b500)"></div></div><div class="pval">${(d.referrals&&d.referrals.total_referred?d.referrals.total_referred:0)||0}</div></div>
+        <div class="prow"><div class="plbl">Cashback berildi</div><div class="ptrk"><div class="pfil" style="width:40%;background:var(--g500)"></div></div><div class="pval mono">${fmtM((d.referrals&&d.referrals.total_cashback?d.referrals.total_cashback:0)||0)}</div></div>
+      </div>
+    </div>`;
+}
+
+// CHANNELS
+function loadChannels(){if(!statsData){fetch(`/api/stats?pwd=${encodeURIComponent(pwd)}`).then(r=>r.json()).then(d=>{statsData=d;renderCh(d)});}else renderCh(statsData);}
+function renderCh(d){
+  const ch=d.sellers.channel_list||[];
+  const rows=ch.map(c=>`<tr><td><a href="https://t.me/${c.username.replace('@','')}" target="_blank" style="color:var(--o600);font-weight:600;text-decoration:none"><i class="ri-telegram-line"></i> ${c.username}</a></td><td><span class="bdg bso bp">${c.products}</span></td><td>${c.mods}</td><td><span class="code">${c.owner}</span></td></tr>`).join('');
+  document.getElementById('page-channels').innerHTML=`<div class="phdr"><div><div class="ptitle">Kanallar</div><div class="psub">Jami: ${ch.length} ta tasdiqlangan</div></div></div>
+    <div class="twrap"><table><thead><tr><th>Kanal</th><th>Aktiv mahsulotlar</th><th>Moderatorlar</th><th>Egasi ID</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="4" class="empty">Kanal yo&#39;q</td></tr>'}</tbody></table></div>`;
+}
+
+// SETTINGS
+function loadSettings(){
+  document.getElementById('page-settings').innerHTML=`
+    <div class="phdr"><div><div class="ptitle">Sozlamalar</div><div class="psub">Tizim konfiguratsiyasi</div></div></div>
+    <div class="card"><div class="slbl" style="margin:0 0 0">Tizim ma'lumotlari</div>
+      <div class="srow"><div><div class="slabel">Komissiya foizi</div><div class="ssub">Har bir muvaffaqiyatli sotuv uchun</div></div><span class="bdg bg bp" style="font-size:13px;padding:4px 12px">5%</span></div>
+      <div class="srow"><div><div class="slabel">Default deadline</div><div class="ssub">Yangi mahsulot uchun standart muddat</div></div><span class="bdg bb bp" style="font-size:13px;padding:4px 12px">48 soat</span></div>
+      <div class="srow"><div><div class="slabel">Dashboard versiyasi</div></div><span class="bdg bx bp">v2.1</span></div>
+    </div>
+    <div class="card" style="margin-top:14px"><div class="slbl" style="margin:0 0 0">Tezkor amallar</div>
+      <div class="srow"><div><div class="slabel">Ma'lumotlarni yangilash</div></div><button class="btn bmd bgh" onclick="refreshCurrent()"><i class="ri-refresh-line"></i> Yangilash</button></div>
+      <div class="srow"><div><div class="slabel">Hisobdan chiqish</div></div><button class="btn bmd bdan" onclick="doLogout()"><i class="ri-logout-box-line"></i> Chiqish</button></div>
+    </div>`;
 }
 </script>
 </body>
