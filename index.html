@@ -4,6 +4,35 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Joynshop — Guruh xarid platformasi</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#FA7319">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Joynshop">
+<link rel="apple-touch-icon" href="/icon-192.png">
+
+<!-- SEO -->
+<meta name="description" content="Joynshop — O'zbekistonda guruh xarid platformasi. Do'stlar bilan birgalikda xarid qiling va 40% gacha tejang!">
+<meta name="keywords" content="joynshop, guruh xarid, chegirma, uzbekistan, telegram">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Joynshop">
+<meta property="og:title" content="Joynshop — Guruh xarid platformasi">
+<meta property="og:description" content="Do'stlar bilan birgalikda xarid qiling va 40% gacha tejang!">
+<meta property="og:image" content="https://joynshop.uz/og-image.png">
+<meta property="og:url" content="https://joynshop.uz">
+<meta property="og:locale" content="uz_UZ">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Joynshop — Guruh xarid platformasi">
+<meta name="twitter:description" content="Do'stlar bilan birgalikda xarid qiling va 40% gacha tejang!">
+<meta name="twitter:image" content="https://joynshop.uz/og-image.png">
+
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 <style>
@@ -100,6 +129,19 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .prod-badge-hot{position:absolute;bottom:8px;left:8px;background:var(--r500);color:var(--white);font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;animation:pulse 1.5s infinite;}
 .prod-badge-new{position:absolute;bottom:8px;left:8px;background:var(--b500);color:var(--white);font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* SKELETON */
+.skeleton{background:linear-gradient(90deg,var(--n100) 25%,var(--n200) 50%,var(--n100) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-card{background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;}
+.skel-img{aspect-ratio:4/3;width:100%;}
+.skel-body{padding:10px 12px;}
+.skel-line{height:10px;border-radius:6px;margin-bottom:8px;}
+.skel-line.short{width:60%;}
+.skel-line.mid{width:80%;}
+.skel-line.full{width:100%;}
+.skel-price{height:16px;border-radius:6px;width:70%;margin-bottom:8px;}
+.skel-btn{height:38px;border-radius:8px;width:100%;margin-top:8px;}
 
 /* WISHLIST BTN */
 .wish-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;backdrop-filter:blur(4px);}
@@ -480,13 +522,53 @@ const BUYER_BOT='joynshop_bot';
 let allProducts=[],shops={},currentProduct=null,currentUser=null;
 let activeFilter='all',activeTag='all',activeDisc=0,activeShop='',activeCat='all';
 let wishlist=JSON.parse(localStorage.getItem('wishlist')||'[]');
+let recentlyViewed=JSON.parse(localStorage.getItem('recently_viewed')||'[]');
 let countdownInterval=null;
+let deferredPrompt=null;
 
 const fmt=n=>n?n>=1e9?(n/1e9).toFixed(1)+' mlrd':n>=1e6?(n/1e6).toFixed(1)+' mln':n>=1e3?(n/1e3).toFixed(0)+' ming':''+n:'0';
 const fmtFull=n=>(n||0).toLocaleString('uz-UZ');
 
+// ── PWA ──
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  // Show install button in nav after 30s
+  setTimeout(()=>{
+    if(deferredPrompt){
+      const btn=document.createElement('button');
+      btn.className='btn btn-sm btn-ghost';
+      btn.innerHTML='<i class="ri-download-line"></i> Ilovani yuklab olish';
+      btn.onclick=()=>{deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;btn.remove();});};
+      document.querySelector('.nav-actions').prepend(btn);
+    }
+  },30000);
+});
+
+// Register Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ── SKELETON ──
+function showSkeletons(count=8){
+  const grid=document.getElementById('productsGrid');
+  grid.innerHTML=Array(count).fill(0).map(()=>`
+    <div class="skel-card">
+      <div class="skel-img skeleton"></div>
+      <div class="skel-body">
+        <div class="skel-line short skeleton"></div>
+        <div class="skel-line mid skeleton"></div>
+        <div class="skel-line short skeleton"></div>
+        <div class="skel-price skeleton"></div>
+        <div class="skel-line full skeleton"></div>
+        <div class="skel-btn skeleton"></div>
+      </div>
+    </div>`).join('');
+}
+
 // ── LOAD ──
 async function loadProducts(){
+  showSkeletons(8);
   try{
     const res=await fetch(API+'/api/products');
     allProducts=await res.json();
@@ -661,6 +743,22 @@ function openDetail(pid){
   const p=allProducts.find(x=>x.id===pid);if(!p)return;
   currentProduct=p;
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
+
+  // Update OG meta for sharing
+  const imgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
+  document.title=`${p.name} — ${fmt(p.group_price)} so'm | Joynshop`;
+  document.querySelector('meta[property="og:title"]').content=`${p.name} — ${fmt(p.group_price)} so'm (-${p.grp_disc}%)`;
+  document.querySelector('meta[property="og:description"]').content=`${p.shop_name} | Guruh narxi: ${fmtFull(p.group_price)} so'm. ${p.min_group-p.count} kishi kerak!`;
+  if(imgSrc) document.querySelector('meta[property="og:image"]').content=imgSrc;
+  document.querySelector('meta[property="og:url"]').content=window.location.origin+'?p='+pid;
+  history.replaceState(null,'','?p='+pid);
+
+  // Recently viewed
+  recentlyViewed=recentlyViewed.filter(id=>id!==pid);
+  recentlyViewed.unshift(pid);
+  if(recentlyViewed.length>10) recentlyViewed=recentlyViewed.slice(0,10);
+  localStorage.setItem('recently_viewed',JSON.stringify(recentlyViewed));
+
   document.getElementById('marketplacePage').style.display='none';
   document.getElementById('shopPage').style.display='none';
   document.getElementById('detailPage').style.display='block';
@@ -790,6 +888,8 @@ function closeDetail(){
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
   document.getElementById('detailPage').style.display='none';
   document.getElementById('marketplacePage').style.display='';
+  document.title='Joynshop — Guruh xarid platformasi';
+  history.replaceState(null,'','/');
   window.scrollTo(0,0);
 }
 
