@@ -19,6 +19,58 @@ BUYER_TOKEN     = os.environ.get('BUYER_TOKEN')
 ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE    = 0.05  # 5%
+
+# AWS S3
+AWS_ACCESS_KEY_ID     = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_BUCKET_NAME       = os.environ.get('AWS_BUCKET_NAME', 'joynshop-media')
+AWS_REGION            = os.environ.get('AWS_REGION', 'eu-central-1')
+CDN_BASE_URL          = os.environ.get('CDN_BASE_URL', '')  # optional CloudFront URL
+
+def get_s3():
+    if not S3_AVAILABLE or not AWS_ACCESS_KEY_ID:
+        return None
+    return boto3.client('s3',
+        region_name=AWS_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
+
+def upload_photo_to_s3(file_id, bot_token):
+    """Telegram file_id ni S3 ga yuklaydi, public URL qaytaradi"""
+    s3 = get_s3()
+    if not s3:
+        return None
+    try:
+        # 1. Telegram dan file_path olish
+        r = requests.get(f'https://api.telegram.org/bot{bot_token}/getFile',
+                         params={'file_id': file_id}).json()
+        if not r.get('ok'):
+            return None
+        file_path = r['result']['file_path']
+        ext = file_path.rsplit('.', 1)[-1].lower() if '.' in file_path else 'jpg'
+
+        # 2. Faylni Telegram dan yuklab olish
+        tg_url = f'https://api.telegram.org/file/bot{bot_token}/{file_path}'
+        img_data = requests.get(tg_url, timeout=30).content
+
+        # 3. S3 ga yuklash
+        key = f'products/{file_id}.{ext}'
+        s3.put_object(
+            Bucket=AWS_BUCKET_NAME,
+            Key=key,
+            Body=img_data,
+            ContentType=f'image/{ext}',
+            ACL='public-read'
+        )
+
+        # 4. URL qaytarish
+        if CDN_BASE_URL:
+            return f'{CDN_BASE_URL}/{key}'
+        return f'https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{key}'
+    except Exception as e:
+        logging.error(f'S3 upload error: {e}')
+        return None
 DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
 BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
 APP_URL            = os.environ.get('APP_URL', '')  # e.g. https://joynshop.uz
@@ -71,6 +123,7 @@ buyer_profiles  = {}   # uid -> profile
 refund_requests = {}   # code -> refund info
 seller_state    = {}   # uid -> step state
 _photo_url_cache = {}  # file_id -> telegram url (runtime cache)
+seller_shops    = {}   # uid -> [{'name','phone','delivery','channel','verified'}]
 seller_products = {}   # uid -> [pids]
 verified_channels       = {}  # '@kanal' -> {'owner_id': uid, 'moderators': [uid]}
 pending_moderator_codes = {}  # code -> {'channel': '@kanal', 'added_by': uid}
@@ -363,6 +416,72 @@ def seller_handle_cb(cb):
 
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
+
+    if d == 'add_new_shop':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {'step': 'ob_shop_name', 'adding_shop': True}
+        send_seller(uid, "🏪 <b>Yangi do'kon</b>\n\n<b>1/4</b> Do'kon nomini yozing:")
+        return
+
+    if d.startswith('ob_delivery_'):
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['ob_delivery'] = 'deliver' if d == 'ob_delivery_deliver' else 'pickup'
+        s['step'] = 'ob_channel'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            "<b>4/4</b> Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
+            "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!")
+        return
+
+    if d.startswith('sel_shop_'):
+        idx = int(d.split('_')[2])
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops): answer_cb(cbid, '❌', token=SELLER_TOKEN); return
+        shop = shops[idx]; answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state[uid] = {
+            'step': 'prod_name', 'shop_idx': idx,
+            'shop_name': shop['name'], 'contact': shop['phone'],
+            'delivery_type': shop.get('delivery','pickup'),
+            'seller_channel': shop.get('channel',''),
+        }
+        send_seller(uid,
+            f"📦 <b>{shop['name']}</b> uchun yangi mahsulot\n\n"
+            "<b>1/4</b> Mahsulot nomini yozing:")
+        return
+
+    if d == 'prod_photo_done':
+        s = seller_state.get(uid)
+        if not s or not s.get('photo_ids'):
+            answer_cb(cbid, '❌ Rasm yo\'q', token=SELLER_TOKEN); return
+        s['step'] = 'prod_price'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid,
+            f"✅ {len(s['photo_ids'])} ta rasm.\n\n"
+            "<b>3/4</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl / guruh</i>")
+        return
+
+    if d == 'prod_confirm_publish':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        answer_cb(cbid, token=SELLER_TOKEN)
+        publish_product(uid, uid, s); return
+
+    if d == 'prod_add_desc':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_desc'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "Tavsif yozing (max 300 belgi):"); return
+
+    if d == 'prod_add_solo':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_solo'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "Yakka sotuv narxini yozing (so'm):"); return
+
+    if d == 'prod_add_variants':
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        s['step'] = 'prod_edit_variants'; answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, "Variantlarni vergul bilan yozing:\n<i>38, 39, 40 yoki Qizil, Ko\'k</i>"); return
 
     if d in ('start_addproduct', 'menu_addproduct'):
         answer_cb(cbid, token=SELLER_TOKEN)
@@ -695,6 +814,26 @@ def is_channel_admin(uid, channel):
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
+def show_prod_confirm(cid, s, shop):
+    orig=s.get('original_price',0); grp=s.get('group_price',0)
+    disc=round((orig-grp)/orig*100) if orig else 0
+    photos=len(s.get('photo_ids',[]))
+    desc_line=f"\n📝 {s['description']}" if s.get('description') else ''
+    solo_line=f"\n👤 Yakka: {s['solo_price']:,} so'm" if s.get('solo_price') else ''
+    variants_line=f"\n🎨 {', '.join(s['variants'])}" if s.get('variants') else ''
+    send_seller(cid,
+        f"📋 <b>Mahsulotni tekshiring:</b>\n\n"
+        f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}\n"
+        f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)\n"
+        f"👥 Min guruh: {s['min_group']} kishi\n📢 {shop.get('channel','—')}"
+        f"{desc_line}{solo_line}{variants_line}",
+        {'inline_keyboard': [
+            [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
+            [{'text': "📝 Tavsif", 'callback_data': 'prod_add_desc'},
+             {'text': "💰 Yakka narx", 'callback_data': 'prod_add_solo'}],
+            [{'text': "🎨 Variantlar", 'callback_data': 'prod_add_variants'}],
+        ]})
+
 def show_confirm(cid, s):
     channel = s.get('seller_channel', '')
     send_seller(cid,
@@ -724,7 +863,20 @@ def show_confirm(cid, s):
     )
 
 def publish_product(uid, cid, s):
-    channel  = s['seller_channel']
+    shop_idx = s.get('shop_idx')
+    if shop_idx is not None:
+        shops = seller_shops.get(uid, [])
+        shop  = shops[shop_idx] if shop_idx < len(shops) else {}
+        channel  = shop.get('channel', s.get('seller_channel',''))
+        contact  = shop.get('phone', s.get('contact',''))
+        delivery = shop.get('delivery', s.get('delivery_type','pickup'))
+        shop_name= shop.get('name', s.get('shop_name',''))
+    else:
+        channel  = s.get('seller_channel','')
+        contact  = s.get('contact','')
+        delivery = s.get('delivery_type','pickup')
+        shop_name= s.get('shop_name','')
+    _ = channel  # use below
     pid      = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
     deadline = datetime.now() + timedelta(hours=48)
     products[pid] = {
@@ -793,16 +945,24 @@ def seller_handle_msg(msg):
         return
 
     if text == '/start':
-        send_seller(cid,
-            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-            "Guruh savdosi orqali ko'proq soting!\n\n"
-            "Pastdagi tugmalar orqali boshqaring 👇",
-            {'keyboard': [
-                [{'text': '➕ Mahsulot qo\'shish'}],
-                [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
-                [{'text': '📊 Statistika'},    {'text': '📢 Kanallarim'}],
-            ], 'resize_keyboard': True}
-        )
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            seller_state[uid] = {'step': 'ob_shop_name'}
+            send_seller(cid,
+                "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
+                "Bir marta profilingizni to'ldiring.\n\n"
+                "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
+            )
+        else:
+            send_seller(cid,
+                "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+                "Guruh savdosi orqali ko'proq soting!",
+                {'keyboard': [
+                    [{'text': '➕ Mahsulot qo\'shish'}],
+                    [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
+                    [{'text': '📊 Statistika'},    {'text': "📢 Do'konlarim"}],
+                ], 'resize_keyboard': True}
+            )
         return
 
     if text == '/myproducts' or text == '📦 Mahsulotlarim':
@@ -909,14 +1069,36 @@ def seller_handle_msg(msg):
         return
 
     if text == '/addproduct' or text == '➕ Mahsulot qo\'shish':
-        seller_state[uid] = {'step': 'name'}
-        send_seller(cid,
-            "📦 <b>Yangi mahsulot qo'shish</b>\n\n"
-            "1️⃣ Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
-        )
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            send_seller(cid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
+            return
+        if len(shops) == 1:
+            seller_state[uid] = {
+                'step': 'prod_name', 'shop_idx': 0,
+                'shop_name': shops[0]['name'], 'contact': shops[0]['phone'],
+                'delivery_type': shops[0].get('delivery','pickup'),
+                'seller_channel': shops[0].get('channel',''),
+            }
+            send_seller(cid,
+                f"📦 <b>{shops[0]['name']}</b> uchun yangi mahsulot\n\n"
+                f"<b>1/4</b> Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
+            )
+        else:
+            btns = [[{'text': f"🏪 {s['name']}", 'callback_data': f"sel_shop_{i}"}] for i,s in enumerate(shops)]
+            send_seller(cid, "Qaysi do'kon uchun mahsulot qo'shmoqchisiz?", {'inline_keyboard': btns})
         return
 
-    if text == '/mychannels' or text == '📢 Kanallarim':
+    if text == '/mychannels' or text == "📢 Do'konlarim" or text == '📢 Kanallarim':
+        shops = seller_shops.get(uid, [])
+        if shops:
+            r = "🏪 <b>Do'konlaringiz:</b>\n\n"
+            for i,s in enumerate(shops):
+                r += f"━━━━━━━━━━━━━\n🏪 <b>{s['name']}</b>\n📞 {s['phone']}\n📢 {s.get('channel','—')}\n"
+            btns = [[{'text': "➕ Yangi do'kon qo'shish", 'callback_data': 'add_new_shop'}]]
+            send_seller(cid, r, {'inline_keyboard': btns})
+            return
+    if False and text == '📢 Kanallarim_OLD':
         my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid or uid in data.get('moderators', [])]
         if not my_channels:
             send_seller(cid,
@@ -997,7 +1179,111 @@ def seller_handle_msg(msg):
             )
             return
 
-        if step == 'name':
+        # ── ONBOARDING ──
+        if step == 'ob_shop_name':
+            s['ob_shop_name'] = text; s['step'] = 'ob_phone'
+            send_seller(cid, "<b>2/4</b> Telefon raqamingiz:\n<i>+998XXXXXXXXX</i>")
+
+        elif step == 'ob_phone':
+            s['ob_phone'] = text.strip(); s['step'] = 'ob_delivery'
+            send_seller(cid, "<b>3/4</b> Yetkazib berish turi:",
+                {'inline_keyboard': [
+                    [{'text': "🚚 Yetkazib beraman", 'callback_data': 'ob_delivery_deliver'}],
+                    [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
+                ]})
+
+        elif step == 'ob_channel':
+            channel = text if text.startswith('@') else f'@{text}'
+            send_seller(cid, f"🔍 <b>{channel}</b> tekshirilmoqda...")
+            if can_manage_channel(uid, channel) or is_channel_admin(uid, channel):
+                if channel not in verified_channels:
+                    verified_channels[channel] = {'owner_id': uid, 'moderators': []}
+                if uid not in seller_shops: seller_shops[uid] = []
+                seller_shops[uid].append({
+                    'name': s['ob_shop_name'], 'phone': s['ob_phone'],
+                    'delivery': s.get('ob_delivery','pickup'), 'channel': channel, 'verified': True
+                })
+                save_data(); del seller_state[uid]
+                send_seller(cid,
+                    f"✅ <b>Do'kon profili saqlandi!</b>\n\n"
+                    f"🏪 {s['ob_shop_name']}\n📞 {s['ob_phone']}\n📢 {channel}\n\n"
+                    "Endi mahsulot qo'sha olasiz!",
+                    {'keyboard': [
+                        [{'text': '➕ Mahsulot qo\'shish'}],
+                        [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
+                        [{'text': '📊 Statistika'}, {'text': "📢 Do'konlarim"}],
+                    ], 'resize_keyboard': True})
+            else:
+                send_seller(cid,
+                    f"❌ <b>{channel}</b> kanalining admini emassiz!\n\n"
+                    "Seller bot kanalga admin sifatida qo'shilganmi?\n\nQayta kiriting:")
+
+        # ── YANGI MAHSULOT (5 STEP) ──
+        elif step == 'prod_name':
+            s['name'] = text; s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
+            send_seller(cid, "<b>2/4</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>")
+
+        elif step == 'prod_photo':
+            photo = msg.get('photo')
+            if photo:
+                if len(s['photo_ids']) < 5:
+                    fid = photo[-1]['file_id']
+                    s['photo_ids'].append(fid)
+                    url = upload_photo_to_s3(fid, SELLER_TOKEN)
+                    if url: s['photo_urls'].append(url)
+                count = len(s['photo_ids'])
+                if count < 5:
+                    send_seller(cid, f"✅ {count}/5 rasm. Yana yuboring yoki davom eting:",
+                        {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} rasm)", 'callback_data': 'prod_photo_done'}]]})
+                else:
+                    s['step'] = 'prod_price'
+                    send_seller(cid, "<b>3/4</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>")
+            else:
+                send_seller(cid, "❌ Rasm yuboring!")
+
+        elif step == 'prod_price':
+            try:
+                parts = text.replace(' ','').split('/')
+                orig = int(parts[0].replace(',',''))
+                grp  = int(parts[1].replace(',','')) if len(parts)>1 else orig
+                if grp >= orig: send_seller(cid, "❌ Guruh narxi asl narxdan kam bo'lishi kerak!"); return
+                s['original_price']=orig; s['group_price']=grp; s['solo_price']=0
+                s['step']='prod_min_group'
+                disc = round((orig-grp)/orig*100)
+                send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>4/4</b> Minimal guruh soni (2-10):")
+            except:
+                send_seller(cid, "❌ Format: <code>850000 / 550000</code>")
+
+        elif step == 'prod_min_group':
+            try:
+                mg = int(text)
+                if mg < 2 or mg > 10: send_seller(cid, "❌ 2 dan 10 gacha!"); return
+                s['min_group']=mg; s['step']='prod_confirm'; s['description']=''; s['variants']=[]
+                shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+                show_prod_confirm(cid, s, shop)
+            except: send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_edit_desc':
+            s['description']=text[:300]; s['step']='prod_confirm'
+            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+            send_seller(cid, "✅ Tavsif saqlandi!"); show_prod_confirm(cid, s, shop)
+
+        elif step == 'prod_edit_solo':
+            try:
+                s['solo_price']=int(text.replace(' ','').replace(',','')); s['step']='prod_confirm'
+                shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+                send_seller(cid, "✅ Yakka narx saqlandi!"); show_prod_confirm(cid, s, shop)
+            except: send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_edit_variants':
+            raw=[v.strip() for v in text.replace('،',',').split(',') if v.strip()]
+            if not raw: send_seller(cid, "❌ Kamida 1 ta variant!"); return
+            s['variants']=raw; s['step']='prod_confirm'
+            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+            send_seller(cid, f"✅ Variantlar: {', '.join(raw)}"); show_prod_confirm(cid, s, shop)
+
+        # ── ESKI STEPLAR ──
+        elif step == 'name':
             s['name'] = text; s['step'] = 'shop_name'
             send_seller(cid, "2️⃣ Do'kon nomingiz:\n<i>Masalan: Nike Toshkent</i>")
 
@@ -1916,11 +2202,26 @@ def api_user_profile(uid):
 
 @app.route('/api/photo/<file_id>', methods=['GET'])
 def api_photo(file_id):
-    from flask import redirect, Response
-    # Check cache first
+    from flask import redirect
+    # 1. Check S3 URL in products first
+    for p in products.values():
+        if p.get('photo_id') == file_id and p.get('photo_url'):
+            return redirect(p['photo_url'])
+        if file_id in p.get('photo_ids', []):
+            urls = p.get('photo_urls', [])
+            idx = p['photo_ids'].index(file_id) if file_id in p.get('photo_ids',[]) else -1
+            if idx >= 0 and idx < len(urls) and urls[idx]:
+                return redirect(urls[idx])
+    # 2. Check runtime cache
     cached = _photo_url_cache.get(file_id)
     if cached:
         return redirect(cached)
+    # 3. Try S3 upload on-the-fly
+    s3_url = upload_photo_to_s3(file_id, SELLER_TOKEN)
+    if s3_url:
+        _photo_url_cache[file_id] = s3_url
+        return redirect(s3_url)
+    # 4. Fallback: Telegram direct
     try:
         result = requests.get(
             f'https://api.telegram.org/bot{SELLER_TOKEN}/getFile',
@@ -1984,6 +2285,8 @@ def api_products():
             'join_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}",
             'solo_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}" if solo else None,
             'photo_ids':      p.get('photo_ids', [p.get('photo_id')] if p.get('photo_id') else []),
+            'photo_url':      p.get('photo_url', ''),
+            'photo_urls':     p.get('photo_urls', []),
             'seller_channel': p.get('seller_channel',''),
             'solo_available': p.get('solo_available', True),
         })
@@ -2205,7 +2508,7 @@ def save_data():
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
     global refund_requests, seller_products, verified_channels
-    global pending_moderator_codes, referrals, referral_map
+    global pending_moderator_codes, referrals, referral_map, seller_shops
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
@@ -2226,6 +2529,8 @@ def load_data():
         buyer_profiles         = data.get('buyer_profiles', {})
         refund_requests        = data.get('refund_requests', {})
         verified_channels      = data.get('verified_channels', {})
+        raw_ss = data.get('seller_shops', {})
+        seller_shops = {int(k) if str(k).isdigit() else k: v for k, v in raw_ss.items()}
         pending_moderator_codes= data.get('pending_moderator_codes', {})
         referrals              = data.get('referrals', {})
         raw_rm                 = data.get('referral_map', {})
