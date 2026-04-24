@@ -50,14 +50,14 @@
 }
 
 /* BANNER SLIDER */
-.banner-wrap{max-width:1440px;margin:0 auto;padding:10px 16px 4px;}
-.banner-outer{overflow:hidden;padding:0 clamp(20px,8vw,120px);}
-.banner-slider{position:relative;border-radius:12px;overflow:visible;aspect-ratio:5/1;}
-.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);}
-.banner-slide{flex:0 0 100%;position:relative;overflow:hidden;transform:scale(.94);opacity:.4;transition:transform .4s,opacity .4s;cursor:pointer;border-radius:12px;margin:0 6px;}
-.banner-slide.active{transform:scale(1);opacity:1;margin:0;}
-@media(max-width:1100px){.banner-slider{aspect-ratio:4/1;}}
-@media(max-width:768px){.banner-slider{aspect-ratio:2.5/1;}}
+.banner-wrap{max-width:900px;margin:0 auto;padding:10px 16px 4px;}
+.banner-outer{overflow:hidden;}
+.banner-slider{position:relative;overflow:visible;aspect-ratio:3/1;}
+.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);gap:8px;}
+.banner-slide{flex:0 0 100%;position:relative;overflow:hidden;opacity:.5;transition:opacity .4s;cursor:pointer;border-radius:12px;}
+.banner-slide.active{opacity:1;}
+@media(max-width:1100px){.banner-wrap{max-width:760px;}}
+@media(max-width:768px){.banner-wrap{max-width:100%;padding:8px 16px 4px;}.banner-slider{aspect-ratio:2.5/1;}}
 @media(max-width:480px){.banner-slider{aspect-ratio:2/1;}}
 .banner-slides{display:flex;height:100%;transition:transform .4s ease;}
 .banner-slide{flex:0 0 100%;position:relative;cursor:pointer;}
@@ -857,14 +857,14 @@ function slideBanner(dir){
     setTimeout(()=>{
       wrap.style.transition='none';
       bannerIdx=1;
-      wrap.style.transform=`translateX(-100%)`;
+      const g=8,pw=wrap.parentElement.offsetWidth;wrap.style.transform=`translateX(calc(-100% - ${g}px))`;
       allSlides.forEach((s,i)=>s.classList.toggle('active',i===1));
     },420);
   } else if(bannerIdx<=0){
     setTimeout(()=>{
       wrap.style.transition='none';
       bannerIdx=realTotal-2;
-      wrap.style.transform=`translateX(-${bannerIdx*100}%)`;
+      const g2=8;wrap.style.transform=`translateX(calc(-${bannerIdx*100}% - ${bannerIdx*g2}px))`;
       allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
     },420);
   }
