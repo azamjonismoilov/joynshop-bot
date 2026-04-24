@@ -438,7 +438,7 @@ threading.Thread(target=live_update_loop, daemon=True).start()
 
 # Callback lar jarayon ketayotganda ham ishlashi kerak
 PROD_ALLOWED_CBS = {
-    'prod_photo_done', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
+    'prod_photo_done', 'prod_skip_desc', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
     'prod_confirm_publish', 'prod_continue', 'prod_restart',
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
@@ -459,8 +459,8 @@ PROD_BLOCKED_TEXTS = {
 def is_prod_in_progress(uid):
     s = seller_state.get(uid)
     if not s: return False
-    prod_steps = {'prod_name','prod_photo','prod_price','prod_min_group',
-                  'prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
+    prod_steps = {'prod_name','prod_sale_type','prod_photo','prod_price','prod_min_group',
+                  'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
     return s.get('step') in prod_steps
 
 def get_prod_progress_text(uid):
@@ -469,10 +469,12 @@ def get_prod_progress_text(uid):
     name = s.get('name', s.get('prod_name', '—'))
     step_names = {
         'prod_name': '1/5 — Nom',
+        'prod_sale_type': '2/5 — Sotuv turi',
         'prod_photo': '2/5 — Rasmlar',
         'prod_price': '3/5 — Narx',
         'prod_min_group': '4/5 — Guruh soni',
-        'prod_confirm': '5/5 — Tasdiqlash',
+        'prod_desc': '5/5 — Tavsif',
+        'prod_confirm': '6/6 — Tasdiqlash',
         'prod_edit_desc': '5/5 — Tavsif',
         'prod_edit_solo': '5/5 — Yakka narx',
         'prod_edit_variants': '5/5 — Variantlar',
@@ -675,14 +677,32 @@ def seller_handle_cb(cb):
             "<b>1/4</b> Mahsulot nomini yozing:")
         return
 
+    if d in ('sale_type_group', 'sale_type_solo', 'sale_type_both'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s: return
+        s['sale_type'] = d.replace('sale_type_', '')  # group / solo / both
+        s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
+        type_label = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
+        send_seller(uid,
+            f"✅ {type_label.get(s['sale_type'])} sotuv tanlandi\n\n"
+            "<b>3/5</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>"
+        )
+        return
+
     if d == 'prod_photo_done':
         s = seller_state.get(uid)
         if not s or not s.get('photo_ids'):
             answer_cb(cbid, '❌ Rasm yo\'q', token=SELLER_TOKEN); return
         s['step'] = 'prod_price'; answer_cb(cbid, token=SELLER_TOKEN)
-        send_seller(uid,
-            f"✅ {len(s['photo_ids'])} ta rasm.\n\n"
-            "<b>3/4</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl / guruh</i>")
+        sale_type = s.get('sale_type', 'both')
+        if sale_type == 'solo':
+            price_hint = "<b>4/5</b> Yakka sotuv narxini kiriting (so'm):\n<code>850000</code>"
+        elif sale_type == 'group':
+            price_hint = "<b>4/5</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>"
+        else:
+            price_hint = "<b>4/5</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>"
+        send_seller(uid, f"✅ {len(s['photo_ids'])} ta rasm.\n\n{price_hint}")
         return
 
     if d == 'prod_confirm_publish':
@@ -735,6 +755,15 @@ def seller_handle_cb(cb):
         }
         msg = step_msgs.get(step, "Davom eting:")
         send_seller(uid, f"\u2705 Davom etmoqdasiz\n\n{msg}")
+        return
+
+    if d == 'prod_skip_desc':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s: return
+        s['description'] = ''; s['step'] = 'prod_confirm'
+        shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+        show_prod_confirm(uid, s, shop)
         return
 
     if d == 'prod_restart':
@@ -1748,8 +1777,16 @@ def seller_handle_msg(msg):
 
         # ── YANGI MAHSULOT (5 STEP) ──
         elif step == 'prod_name':
-            s['name'] = text; s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
-            send_seller(cid, "<b>2/4</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>")
+            s['name'] = text; s['step'] = 'prod_sale_type'
+            send_seller(cid,
+                f"✅ <b>{text}</b>\n\n"
+                "<b>2/5</b> Sotuv turini tanlang:",
+                {'inline_keyboard': [
+                    [{'text': "👥 Faqat guruhli sotuv", 'callback_data': 'sale_type_group'}],
+                    [{'text': "👤 Faqat yakka sotuv",   'callback_data': 'sale_type_solo'}],
+                    [{'text': "👥+👤 Ikkalasi ham",       'callback_data': 'sale_type_both'}],
+                ]}
+            )
 
         elif step == 'prod_photo':
             photo = msg.get('photo')
@@ -1794,15 +1831,39 @@ def seller_handle_msg(msg):
                 send_seller(cid, "❌ Rasm yoki video yuboring!")
 
         elif step == 'prod_price':
+            sale_type = s.get('sale_type', 'both')
             try:
-                parts = text.replace(' ','').split('/')
-                orig = int(parts[0].replace(',',''))
-                grp  = int(parts[1].replace(',','')) if len(parts)>1 else orig
-                if grp >= orig: send_seller(cid, "❌ Guruh narxi asl narxdan kam bo'lishi kerak!"); return
-                s['original_price']=orig; s['group_price']=grp; s['solo_price']=0
-                s['step']='prod_min_group'
-                disc = round((orig-grp)/orig*100)
-                send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>4/4</b> Minimal guruh soni (2-10):")
+                parts = text.replace(' ','').replace(',','').split('/')
+                orig  = int(parts[0])
+                if sale_type == 'solo':
+                    # Faqat yakka — guruh narxi = asl narx, min_group = 1
+                    s['original_price'] = orig
+                    s['solo_price']     = orig
+                    s['group_price']    = orig
+                    s['min_group']      = 1
+                    s['step'] = 'prod_desc'; s['description'] = ''; s['variants'] = []
+                    send_seller(cid,
+                        f"✅ Narx: {orig:,} so'm\n\n"
+                        "<b>5/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+                        "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+                        {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
+                    )
+                elif sale_type == 'group':
+                    grp = int(parts[1]) if len(parts) > 1 else 0
+                    if not grp: send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
+                    if grp >= orig: send_seller(cid, "❌ Guruh narxi asl narxdan kam bo'lishi kerak!"); return
+                    disc = round((orig-grp)/orig*100)
+                    s['original_price'] = orig; s['group_price'] = grp; s['solo_price'] = 0
+                    s['step'] = 'prod_min_group'
+                    send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>5/5</b> Minimal guruh soni (2-10):")
+                else:  # both
+                    grp = int(parts[1]) if len(parts) > 1 else 0
+                    if not grp: send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
+                    if grp >= orig: send_seller(cid, "❌ Guruh narxi asl narxdan kam bo'lishi kerak!"); return
+                    disc = round((orig-grp)/orig*100)
+                    s['original_price'] = orig; s['group_price'] = grp; s['solo_price'] = grp
+                    s['step'] = 'prod_min_group'
+                    send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>5/5</b> Minimal guruh soni (2-10):")
             except:
                 send_seller(cid, "❌ Format: <code>850000 / 550000</code>")
 
@@ -1810,10 +1871,20 @@ def seller_handle_msg(msg):
             try:
                 mg = int(text)
                 if mg < 2 or mg > 10: send_seller(cid, "❌ 2 dan 10 gacha!"); return
-                s['min_group']=mg; s['step']='prod_confirm'; s['description']=''; s['variants']=[]
-                shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-                show_prod_confirm(cid, s, shop)
+                s['min_group'] = mg; s['step'] = 'prod_desc'; s['description'] = ''; s['variants'] = []
+                send_seller(cid,
+                    f"✅ Minimal guruh: {mg} kishi\n\n"
+                    "<b>5/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+                    "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+                    {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
+                )
             except: send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_desc':
+            s['description'] = text[:300]; s['step'] = 'prod_confirm'
+            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+            send_seller(cid, "✅ Tavsif saqlandi!")
+            show_prod_confirm(cid, s, shop)
 
         elif step == 'prod_edit_desc':
             s['description']=text[:300]; s['step']='prod_confirm'
