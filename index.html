@@ -90,7 +90,7 @@ html{scroll-behavior:smooth;}
 body{font-family:'Inter',sans-serif;color:var(--n900);background:var(--white);-webkit-font-smoothing:antialiased;}
 
 /* NAV */
-nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--n200);box-shadow:var(--sxs);}
+nav{background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--n200);box-shadow:var(--sxs);}
 .nav-inner{max-width:1440px;margin:0 auto;padding:0 20px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .logo{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0;cursor:pointer;}
 .logo-mark{width:34px;height:34px;background:var(--o500);border-radius:10px;display:flex;align-items:center;justify-content:center;}
@@ -115,6 +115,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 
 /* LAYOUT */
 .page-layout{max-width:1440px;margin:0 auto;padding:16px;display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start;}
+.main-col{min-width:0;overflow:hidden;}
 
 /* SIDEBAR */
 .sidebar{position:sticky;top:80px;}
@@ -317,6 +318,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .toast-el{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--n900);color:var(--white);padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:999;animation:fadeUp .25s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 
+@media(min-width:769px){nav{position:sticky;top:0;z-index:100;}}
 @media(max-width:1100px){
   .products-grid,.related-grid{grid-template-columns:repeat(3,1fr);}
 }
@@ -339,23 +341,24 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   .mobile-search-bar{display:flex;}
   .mobile-filter-bar{display:flex;}
 
-  /* Category nav - sticky below mobile header */
-  .cat-nav{padding:6px 12px 4px;position:sticky;z-index:98;background:var(--white);border-bottom:1px solid var(--n200);}
+  /* Category nav */
+  .cat-nav{padding:6px 12px 4px;background:var(--white);border-bottom:1px solid var(--n200);}
 
   /* Layout */
-  .page-layout{grid-template-columns:1fr;padding:8px 12px;}
+  .page-layout{display:block;padding:8px 10px;}
+  .main-col{width:100%;}
+  .products-grid,.related-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%;}
   .sidebar{display:none;}
   .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
 
   /* Main header */
-  .main-header{flex-direction:row;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
-  .sort-bar{margin-left:auto;}
-  .sort-select{font-size:11px;padding:4px 8px;}
+  .main-header{flex-direction:row;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+  .sort-bar{display:none;}
+  .main-title{font-size:14px;font-weight:700;}
 
-  /* Tags */
-  .tags-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;margin-bottom:8px;}
-  .tags-row::-webkit-scrollbar{display:none;}
-  .tag-chip{font-size:11px;padding:4px 10px;}
+  /* Tags - mobileda yashiriladi, mobile-filter-bar ishlatiladi */
+  .tags-row{display:none!important;}
+  .main-header{margin-bottom:4px;}
 
   /* Detail */
   .detail-grid{grid-template-columns:1fr;}
@@ -383,6 +386,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 
   /* Grid */
   .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .prod-img{aspect-ratio:4/3;}
 
   /* Category nav */
   .cat-nav{padding:4px 10px 2px;}
@@ -544,7 +548,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         <div class="filter-group" id="shopFilter" style="max-height:200px;overflow-y:auto;scrollbar-width:thin"></div></div>
       </div>
     </aside>
-    <main>
+    <main class="main-col">
       <div class="main-header">
         <div><span class="main-title">Barcha mahsulotlar</span><span class="main-count" id="resultCount"></span></div>
         <div class="sort-bar">
