@@ -393,6 +393,91 @@ def update_profile(uid, amount, original_price, is_group=False):
     p['cashback'] += int(amount * 0.02)
 
 # ─── EXPIRE ──────────────────────────────────────────────────────────
+def notify_group_filled(pid):
+    """Guruh to'lganda barcha a'zolarga, sotuvchiga va kanalga xabar yuboradi."""
+    p = products.get(pid)
+    if not p: return
+    count   = len(groups.get(pid, []))
+    min_g   = p.get('min_group', 3)
+    sid     = p.get('seller_id')
+    name    = p.get('name', '')
+    shop    = p.get('shop_name', '')
+    contact = p.get('contact', '')
+    total      = count * p.get('group_price', 0)
+    commission = int(total * COMMISSION_RATE)
+    payout     = total - commission
+
+    # 1. Barcha guruh a'zolariga
+    for wuid in groups.get(pid, []):
+        try:
+            send_buyer(wuid,
+                f"\U0001f525 <b>GURUH TO'LDI!</b>\n\n"
+                f"\U0001f3ea {shop}\n"
+                f"\U0001f4e6 {name}\n"
+                f"\U0001f4de Sotuvchi: {contact}\n\n"
+                f"\u2705 Buyurtmangiz tasdiqlandi! Sotuvchi siz bilan bog'lanadi.",
+                {'inline_keyboard': [[
+                    {'text': '\u2b50 Baho bering', 'callback_data': f'rate_start_{pid}'},
+                    {'text': '\u21a9\ufe0f Qaytarish', 'callback_data': f'refund_{pid}'},
+                ]]}
+            )
+        except: pass
+
+    # 2. Wishlist da bor lekin guruhga qo'shilmagan odamlarga
+    group_members = set(groups.get(pid, []))
+    for wl_uid, wl in wishlists.items():
+        if pid in wl and wl_uid not in group_members:
+            try:
+                send_buyer(wl_uid,
+                    f"\U0001f614 <b>Siz qiziqgan guruh to'ldi!</b>\n\n"
+                    f"\U0001f4e6 {name}\n"
+                    f"\U0001f3ea {shop}\n\n"
+                    f"Keyingi guruhga qo'shilish uchun kuzatib boring:",
+                    {'inline_keyboard': [[
+                        {'text': "\U0001f514 Kuzatish",
+                         'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}
+                    ]]}
+                )
+            except: pass
+
+    # 3. Sotuvchiga moliyaviy xabar
+    if sid:
+        send_seller(sid,
+            f"\U0001f389 <b>GURUH TO'LDI!</b>\n\n"
+            f"\U0001f4e6 {name}\n"
+            f"\U0001f465 {count}/{min_g} kishi qo'shildi!\n\n"
+            f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
+            f"\U0001f4b0 Jami sotuv: <b>{fmt(total)} so'm</b>\n"
+            f"\U0001f4ca Komissiya (5%): <b>{fmt(commission)} so'm</b>\n"
+            f"\u2705 Sizga to'lanadi: <b>{fmt(payout)} so'm</b>\n"
+            f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n"
+            f"\U0001f4b3 Karta raqamingizni yuboring,\n"
+            f"pul 24 soat ichida o'tkaziladi."
+        )
+        if ADMIN_ID:
+            send_seller(ADMIN_ID,
+                f"\U0001f4b0 <b>To'lov kerak!</b>\n\n"
+                f"\U0001f4e6 {name}\n"
+                f"\U0001f464 Sotuvchi ID: <code>{sid}</code>\n"
+                f"\U0001f4b5 O'tkazish kerak: <b>{fmt(payout)} so'm</b>\n"
+                f"\U0001f4ca Komissiya: <b>{fmt(commission)} so'm</b>"
+            )
+
+    # 4. Kanal postini yangilash
+    channel_cid = p.get('channel_chat_id')
+    channel_mid = p.get('channel_message_id')
+    if channel_cid and channel_mid:
+        try:
+            edit_caption(channel_cid, channel_mid,
+                post_caption(p, pid),
+                {'inline_keyboard': [[
+                    {'text': "\u2705 Guruh to'ldi!",
+                     'url': f'https://t.me/{BUYER_BOT_USERNAME}'}
+                ]]}
+            )
+        except: pass
+
+
 def expire_product(pid):
     p = products.get(pid)
     if not p or p.get('status') == 'closed': return
@@ -418,29 +503,8 @@ def expire_product(pid):
 
     if sid:
         if count >= p['min_group']:
-            total      = count * p['group_price']
-            commission = int(total * COMMISSION_RATE)
-            payout     = total - commission
-            send_seller(sid,
-                f"🎉 <b>Muvaffaqiyat!</b>\n\n"
-                f"<b>{p['name']}</b>\n"
-                f"👥 {count}/{p['min_group']} kishi qo'shildi!\n\n"
-                f"━━━━━━━━━━━━━━━\n"
-                f"💰 Jami sotuv: <b>{fmt(total)} so'm</b>\n"
-                f"📊 Joynshop komissiyasi (5%): <b>{fmt(commission)} so'm</b>\n"
-                f"✅ Sizga to'lanadi: <b>{fmt(payout)} so'm</b>\n"
-                f"━━━━━━━━━━━━━━━\n\n"
-                f"💳 Karta raqamingizni yuboring,\n"
-                f"pul 24 soat ichida o'tkaziladi."
-            )
-            if ADMIN_ID:
-                send_seller(ADMIN_ID,
-                    f"💰 <b>To'lov kerak!</b>\n\n"
-                    f"📦 {p['name']}\n"
-                    f"👤 Sotuvchi ID: <code>{sid}</code>\n"
-                    f"💵 O'tkazish kerak: <b>{fmt(payout)} so'm</b>\n"
-                    f"📊 Komissiya: <b>{fmt(commission)} so'm</b>"
-                )
+            # notify_group_filled barcha xabarlarni yuboradi
+            notify_group_filled(pid)
         else:
             send_seller(sid,
                 f"😔 <b>Guruh to'lmadi</b>\n\n"
@@ -1102,16 +1166,7 @@ def seller_handle_cb(cb):
                 ]}
             )
             if count >= min_g:
-                for wuid in groups[pid]:
-                    try:
-                        send_buyer(wuid,
-                            f"🔥 <b>GURUH TO'LDI!</b>\n\n"
-                            f"🏪 {p.get('shop_name','')}\n"
-                            f"📦 {p.get('name','')}\n"
-                            f"📞 Sotuvchi: {p.get('contact','')}\n\n✅ Buyurtmangiz uchun rahmat!",
-                            {'inline_keyboard': [[{'text': '⭐ Baho bering', 'callback_data': f'rate_start_{pid}'}]]}
-                        )
-                    except: pass
+                notify_group_filled(pid)
         else:
             answer_cb(cbid, '✅ Tasdiqlandi!', token=SELLER_TOKEN)
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), False)
