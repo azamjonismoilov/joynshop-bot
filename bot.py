@@ -28,6 +28,26 @@ ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE    = 0.05  # 5%
 
+# Kategoriyalar — bot va sayt uchun bir xil
+CATEGORIES = [
+    ('Kiyim',            '👕'),
+    ('Poyabzal',         '👟'),
+    ('Sumka',            '👜'),
+    ('Soat & Zargarlik', '⌚'),
+    ('Elektronika',      '📱'),
+    ('Ofis & Kompyuter', '💻'),
+    ('Kantselyariya',    '✏️'),
+    ('Avto',             '🚗'),
+    ('Oziq-ovqat',       '🍎'),
+    ('Uy-joy',           '🏠'),
+    ('Parfyumeriya',     '💄'),
+    ('Salomatlik',       '💊'),
+    ('Sport',            '⚽'),
+    ('Bolalar',          '🧸'),
+    ("O'yin & Hobby",    '🎮'),
+    ('Boshqa',           '📦'),
+]
+
 # AWS S3
 AWS_ACCESS_KEY_ID     = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -459,7 +479,7 @@ PROD_BLOCKED_TEXTS = {
 def is_prod_in_progress(uid):
     s = seller_state.get(uid)
     if not s: return False
-    prod_steps = {'prod_name','prod_sale_type','prod_photo','prod_price','prod_min_group',
+    prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group',
                   'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
     return s.get('step') in prod_steps
 
@@ -468,8 +488,9 @@ def get_prod_progress_text(uid):
     step = s.get('step','')
     name = s.get('name', s.get('prod_name', '—'))
     step_names = {
-        'prod_name': '1/5 — Nom',
-        'prod_sale_type': '2/5 — Sotuv turi',
+        'prod_name':      '1/7 — Nom',
+        'prod_category':  '2/7 — Kategoriya',
+        'prod_sale_type': '3/7 — Sotuv turi',
         'prod_photo': '2/5 — Rasmlar',
         'prod_price': '3/5 — Narx',
         'prod_min_group': '4/5 — Guruh soni',
@@ -520,7 +541,7 @@ def seller_handle_cb(cb):
         answer_cb(cbid, token=SELLER_TOKEN); return
 
     # ── JARAYON INTERCEPTOR ──
-    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_'):
+    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_'):
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid, get_prod_progress_text(uid),
             {'inline_keyboard': [
@@ -677,16 +698,33 @@ def seller_handle_cb(cb):
             "<b>1/4</b> Mahsulot nomini yozing:")
         return
 
+    if d.startswith('cat_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s: return
+        cat = d[4:]  # 'cat_Kiyim' -> 'Kiyim'
+        s['category'] = cat; s['step'] = 'prod_sale_type'
+        send_seller(uid,
+            f"✅ Kategoriya: <b>{cat}</b>\n\n"
+            "<b>3/7</b> Sotuv turini tanlang:",
+            {'inline_keyboard': [
+                [{'text': "👥 Faqat guruhli sotuv", 'callback_data': 'sale_type_group'}],
+                [{'text': "👤 Faqat yakka sotuv",   'callback_data': 'sale_type_solo'}],
+                [{'text': "👥+👤 Ikkalasi ham",       'callback_data': 'sale_type_both'}],
+            ]}
+        )
+        return
+
     if d in ('sale_type_group', 'sale_type_solo', 'sale_type_both'):
         answer_cb(cbid, token=SELLER_TOKEN)
         s = seller_state.get(uid)
         if not s: return
-        s['sale_type'] = d.replace('sale_type_', '')  # group / solo / both
+        s['sale_type'] = d.replace('sale_type_', '')
         s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
         type_label = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
         send_seller(uid,
             f"✅ {type_label.get(s['sale_type'])} sotuv tanlandi\n\n"
-            "<b>3/5</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>"
+            "<b>4/7</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>"
         )
         return
 
@@ -1171,11 +1209,19 @@ def show_prod_confirm(cid, s, shop):
     desc_line=f"\n📝 {s['description']}" if s.get('description') else ''
     solo_line=f"\n👤 Yakka: {s['solo_price']:,} so'm" if s.get('solo_price') else ''
     variants_line=f"\n🎨 {', '.join(s['variants'])}" if s.get('variants') else ''
+    cat = s.get('category', '')
+    # Kategoriya ikonkasini topamiz
+    cat_icon = next((icon for name, icon in CATEGORIES if name == cat), '📦')
+    cat_line = f"\n{cat_icon} {cat}" if cat else ''
+    sale_labels = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
+    sale_line = f"\n{sale_labels.get(s.get('sale_type','both'), '')}"
+    min_group_line = f"\n👥 Min guruh: {s['min_group']} kishi" if s.get('sale_type') != 'solo' else ''
     send_seller(cid,
         f"📋 <b>Mahsulotni tekshiring:</b>\n\n"
-        f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}\n"
-        f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)\n"
-        f"👥 Min guruh: {s['min_group']} kishi\n📢 {shop.get('channel','—')}"
+        f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}"
+        f"{cat_line}{sale_line}\n"
+        f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
+        f"{min_group_line}\n📢 {shop.get('channel','—')}"
         f"{desc_line}{solo_line}{variants_line}",
         {'inline_keyboard': [
             [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
@@ -1259,6 +1305,8 @@ def publish_product(uid, cid, s):
         'social':        social,
         'delivery_type': delivery,
         'variants':      s.get('variants', []),
+        'category':      s.get('category', ''),
+        'sale_type':     s.get('sale_type', 'both'),
         'seller_channel':channel,
         'seller_id':     uid,
         'deadline':      deadline.strftime('%d.%m.%Y %H:%M'),
@@ -1777,15 +1825,18 @@ def seller_handle_msg(msg):
 
         # ── YANGI MAHSULOT (5 STEP) ──
         elif step == 'prod_name':
-            s['name'] = text; s['step'] = 'prod_sale_type'
+            s['name'] = text; s['step'] = 'prod_category'
+            kb = []
+            row = []
+            for i, (cat, icon) in enumerate(CATEGORIES):
+                row.append({'text': f"{icon} {cat}", 'callback_data': f"cat_{cat}"})
+                if len(row) == 2:
+                    kb.append(row); row = []
+            if row: kb.append(row)
             send_seller(cid,
                 f"✅ <b>{text}</b>\n\n"
-                "<b>2/5</b> Sotuv turini tanlang:",
-                {'inline_keyboard': [
-                    [{'text': "👥 Faqat guruhli sotuv", 'callback_data': 'sale_type_group'}],
-                    [{'text': "👤 Faqat yakka sotuv",   'callback_data': 'sale_type_solo'}],
-                    [{'text': "👥+👤 Ikkalasi ham",       'callback_data': 'sale_type_both'}],
-                ]}
+                "<b>2/7</b> Kategoriyani tanlang:",
+                {'inline_keyboard': kb}
             )
 
         elif step == 'prod_photo':
