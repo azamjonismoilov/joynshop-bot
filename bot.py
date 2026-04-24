@@ -435,6 +435,56 @@ threading.Thread(target=reminder_loop, daemon=True).start()
 threading.Thread(target=live_update_loop, daemon=True).start()
 
 # ─── SPAM ────────────────────────────────────────────────────────────
+
+# Callback lar jarayon ketayotganda ham ishlashi kerak
+PROD_ALLOWED_CBS = {
+    'prod_photo_done', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
+    'prod_confirm_publish', 'prod_continue', 'prod_restart',
+    'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
+    'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
+    'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
+    'back_menu', 'noop',
+}
+
+# Jarayon ketayotganda bloklanadigan matn commandlar
+PROD_BLOCKED_TEXTS = {
+    "➕ Mahsulot qo'shish", '/addproduct',
+    '📦 Mahsulotlarim', '/myproducts',
+    '📋 Buyurtmalar', '/myorders',
+    '📊 Statistika', '/mystats',
+    "📢 Do'konlarim", '/mychannels',
+    '❓ Yordam', '/help',
+}
+
+def is_prod_in_progress(uid):
+    s = seller_state.get(uid)
+    if not s: return False
+    prod_steps = {'prod_name','prod_photo','prod_price','prod_min_group',
+                  'prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
+    return s.get('step') in prod_steps
+
+def get_prod_progress_text(uid):
+    s = seller_state.get(uid, {})
+    step = s.get('step','')
+    name = s.get('name', s.get('prod_name', '—'))
+    step_names = {
+        'prod_name': '1/5 — Nom',
+        'prod_photo': '2/5 — Rasmlar',
+        'prod_price': '3/5 — Narx',
+        'prod_min_group': '4/5 — Guruh soni',
+        'prod_confirm': '5/5 — Tasdiqlash',
+        'prod_edit_desc': '5/5 — Tavsif',
+        'prod_edit_solo': '5/5 — Yakka narx',
+        'prod_edit_variants': '5/5 — Variantlar',
+    }
+    step_label = step_names.get(step, step)
+    return (
+        f"\U0001f4cb Siz allaqachon mahsulot qo'shmoqdasiz:\n\n"
+        f"\U0001f4e6 <b>{name}</b>\n"
+        f"\U0001f4cd Holat: {step_label}\n\n"
+        f"Davom etasizmi yoki yangi boshlamoqchimisiz?"
+    )
+
 def is_spam(text):
     if not text: return False
     lower = text.lower()
@@ -466,6 +516,17 @@ def seller_handle_cb(cb):
 
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
+
+    # ── JARAYON INTERCEPTOR ──
+    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        send_seller(uid, get_prod_progress_text(uid),
+            {'inline_keyboard': [
+                [{'text': "▶️ Davom etish", 'callback_data': 'prod_continue'}],
+                [{'text': "🗑 Bekor qilish", 'callback_data': 'prod_restart'}],
+            ]}
+        )
+        return
 
     if d == 'add_new_shop':
         answer_cb(cbid, token=SELLER_TOKEN)
@@ -650,8 +711,38 @@ def seller_handle_cb(cb):
 
     if d in ('start_addproduct', 'menu_addproduct'):
         answer_cb(cbid, token=SELLER_TOKEN)
+        if is_prod_in_progress(uid):
+            send_seller(uid, get_prod_progress_text(uid),
+                {'inline_keyboard': [
+                    [{'text': "\u25b6\ufe0f Davom etish", 'callback_data': 'prod_continue'}],
+                    [{'text': "\U0001f5d1 Bekor qilib, yangi boshlash", 'callback_data': 'prod_restart'}],
+                ]}
+            )
+            return
         seller_state[uid] = {'step': 'name'}
-        send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+        send_seller(uid, "\U0001f4e6 <b>Yangi mahsulot</b>\n\n1\ufe0f\u20e3 Mahsulot nomini yozing:")
+        return
+
+    if d == 'prod_continue':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid, {})
+        step = s.get('step','')
+        step_msgs = {
+            'prod_name': "Mahsulot nomini yozing:",
+            'prod_photo': "Rasmlarni yuboring (1-5 ta):",
+            'prod_price': "Narxni yozing (asl/guruh):",
+            'prod_min_group': "Minimal guruh sonini yozing (2-10):",
+        }
+        msg = step_msgs.get(step, "Davom eting:")
+        send_seller(uid, f"\u2705 Davom etmoqdasiz\n\n{msg}")
+        return
+
+    if d == 'prod_restart':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        seller_state.pop(uid, None)
+        send_seller(uid, "\U0001f5d1 Bekor qilindi. Yangi mahsulot boshlang:",
+            {'inline_keyboard': [[{'text': "\u2795 Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
+        )
         return
 
     if d == 'menu_mystats':
@@ -1227,6 +1318,16 @@ def seller_handle_msg(msg):
     uid  = msg['from']['id']
     text = msg.get('text', '')
 
+    # ── JARAYON INTERCEPTOR ──
+    if is_prod_in_progress(uid) and text in PROD_BLOCKED_TEXTS:
+        send_seller(cid, get_prod_progress_text(uid),
+            {'inline_keyboard': [
+                [{'text': "▶️ Davom etish", 'callback_data': 'prod_continue'}],
+                [{'text': "🗑 Bekor qilish", 'callback_data': 'prod_restart'}],
+            ]}
+        )
+        return
+
     if uid == ADMIN_ID and text == '/stats':
         conf   = sum(1 for o in orders.values() if o['status'] == 'confirmed')
         rev    = sum(o['amount'] for o in orders.values() if o['status'] == 'confirmed')
@@ -1365,6 +1466,14 @@ def seller_handle_msg(msg):
         return
 
     if text == '/addproduct' or text == '➕ Mahsulot qo\'shish':
+        if is_prod_in_progress(uid):
+            send_seller(cid, get_prod_progress_text(uid),
+                {'inline_keyboard': [
+                    [{'text': '▶️ Davom etish', 'callback_data': 'prod_continue'}],
+                    [{'text': '🗑 Bekor qilish', 'callback_data': 'prod_restart'}],
+                ]}
+            )
+            return
         shops = seller_shops.get(uid, [])
         if not shops:
             send_seller(cid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
