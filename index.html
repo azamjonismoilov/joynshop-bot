@@ -48,6 +48,44 @@
   font-style: italic;
   font-display: swap;
 }
+
+/* BANNER SLIDER */
+.banner-wrap{max-width:1440px;margin:0 auto;padding:12px 16px 4px;}
+.banner-slider{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:3/1;}
+@media(max-width:768px){.banner-slider{aspect-ratio:2/1;}}
+.banner-slides{display:flex;height:100%;transition:transform .4s ease;}
+.banner-slide{flex:0 0 100%;position:relative;cursor:pointer;}
+.banner-slide img{width:100%;height:100%;object-fit:cover;}
+.banner-slide-inner{width:100%;height:100%;display:flex;align-items:center;padding:24px 32px;background:linear-gradient(135deg,var(--o500),var(--o600));}
+.banner-title{font-size:24px;font-weight:800;color:var(--white);line-height:1.2;margin-bottom:6px;}
+.banner-sub{font-size:14px;color:rgba(255,255,255,.8);}
+.banner-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.2);color:var(--white);font-size:12px;font-weight:600;padding:4px 12px;border-radius:99px;margin-bottom:10px;}
+.banner-nav{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:2;}
+.banner-nav-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);cursor:pointer;transition:all .2s;}
+.banner-nav-dot.active{background:var(--white);width:18px;border-radius:3px;}
+.banner-arr{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--n700);z-index:3;box-shadow:var(--ssm);}
+.banner-arr-prev{left:12px;}
+.banner-arr-next{right:12px;}
+/* CATEGORY NAV */
+.cat-nav{max-width:1440px;margin:0 auto;padding:8px 16px;}
+.cat-nav-scroll{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
+.cat-nav-scroll::-webkit-scrollbar{display:none;}
+.cat-nav-item{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;flex-shrink:0;padding:8px 12px;border-radius:12px;transition:background .15s;}
+.cat-nav-item:hover,.cat-nav-item.active{background:var(--o50);}
+.cat-nav-icon{width:44px;height:44px;border-radius:12px;background:var(--n100);display:flex;align-items:center;justify-content:center;font-size:20px;transition:background .15s;}
+.cat-nav-item.active .cat-nav-icon{background:var(--o100);}
+.cat-nav-label{font-size:11px;font-weight:500;color:var(--n600);white-space:nowrap;}
+.cat-nav-item.active .cat-nav-label{color:var(--o600);font-weight:600;}
+/* WOW BADGE */
+.wow-badge{position:absolute;bottom:8px;right:8px;background:linear-gradient(135deg,#FF6B35,#FF4500);color:var(--white);font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.04em;text-transform:uppercase;}
+/* AUTOCOMPLETE */
+.search-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1px solid var(--n200);border-radius:10px;box-shadow:var(--sxl);z-index:200;max-height:280px;overflow-y:auto;display:none;}
+.search-dropdown.open{display:block;}
+.search-item{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:var(--n700);transition:background .1s;}
+.search-item:hover{background:var(--n50);}
+.search-item-img{width:36px;height:36px;border-radius:6px;object-fit:cover;background:var(--n100);flex-shrink:0;}
+.search-item-name{font-weight:500;flex:1;}
+.search-item-price{font-size:12px;color:var(--o500);font-weight:600;}
 </style>
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
 <style>
@@ -139,6 +177,18 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .prod-img{position:relative;aspect-ratio:4/3;background:var(--n100);overflow:hidden;}
 .prod-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
 .prod-card:hover .prod-img img{transform:scale(1.04);}
+/* CARD SLIDER */
+.card-slider{position:relative;width:100%;height:100%;}
+.card-slides{display:flex;height:100%;transition:transform .3s ease;will-change:transform;}
+.card-slide{flex:0 0 100%;height:100%;overflow:hidden;}
+.card-slide img{width:100%;height:100%;object-fit:cover;}
+.card-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:2;}
+.card-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.5);transition:all .2s;}
+.card-dot.active{background:var(--white);width:14px;border-radius:3px;}
+.card-arr{position:absolute;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.85);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--n700);z-index:3;opacity:0;transition:opacity .2s;}
+.prod-card:hover .card-arr{opacity:1;}
+.card-arr-prev{left:6px;}
+.card-arr-next{right:6px;}
 .prod-img-placeholder{width:100%;height:100%;background:linear-gradient(135deg,var(--n100),var(--n200));display:flex;align-items:center;justify-content:center;font-size:32px;}
 .prod-badge-disc{position:absolute;top:8px;left:8px;background:var(--o500);color:var(--white);font-size:11px;font-weight:700;padding:2px 7px;border-radius:9999px;}
 .prod-badge-group{position:absolute;top:8px;right:36px;background:rgba(24,27,37,.7);color:var(--white);font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px;backdrop-filter:blur(4px);}
@@ -315,9 +365,10 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <div class="logo-mark"><i class="ri-shopping-bag-3-line"></i></div>
       <span class="logo-text"><span class="joyn">Joyn</span><span class="shop">shop</span></span>
     </div>
-    <div class="nav-search">
+    <div class="nav-search" style="position:relative">
       <i class="ri-search-line nav-search-icon"></i>
-      <input type="text" id="searchInput" placeholder="Mahsulot yoki do'kon qidiring..." oninput="onSearch()">
+      <input type="text" id="searchInput" placeholder="Mahsulot yoki do'kon qidiring..." oninput="onSearch();showAutocomplete()" onblur="setTimeout(()=>hideAutocomplete(),200)" autocomplete="off">
+      <div class="search-dropdown" id="searchDropdown"></div>
     </div>
     <div class="nav-actions">
       <a href="#" class="btn btn-sm btn-ghost" onclick="openLoginModal();return false"><i class="ri-user-line"></i> Kirish</a>
@@ -341,6 +392,84 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 
 <!-- MARKETPLACE -->
 <div id="marketplacePage">
+  <!-- BANNER SLIDER -->
+  <div class="banner-wrap">
+    <div class="banner-slider" id="bannerSlider">
+      <div class="banner-slides" id="bannerSlides">
+        <div class="banner-slide">
+          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#FA7319,#E16614)">
+            <div>
+              <div class="banner-badge"><i class="ri-group-fill"></i> Guruhli xarid</div>
+              <div class="banner-title">Do'stlar bilan<br>40% gacha tejang!</div>
+              <div class="banner-sub">O'zbekistondagi eng yaxshi guruh xarid platformasi</div>
+            </div>
+          </div>
+        </div>
+        <div class="banner-slide">
+          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
+            <div>
+              <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
+              <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
+              <div class="banner-sub">Buyurtma bering va tez oling</div>
+            </div>
+          </div>
+        </div>
+        <div class="banner-slide">
+          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
+            <div>
+              <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
+              <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
+              <div class="banner-sub">Minglab xaridorlarga yeting</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="banner-nav" id="bannerNav">
+        <div class="banner-nav-dot active" onclick="goBanner(0)"></div>
+        <div class="banner-nav-dot" onclick="goBanner(1)"></div>
+        <div class="banner-nav-dot" onclick="goBanner(2)"></div>
+      </div>
+      <button class="banner-arr banner-arr-prev" onclick="slideBanner(-1)"><i class="ri-arrow-left-s-line"></i></button>
+      <button class="banner-arr banner-arr-next" onclick="slideBanner(1)"><i class="ri-arrow-right-s-line"></i></button>
+    </div>
+  </div>
+  <!-- CATEGORY NAV -->
+  <div class="cat-nav">
+    <div class="cat-nav-scroll" id="catNavScroll">
+      <div class="cat-nav-item active" onclick="setCatNav(this,'all')">
+        <div class="cat-nav-icon"><i class="ri-apps-2-fill" style="color:var(--o500)"></i></div>
+        <div class="cat-nav-label">Hammasi</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Kiyim')">
+        <div class="cat-nav-icon"><i class="ri-t-shirt-fill" style="color:#335CFF"></i></div>
+        <div class="cat-nav-label">Kiyim</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Elektronika')">
+        <div class="cat-nav-icon"><i class="ri-smartphone-fill" style="color:#1A7544"></i></div>
+        <div class="cat-nav-label">Elektronika</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Oziq-ovqat')">
+        <div class="cat-nav-icon"><i class="ri-restaurant-fill" style="color:#E16614"></i></div>
+        <div class="cat-nav-label">Oziq-ovqat</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Uy-joy')">
+        <div class="cat-nav-icon"><i class="ri-home-heart-fill" style="color:#8B5CF6"></i></div>
+        <div class="cat-nav-label">Uy-joy</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Go'zallik')">
+        <div class="cat-nav-icon"><i class="ri-seedling-fill" style="color:#EC4899"></i></div>
+        <div class="cat-nav-label">Go'zallik</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Sport')">
+        <div class="cat-nav-icon"><i class="ri-run-fill" style="color:#F59E0B"></i></div>
+        <div class="cat-nav-label">Sport</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Bolalar')">
+        <div class="cat-nav-icon"><i class="ri-hearts-fill" style="color:#FB3748"></i></div>
+        <div class="cat-nav-label">Bolalar</div>
+      </div>
+    </div>
+  </div>
   <div class="page-layout">
     <aside class="sidebar">
       <div class="sidebar-section">
@@ -389,7 +518,12 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
         <div class="sidebar-title">Do'konlar</div>
-        <div class="filter-group" id="shopFilter"></div>
+        <div style="position:relative;margin-bottom:8px">
+          <i class="ri-search-line" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--n400)"></i>
+          <input type="text" id="shopSearch" placeholder="Do'kon qidirish..." oninput="filterShopList()"
+            style="width:100%;height:30px;border:1px solid var(--n200);border-radius:7px;background:var(--n50);padding:0 8px 0 26px;font-family:'Inter',sans-serif;font-size:12px;outline:none;">
+        </div>
+        <div class="filter-group" id="shopFilter" style="max-height:200px;overflow-y:auto;scrollbar-width:thin"></div>
       </div>
     </aside>
     <main>
@@ -608,7 +742,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 const API='https://joynshop-bot.onrender.com';
 const BUYER_BOT='joynshop_bot';
 let allProducts=[],shops={},currentProduct=null,currentUser=null;
-let activeFilter='all',activeTag='all',activeDisc=0,activeShop='',activeCat='all';
+let activeFilter='all',activeTag='all',activeDisc=0,activeShops=[],activeCat='all';
 let wishlist=JSON.parse(localStorage.getItem('wishlist')||'[]');
 let recentlyViewed=JSON.parse(localStorage.getItem('recently_viewed')||'[]');
 let countdownInterval=null;
@@ -653,6 +787,57 @@ function showSkeletons(count=8){
       </div>
     </div>`).join('');
 }
+
+// ── BANNER SLIDER ──
+let bannerIdx=0,bannerAutoTimer=null;
+function slideBanner(dir){
+  const slides=document.getElementById('bannerSlides');
+  const dots=document.querySelectorAll('.banner-nav-dot');
+  const total=dots.length;
+  bannerIdx=(bannerIdx+dir+total)%total;
+  if(slides)slides.style.transform=`translateX(-${bannerIdx*100}%)`;
+  dots.forEach((d,i)=>d.classList.toggle('active',i===bannerIdx));
+}
+function goBanner(idx){bannerIdx=idx;slideBanner(0);}
+function startBannerAuto(){
+  clearInterval(bannerAutoTimer);
+  bannerAutoTimer=setInterval(()=>slideBanner(1),4000);
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  startBannerAuto();
+  const bs=document.getElementById('bannerSlider');
+  if(bs){bs.addEventListener('mouseenter',()=>clearInterval(bannerAutoTimer));bs.addEventListener('mouseleave',startBannerAuto);}
+});
+
+// ── CATEGORY NAV ──
+function setCatNav(el,cat){
+  document.querySelectorAll('.cat-nav-item').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  activeCat=cat==='all'?'all':cat;
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.toggle('active',b.dataset.cat===(activeCat)));
+  renderProducts();
+}
+
+// ── AUTOCOMPLETE ──
+function showAutocomplete(){
+  const q=document.getElementById('searchInput').value.toLowerCase().trim();
+  const dd=document.getElementById('searchDropdown');
+  if(!q||q.length<2){dd.classList.remove('open');return;}
+  const matches=allProducts.filter(p=>
+    p.name.toLowerCase().includes(q)||p.shop_name.toLowerCase().includes(q)
+  ).slice(0,6);
+  if(!matches.length){dd.classList.remove('open');return;}
+  dd.innerHTML=matches.map(p=>{
+    const img=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
+    return `<div class="search-item" onclick="openDetail('${p.id}');hideAutocomplete()">
+      ${img?`<img class="search-item-img" src="${img}" onerror="this.style.display='none'">`:'<div class="search-item-img" style="display:flex;align-items:center;justify-content:center"><i class="ri-inbox-fill" style="color:var(--n300)"></i></div>'}
+      <span class="search-item-name">${p.name}</span>
+      <span class="search-item-price">${fmt(p.group_price)} so'm</span>
+    </div>`;
+  }).join('');
+  dd.classList.add('open');
+}
+function hideAutocomplete(){document.getElementById('searchDropdown')?.classList.remove('open');}
 
 // ── LOAD ──
 async function loadProducts(){
@@ -703,11 +888,26 @@ function updateCounts(){
 
 function renderShopFilter(){
   const el=document.getElementById('shopFilter');
-  el.innerHTML=Object.values(shops).map(s=>`
-    <button class="filter-item" onclick="setShopFilter('${s.name.replace(/'/g,"\\'")}',this)">
-      <span><span style="width:6px;height:6px;border-radius:50%;background:var(--g500);display:inline-block;margin-right:5px"></span>${s.name}</span>
+  const q=(document.getElementById('shopSearch')?.value||'').toLowerCase().trim();
+  const list=Object.values(shops).filter(s=>!q||s.name.toLowerCase().includes(q));
+  el.innerHTML=list.map(s=>{
+    const checked=activeShops.includes(s.name);
+    const safeName=s.name.replace(/'/g,"\\'");
+    return `<label class="filter-item" style="cursor:pointer;gap:8px;padding:7px 10px">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleShopCheck('${safeName}',this)"
+        style="width:14px;height:14px;accent-color:var(--o500);flex-shrink:0;cursor:pointer">
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
       <span class="filter-count">${s.products.length}</span>
-    </button>`).join('');
+    </label>`;
+  }).join('');
+}
+
+function filterShopList(){renderShopFilter();}
+
+function toggleShopCheck(name,cb){
+  if(cb.checked){if(!activeShops.includes(name))activeShops.push(name);}
+  else{activeShops=activeShops.filter(n=>n!==name);}
+  renderProducts();
 }
 
 // ── FILTERS ──
@@ -728,7 +928,7 @@ function getFiltered(){
   else if(activeTag==='mid') list=list.filter(p=>p.group_price>1000000&&p.group_price<=5000000);
   else if(activeTag==='premium') list=list.filter(p=>p.group_price>5000000);
   if(activeDisc>0) list=list.filter(p=>p.grp_disc>=activeDisc);
-  if(activeShop) list=list.filter(p=>p.shop_name===activeShop);
+  if(activeShops.length) list=list.filter(p=>activeShops.includes(p.shop_name));
   const mn=parseFloat(document.getElementById('priceMin')?.value||0);
   const mx=parseFloat(document.getElementById('priceMax')?.value||0);
   if(mn>0) list=list.filter(p=>p.group_price>=mn);
@@ -761,17 +961,34 @@ function cardHtml(p){
   const needed=p.min_group-p.count;
   const almost=needed>0&&needed<=2;
   const isNew=p.count===0;
-  const imgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
-  const img=imgSrc
-    ?`<img src="${imgSrc}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover"><div class="prod-img-placeholder" style="display:none"><i class="ri-inbox-fill"></i></div>`
-    :`<div class="prod-img-placeholder"><i class="ri-inbox-fill"></i></div>`;
   const wished=wishlist.includes(p.id);
   const timerHtml=getTimerBadge(p.deadline);
+  // Build image slider
+  const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls
+    :(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`)
+    :(p.photo_url)?[p.photo_url]
+    :(p.photo_id)?[`${API}/api/photo/${p.photo_id}`]:[];
+  let imgHtml;
+  if(urls.length>1){
+    const slides=urls.map((u,i)=>`<div class="card-slide"><img src="${i===0?u:''}" data-src="${u}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');
+    const dots=urls.map((_,i)=>`<div class="card-dot ${i===0?'active':''}"></div>`).join('');
+    imgHtml=`<div class="card-slider" data-idx="0" data-pid="${p.id}">
+      <div class="card-slides">${slides}</div>
+      <div class="card-dots">${dots}</div>
+      <button class="card-arr card-arr-prev" onclick="event.stopPropagation();slideCard(this.parentElement,-1)"><i class="ri-arrow-left-s-line"></i></button>
+      <button class="card-arr card-arr-next" onclick="event.stopPropagation();slideCard(this.parentElement,1)"><i class="ri-arrow-right-s-line"></i></button>
+    </div>`;
+  } else if(urls.length===1){
+    imgHtml=`<img src="${urls[0]}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover"><div class="prod-img-placeholder" style="display:none"><i class="ri-inbox-fill"></i></div>`;
+  } else {
+    imgHtml=`<div class="prod-img-placeholder"><i class="ri-inbox-fill"></i></div>`;
+  }
   return `<div class="prod-card" onclick="openDetail('${p.id}')">
-    <div class="prod-img">${img}
+    <div class="prod-img">${imgHtml}
       <div class="prod-badge-disc">-${p.grp_disc}%</div>
       ${p.count>0?`<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>`:''}
       ${almost?`<div class="prod-badge-hot"><i class="ri-flashlight-fill"></i> ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new"><i class="ri-sparkling-fill"></i> Yangi</div>`:''}
+      ${p.grp_disc>=40?`<div class="wow-badge">WOW</div>`:''}
       <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWish('${p.id}',this)" title="Wishlistga qo'shish">
         <i class="ri-heart-${wished?'fill':'line'}"></i>
       </button>
@@ -791,6 +1008,22 @@ function cardHtml(p){
       </div>
     </div>
   </div>`;
+}
+
+function slideCard(slider, dir){
+  const slides=slider.querySelector('.card-slides');
+  const dots=slider.querySelectorAll('.card-dot');
+  const total=dots.length;
+  let idx=parseInt(slider.dataset.idx||0);
+  idx=(idx+dir+total)%total;
+  slider.dataset.idx=idx;
+  slides.style.transform=`translateX(-${idx*100}%)`;
+  dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
+  // Lazy load next slide image
+  const imgs=slider.querySelectorAll('.card-slide img');
+  if(imgs[idx]&&imgs[idx].dataset.src&&!imgs[idx].src){
+    imgs[idx].src=imgs[idx].dataset.src;
+  }
 }
 
 function getTimerBadge(deadline){
@@ -1025,7 +1258,7 @@ function setSideFilter(f,btn){activeFilter=f;document.querySelectorAll('[data-fi
 function setTag(btn,tag){activeTag=tag;document.querySelectorAll('.tag-chip').forEach(t=>t.classList.remove('active'));btn.classList.add('active');activeFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));renderProducts();}
 function setCat(btn,cat){activeCat=cat;document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderProducts();}
 function toggleDisc(btn,pct){if(activeDisc===pct){activeDisc=0;btn.classList.remove('active');}else{activeDisc=pct;document.querySelectorAll('.disc-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}renderProducts();}
-function setShopFilter(name,btn){if(activeShop===name){activeShop='';btn.classList.remove('active');}else{activeShop=name;document.querySelectorAll('#shopFilter .filter-item').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}renderProducts();}
+
 function onSearch(){renderProducts();}
 
 // ── LOGIN ──
