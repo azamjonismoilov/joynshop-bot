@@ -50,30 +50,26 @@
 }
 
 /* BANNER SLIDER */
-.banner-wrap{max-width:1100px;margin:0 auto;padding:10px 16px 4px;}
-.banner-outer{display:flex;gap:10px;align-items:stretch;}
-.banner-side{flex:0 0 18%;min-width:0;border-radius:12px;overflow:hidden;cursor:pointer;filter:saturate(0.35) brightness(0.7);transition:filter .4s;}
-.banner-side:hover{filter:saturate(0.6) brightness(0.85);}
-.banner-side .banner-slide-inner{height:100%;min-height:120px;border-radius:0;}
-.banner-center{flex:1;min-width:0;border-radius:12px;overflow:hidden;position:relative;}
-.banner-slider{position:relative;overflow:hidden;aspect-ratio:2.8/1;border-radius:12px;}
-.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);}
-.banner-slide{flex:0 0 100%;position:relative;overflow:hidden;cursor:pointer;}
-.banner-slide.active{filter:none;}
-@media(max-width:768px){.banner-side{display:none;}.banner-wrap{padding:8px 12px 4px;}}
-@media(max-width:1100px){.banner-wrap{max-width:760px;}}
-@media(max-width:768px){.banner-wrap{max-width:100%;padding:8px 16px 4px;}.banner-slider{aspect-ratio:2.5/1;}}
-@media(max-width:480px){.banner-slider{aspect-ratio:2/1;}}
-.banner-slides{display:flex;height:100%;transition:transform .4s ease;}
-.banner-slide{flex:0 0 100%;position:relative;cursor:pointer;}
-.banner-slide img{width:100%;height:100%;object-fit:cover;}
-.banner-slide-inner{width:100%;height:100%;display:flex;align-items:center;padding:16px 24px;background:linear-gradient(135deg,var(--o500),var(--o600));}
-.banner-title{font-size:18px;font-weight:800;color:var(--white);line-height:1.2;margin-bottom:4px;}
-.banner-sub{font-size:12px;color:rgba(255,255,255,.8);}
-.banner-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.2);color:var(--white);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;margin-bottom:6px;}
-.banner-nav{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:2;}
-.banner-nav-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);cursor:pointer;transition:all .2s;}
-.banner-nav-dot.active{background:var(--white);width:18px;border-radius:3px;}
+.banner-wrap{max-width:1440px;margin:0 auto;padding:10px 16px 4px;}
+.banner-viewport{overflow:hidden;border-radius:14px;position:relative;}
+.banner-track{display:flex;gap:10px;will-change:transform;}
+.banner-track.animating{transition:transform .5s cubic-bezier(.4,0,.2,1);}
+.banner-card{flex:0 0 calc(50% - 10px);border-radius:14px;overflow:hidden;cursor:pointer;flex-shrink:0;}
+.banner-card.side-card{flex:0 0 calc(25% - 8px);}
+.banner-card-inner{width:100%;height:100%;display:flex;align-items:center;padding:20px 24px;}
+.banner-card.side-card .banner-card-inner{filter:saturate(0.3) brightness(0.7);transition:filter .4s;}
+.banner-card.side-card:hover .banner-card-inner{filter:saturate(0.6) brightness(0.85);}
+.banner-aspect{aspect-ratio:2.1/1;width:100%;}
+.banner-card.side-card .banner-aspect{aspect-ratio:1.3/1;}
+.banner-card .banner-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;margin-bottom:8px;}
+.banner-card .banner-title{font-size:20px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:4px;}
+.banner-card.side-card .banner-title{font-size:14px;}
+.banner-card .banner-sub{font-size:12px;color:rgba(255,255,255,.8);}
+.banner-nav{display:flex;justify-content:center;gap:6px;margin-top:8px;}
+.banner-nav-dot{width:6px;height:6px;border-radius:50%;background:var(--n300);cursor:pointer;transition:all .2s;}
+.banner-nav-dot.active{background:var(--o500);width:18px;border-radius:3px;}
+@media(max-width:900px){.banner-card{flex:0 0 calc(60% - 8px);}.banner-card.side-card{flex:0 0 calc(20% - 6px);}}
+@media(max-width:600px){.banner-card.side-card{display:none;}.banner-card{flex:0 0 100%;}}
 
 /* CATEGORY NAV */
 .cat-nav{max-width:1440px;margin:0 auto;padding:6px 16px;}
@@ -442,64 +438,13 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 <div id="marketplacePage">
   <!-- BANNER SLIDER -->
   <div class="banner-wrap">
-    <div class="banner-outer">
-      <!-- Chap yon -->
-      <div class="banner-side" id="bannerSideLeft" onclick="slideBanner(-1)">
-        <div class="banner-slide-inner" id="bannerSideLeftInner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
-          <div>
-            <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
-            <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
-          </div>
-        </div>
-      </div>
-      <!-- Markaz -->
-      <div class="banner-center">
-        <div class="banner-slider" id="bannerSlider">
-          <div class="banner-slides" id="bannerSlides">
-            <div class="banner-slide active">
-              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#FA7319,#E16614)">
-                <div>
-                  <div class="banner-badge"><i class="ri-group-fill"></i> Guruhli xarid</div>
-                  <div class="banner-title">Do'stlar bilan<br>40% gacha tejang!</div>
-                  <div class="banner-sub">O'zbekistondagi eng yaxshi guruh xarid platformasi</div>
-                </div>
-              </div>
-            </div>
-            <div class="banner-slide">
-              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
-                <div>
-                  <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
-                  <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
-                  <div class="banner-sub">Buyurtma bering va tez oling</div>
-                </div>
-              </div>
-            </div>
-            <div class="banner-slide">
-              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
-                <div>
-                  <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
-                  <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
-                  <div class="banner-sub">Minglab xaridorlarga yeting</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="banner-nav" id="bannerNav">
-            <div class="banner-nav-dot active" onclick="goBanner(0)"></div>
-            <div class="banner-nav-dot" onclick="goBanner(1)"></div>
-            <div class="banner-nav-dot" onclick="goBanner(2)"></div>
-          </div>
-        </div>
-      </div>
-      <!-- O'ng yon -->
-      <div class="banner-side" id="bannerSideRight" onclick="slideBanner(1)">
-        <div class="banner-slide-inner" id="bannerSideRightInner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
-          <div>
-            <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
-            <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
-          </div>
-        </div>
-      </div>
+    <div class="banner-viewport" id="bannerViewport">
+      <div class="banner-track" id="bannerTrack"></div>
+    </div>
+    <div class="banner-nav" id="bannerNav">
+      <div class="banner-nav-dot active" onclick="goBanner(0)"></div>
+      <div class="banner-nav-dot" onclick="goBanner(1)"></div>
+      <div class="banner-nav-dot" onclick="goBanner(2)"></div>
     </div>
   </div>
   <!-- CATEGORY NAV -->
@@ -857,94 +802,129 @@ function showSkeletons(count=8){
 }
 
 // ── BANNER SLIDER ──
-let bannerIdx=1,bannerAutoTimer=null;
+let bannerActive=0, bannerAutoTimer=null, bannerAnimating=false;
 const BANNERS=[
-  {bg:'linear-gradient(135deg,#FA7319,#E16614)',icon:'ri-group-fill',label:'Guruhli xarid',title:"Do'stlar bilan<br>40% gacha tejang!"},
-  {bg:'linear-gradient(135deg,#335CFF,#1A3FCC)',icon:'ri-flashlight-fill',label:'Tez yetkazish',title:"Toshkent bo'ylab<br>24 soatda yetkazish"},
-  {bg:'linear-gradient(135deg,#1A7544,#0F5430)',icon:'ri-store-3-fill',label:'Yangi sotuvchi',title:"Do'koningizni<br>Joynshop da oching"},
+  {bg:'linear-gradient(135deg,#FA7319,#E16614)',icon:'ri-group-fill',label:'Guruhli xarid',title:"Do'stlar bilan<br>40% gacha tejang!",sub:"O'zbekistondagi eng yaxshi guruh xarid platformasi"},
+  {bg:'linear-gradient(135deg,#335CFF,#1A3FCC)',icon:'ri-flashlight-fill',label:'Tez yetkazish',title:"Toshkent bo'ylab<br>24 soatda yetkazish",sub:"Buyurtma bering va tez oling"},
+  {bg:'linear-gradient(135deg,#1A7544,#0F5430)',icon:'ri-store-3-fill',label:'Yangi sotuvchi',title:"Do'koningizni<br>Joynshop da oching",sub:"Minglab xaridorlarga yeting"},
 ];
-function updateSideBanners(realIdx){
-  const total=BANNERS.length;
-  const prevIdx=(realIdx-1+total)%total;
-  const nextIdx=(realIdx+1)%total;
-  const li=document.getElementById('bannerSideLeftInner');
-  const ri=document.getElementById('bannerSideRightInner');
-  if(li){const b=BANNERS[prevIdx];li.style.background=b.bg;li.innerHTML=`<div><div class="banner-badge"><i class="${b.icon}"></i> ${b.label}</div><div class="banner-title" style="font-size:13px;line-height:1.3">${b.title}</div></div>`;}
-  if(ri){const b=BANNERS[nextIdx];ri.style.background=b.bg;ri.innerHTML=`<div><div class="banner-badge"><i class="${b.icon}"></i> ${b.label}</div><div class="banner-title" style="font-size:13px;line-height:1.3">${b.title}</div></div>`;}
-}
-function slideBanner(dir){
-  const wrap=document.getElementById('bannerSlides');
-  if(!wrap) return;
-  const allSlides=wrap.querySelectorAll('.banner-slide');
-  const dots=document.querySelectorAll('.banner-nav-dot');
-  const total=dots.length;
-  const realTotal=allSlides.length;
-  bannerIdx+=dir;
-  wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';
-  wrap.style.transform=`translateX(-${bannerIdx*100}%)`;
-  const realIdx=((bannerIdx-1)%total+total)%total;
-  dots.forEach((d,i)=>d.classList.toggle('active',i===realIdx));
-  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
-  updateSideBanners(realIdx);
-  if(bannerIdx>=realTotal-1){
-    setTimeout(()=>{wrap.style.transition='none';bannerIdx=1;wrap.style.transform='translateX(-100%)';allSlides.forEach((s,i)=>s.classList.toggle('active',i===1));updateSideBanners(0);},420);
-  } else if(bannerIdx<=0){
-    setTimeout(()=>{wrap.style.transition='none';bannerIdx=realTotal-2;wrap.style.transform=`translateX(-${bannerIdx*100}%)`;allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));updateSideBanners(realTotal-3);},420);
-  }
+
+function bannerCardHtml(b, isMain){
+  return `<div class="banner-aspect">
+    <div class="banner-card-inner" style="background:${b.bg}">
+      <div>
+        <div class="banner-badge"><i class="${b.icon}"></i> ${b.label}</div>
+        <div class="banner-title">${b.title}</div>
+        ${isMain&&b.sub?`<div class="banner-sub">${b.sub}</div>`:''}
+      </div>
+    </div>
+  </div>`;
 }
 
-function goBanner(dotIdx){
-  bannerIdx=dotIdx+1;
-  const wrap=document.getElementById('bannerSlides');
-  const allSlides=wrap?wrap.querySelectorAll('.banner-slide'):[];
-  const dots=document.querySelectorAll('.banner-nav-dot');
-  if(wrap){wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';wrap.style.transform=`translateX(-${bannerIdx*100}%)`;}
-  dots.forEach((d,i)=>d.classList.toggle('active',i===dotIdx));
-  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
-  updateSideBanners(dotIdx);
+function buildBannerTrack(){
+  const track=document.getElementById('bannerTrack');
+  if(!track) return;
+  const total=BANNERS.length;
+  // Build: [prev_clone, ...all banners..., next_clone]
+  // We show 3 at a time: prev | active | next
+  // Track has total+2 cards: clone_last + B0,B1,B2 + clone_first
+  const cards=[];
+  // clone of last
+  cards.push({b:BANNERS[total-1],isSide:true,isClone:true});
+  BANNERS.forEach((b,i)=>cards.push({b,isSide:i!==bannerActive,isClone:false}));
+  // clone of first
+  cards.push({b:BANNERS[0],isSide:true,isClone:true});
+  track.innerHTML=cards.map(({b,isSide},i)=>`
+    <div class="banner-card ${isSide?'side-card':''}" data-ci="${i}">
+      ${bannerCardHtml(b,!isSide)}
+    </div>`).join('');
+  // Position without animation
+  positionTrack(false);
+  // Add click on side cards
+  track.querySelectorAll('.side-card').forEach(el=>{
+    el.addEventListener('click',()=>{
+      const ci=parseInt(el.dataset.ci);
+      const activeCI=bannerActive+1;
+      slideBanner(ci<activeCI?-1:1);
+    });
+  });
 }
-function goBanner(dotIdx){
-  bannerIdx=dotIdx+1; // +1 because of prepended clone
-  const wrap=document.getElementById('bannerSlides');
-  const allSlides=wrap?wrap.querySelectorAll('.banner-slide'):[];
-  const dots=document.querySelectorAll('.banner-nav-dot');
-  if(wrap){wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';wrap.style.transform=`translateX(-${bannerIdx*100}%)`;}
-  dots.forEach((d,i)=>d.classList.toggle('active',i===dotIdx));
-  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
+
+function positionTrack(animate){
+  const track=document.getElementById('bannerTrack');
+  const viewport=document.getElementById('bannerViewport');
+  if(!track||!viewport) return;
+  const cards=[...track.querySelectorAll('.banner-card')];
+  if(!cards.length) return;
+  const gap=10;
+  const vw=viewport.offsetWidth;
+  // Active card index in track = bannerActive + 1 (because of prepended clone)
+  const activeCI=bannerActive+1;
+  // Each card width: main=50%, side=25% of vw minus gaps
+  // Calculate offset: sum of widths before active + center active in viewport
+  let offset=0;
+  for(let i=0;i<activeCI;i++){
+    offset+=cards[i].offsetWidth+gap;
+  }
+  // Center the active card
+  const activeW=cards[activeCI]?cards[activeCI].offsetWidth:vw*0.5;
+  offset-=(vw-activeW)/2;
+  if(animate){
+    track.classList.add('animating');
+  } else {
+    track.classList.remove('animating');
+  }
+  track.style.transform=`translateX(-${offset}px)`;
 }
+
+function slideBanner(dir){
+  if(bannerAnimating) return;
+  bannerAnimating=true;
+  const total=BANNERS.length;
+  bannerActive=(bannerActive+dir+total)%total;
+  // Update side/main classes
+  const track=document.getElementById('bannerTrack');
+  const cards=[...track.querySelectorAll('.banner-card')];
+  const activeCI=bannerActive+1;
+  cards.forEach((el,i)=>{
+    el.classList.toggle('side-card',i!==activeCI);
+    // Update content for newly active
+    if(i===activeCI){
+      el.innerHTML=bannerCardHtml(BANNERS[bannerActive],true);
+      el.classList.remove('side-card');
+    }
+  });
+  positionTrack(true);
+  document.querySelectorAll('.banner-nav-dot').forEach((d,i)=>d.classList.toggle('active',i===bannerActive));
+  // After animation done
+  setTimeout(()=>{
+    bannerAnimating=false;
+    // Silent jump for infinite
+    if(bannerActive===0&&dir===1){buildBannerTrack();}
+    else if(bannerActive===total-1&&dir===-1){buildBannerTrack();}
+  },520);
+}
+
+function goBanner(idx){
+  if(bannerAnimating||idx===bannerActive) return;
+  const dir=idx>bannerActive?1:-1;
+  bannerActive=idx;
+  const track=document.getElementById('bannerTrack');
+  const cards=[...track.querySelectorAll('.banner-card')];
+  const activeCI=bannerActive+1;
+  cards.forEach((el,i)=>{
+    el.classList.toggle('side-card',i!==activeCI);
+    if(i===activeCI){el.innerHTML=bannerCardHtml(BANNERS[bannerActive],true);el.classList.remove('side-card');}
+  });
+  positionTrack(true);
+  document.querySelectorAll('.banner-nav-dot').forEach((d,i)=>d.classList.toggle('active',i===bannerActive));
+  setTimeout(()=>{bannerAnimating=false;},520);
+}
+
 function startBannerAuto(){
   clearInterval(bannerAutoTimer);
   bannerAutoTimer=setInterval(()=>slideBanner(1),4000);
 }
-window.addEventListener('DOMContentLoaded',()=>{
-  // Init: clone first and last slides for infinite loop
-  const wrap=document.getElementById('bannerSlides');
-  if(wrap){
-    const slides=[...wrap.querySelectorAll('.banner-slide')];
-    const first=slides[0].cloneNode(true);
-    const last=slides[slides.length-1].cloneNode(true);
-    wrap.appendChild(first);
-    wrap.insertBefore(last,slides[0]);
-    // Start at real first slide (index 1)
-    wrap.style.transition='none';
-    wrap.style.transform='translateX(-100%)';
-    wrap.querySelectorAll('.banner-slide').forEach((s,i)=>s.classList.toggle('active',i===1));
-  }
-  startBannerAuto();
-  const bs=document.getElementById('bannerSlider');
-  if(bs){
-    bs.addEventListener('mouseenter',()=>clearInterval(bannerAutoTimer));
-    bs.addEventListener('mouseleave',startBannerAuto);
-    // Touch swipe support
-    let tx=0;
-    bs.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;clearInterval(bannerAutoTimer);},{passive:true});
-    bs.addEventListener('touchend',e=>{
-      const diff=tx-e.changedTouches[0].clientX;
-      if(Math.abs(diff)>40) slideBanner(diff>0?1:-1);
-      startBannerAuto();
-    },{passive:true});
-  }
-});
 
 // ── CATEGORY NAV ──
 function setCatNav(el,cat){
@@ -1556,6 +1536,8 @@ const saved=localStorage.getItem('tg_user');
 if(saved){try{currentUser=JSON.parse(saved);renderNavUser(currentUser);}catch(e){}}
 
 loadProducts().then(()=>{if(deepPid)openDetail(deepPid);});
+buildBannerTrack();
+startBannerAuto();
 
 // Auto refresh every 60s
 setInterval(()=>{
