@@ -2726,6 +2726,32 @@ def api_buyer_stats():
         'referrals':     ref.get('count', 0),
     })
 
+@app.route('/api/buyer_orders', methods=['GET'])
+def api_buyer_orders():
+    from flask import jsonify
+    uid = request.args.get('uid', type=int)
+    if not uid: return jsonify([]), 400
+    result = []
+    for oid, o in orders.items():
+        if o.get('buyer_id') != uid: continue
+        pid = o.get('product_id','')
+        p   = products.get(pid, {})
+        result.append({
+            'id':          oid,
+            'code':        o.get('code', oid),
+            'name':        p.get('name', o.get('product_name','')),
+            'shop_name':   p.get('shop_name', ''),
+            'photo_url':   p.get('photo_url') or (f"{request.host_url}api/photo/{p.get('photo_id')}" if p.get('photo_id') else ''),
+            'amount':      o.get('amount', p.get('group_price' if o.get('type')=='group' else 'solo_price', 0)),
+            'type':        o.get('type', 'group'),
+            'delivery':    o.get('delivery_type', 'pickup'),
+            'address':     o.get('address', ''),
+            'status':      o.get('status', 'pending'),
+            'created':     o.get('created_at', ''),
+        })
+    result.sort(key=lambda x: x['created'], reverse=True)
+    return jsonify(result)
+
 @app.route('/api/products', methods=['GET'])
 def api_products():
     from flask import jsonify
