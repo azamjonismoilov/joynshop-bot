@@ -423,37 +423,73 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   <!-- CATEGORY NAV -->
   <div class="cat-nav">
     <div class="cat-nav-scroll" id="catNavScroll">
-      <div class="cat-nav-item active" onclick="setCatNav(this,'all')">
+      <div class="cat-nav-item active" onclick="setCatNav(this,'all')" data-cat="all">
         <div class="cat-nav-icon"><i class="ri-apps-2-fill" style="color:var(--o500)"></i></div>
         <div class="cat-nav-label">Hammasi</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Kiyim')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Kiyim')" data-cat="Kiyim">
         <div class="cat-nav-icon"><i class="ri-t-shirt-fill" style="color:#335CFF"></i></div>
         <div class="cat-nav-label">Kiyim</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Elektronika')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Poyabzal')" data-cat="Poyabzal">
+        <div class="cat-nav-icon"><i class="ri-footprint-fill" style="color:#8B5CF6"></i></div>
+        <div class="cat-nav-label">Poyabzal</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Sumka')" data-cat="Sumka">
+        <div class="cat-nav-icon"><i class="ri-handbag-fill" style="color:#EC4899"></i></div>
+        <div class="cat-nav-label">Sumka</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Soat & Zargarlik')" data-cat="Soat & Zargarlik">
+        <div class="cat-nav-icon"><i class="ri-time-fill" style="color:#F59E0B"></i></div>
+        <div class="cat-nav-label">Soat</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Elektronika')" data-cat="Elektronika">
         <div class="cat-nav-icon"><i class="ri-smartphone-fill" style="color:#1A7544"></i></div>
         <div class="cat-nav-label">Elektronika</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Oziq-ovqat')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Ofis & Kompyuter')" data-cat="Ofis & Kompyuter">
+        <div class="cat-nav-icon"><i class="ri-computer-fill" style="color:#0EA5E9"></i></div>
+        <div class="cat-nav-label">Ofis</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Kantselyariya')" data-cat="Kantselyariya">
+        <div class="cat-nav-icon"><i class="ri-pencil-fill" style="color:#6366F1"></i></div>
+        <div class="cat-nav-label">Kantsеl.</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Avto')" data-cat="Avto">
+        <div class="cat-nav-icon"><i class="ri-car-fill" style="color:#64748B"></i></div>
+        <div class="cat-nav-label">Avto</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Oziq-ovqat')" data-cat="Oziq-ovqat">
         <div class="cat-nav-icon"><i class="ri-restaurant-fill" style="color:#E16614"></i></div>
         <div class="cat-nav-label">Oziq-ovqat</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Uy-joy')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Uy-joy')" data-cat="Uy-joy">
         <div class="cat-nav-icon"><i class="ri-home-heart-fill" style="color:#8B5CF6"></i></div>
         <div class="cat-nav-label">Uy-joy</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Go'zallik')">
-        <div class="cat-nav-icon"><i class="ri-seedling-fill" style="color:#EC4899"></i></div>
-        <div class="cat-nav-label">Go'zallik</div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Parfyumeriya')" data-cat="Parfyumeriya">
+        <div class="cat-nav-icon"><i class="ri-drop-fill" style="color:#EC4899"></i></div>
+        <div class="cat-nav-label">Parfyum</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Sport')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Salomatlik')" data-cat="Salomatlik">
+        <div class="cat-nav-icon"><i class="ri-heart-pulse-fill" style="color:#FB3748"></i></div>
+        <div class="cat-nav-label">Salomatlik</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Sport')" data-cat="Sport">
         <div class="cat-nav-icon"><i class="ri-run-fill" style="color:#F59E0B"></i></div>
         <div class="cat-nav-label">Sport</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,'Bolalar')">
+      <div class="cat-nav-item" onclick="setCatNav(this,'Bolalar')" data-cat="Bolalar">
         <div class="cat-nav-icon"><i class="ri-hearts-fill" style="color:#FB3748"></i></div>
         <div class="cat-nav-label">Bolalar</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,"O'yin & Hobby")" data-cat="O'yin & Hobby">
+        <div class="cat-nav-icon"><i class="ri-gamepad-fill" style="color:#7C3AED"></i></div>
+        <div class="cat-nav-label">O'yin</div>
+      </div>
+      <div class="cat-nav-item" onclick="setCatNav(this,'Boshqa')" data-cat="Boshqa">
+        <div class="cat-nav-icon"><i class="ri-box-3-fill" style="color:#94A3B8"></i></div>
+        <div class="cat-nav-label">Boshqa</div>
       </div>
     </div>
   </div>
