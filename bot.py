@@ -1342,18 +1342,29 @@ def seller_handle_msg(msg):
         return
 
     if text == '/start':
-        shops = seller_shops.get(uid, [])
-        if not shops:
-            seller_state[uid] = {'step': 'ob_shop_name'}
-            send_seller(cid,
-                "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
-                "Bir marta profilingizni to'ldiring.\n\n"
-                "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
-            )
+        # int va str key lar ikkalasini tekshiramiz
+        shops = seller_shops.get(uid) or seller_shops.get(str(uid), [])
+        # Yangi user — hech qachon do'kon qo'shmaganlar uchun onboarding
+        is_new = not shops and str(uid) not in [str(k) for k in seller_shops.keys()]
+        if is_new:
+            # Faqat seller_state da ob_ step yo'q bo'lsa boshlaylik
+            cur_state = seller_state.get(uid, {})
+            if not cur_state.get('step','').startswith('ob_'):
+                seller_state[uid] = {'step': 'ob_shop_name'}
+                send_seller(cid,
+                    "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
+                    "Bir marta profilingizni to'ldiring.\n\n"
+                    "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
+                )
+            else:
+                send_seller(cid, "📝 Do'kon ma'lumotlarini kiritishni davom eting.")
         else:
+            # Mavjud sotuvchi — to'g'ridan menyu ko'rsatamiz
+            shop_names = ', '.join(s['name'] for s in shops) if shops else ''
             send_seller(cid,
-                "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-                "Guruh savdosi orqali ko'proq soting!",
+                f"🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+                f"{'🏬 ' + shop_names + chr(10) if shop_names else ''}"
+                f"Guruh savdosi orqali ko'proq soting!",
                 {'keyboard': [
                     [{'text': '➕ Mahsulot qo\'shish'}],
                     [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
@@ -3106,6 +3117,7 @@ def save_data():
             'buyer_profiles':         buyer_profiles,
             'refund_requests':        refund_requests,
             'seller_products':        {str(k): v for k, v in seller_products.items()},
+            'seller_shops':           {str(k): v for k, v in seller_shops.items()},
             'verified_channels':      verified_channels,
             'pending_moderator_codes':pending_moderator_codes,
             'referrals':              referrals,
