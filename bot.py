@@ -1644,15 +1644,28 @@ def seller_handle_msg(msg):
                 # Duplicate tekshirish
                 if media_id not in s['photo_ids'] and len(s['photo_ids']) < 5:
                     s['photo_ids'].append(media_id)
-                    # Async S3 upload — webhook ni bloklamaydi
                     upload_photo_async(media_id, SELLER_TOKEN, s)
-                count = len(s['photo_ids'])
-                # Album yuborilganda faqat birinchi xabarda javob ber
-                last_group = s.get('last_media_group')
-                if media_group_id and media_group_id == last_group:
-                    pass  # Album davomi — javob berma
-                else:
+
+                if media_group_id:
+                    # Album — barcha rasmlar kelguncha kutamiz
                     s['last_media_group'] = media_group_id
+                    # Eski timer bekor qilamiz
+                    if s.get('album_timer'):
+                        s['album_timer'].cancel()
+                    # 0.8s kutib count ni yangilaymiz
+                    def send_album_count(cid=cid, s=s):
+                        count = len(s.get('photo_ids', []))
+                        send_seller(cid,
+                            f"✅ {count}/5 media qabul qilindi. Yana yuboring yoki davom eting:",
+                            {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
+                        )
+                    import threading as _t
+                    timer = _t.Timer(0.8, send_album_count)
+                    s['album_timer'] = timer
+                    timer.start()
+                else:
+                    # Bitta rasm
+                    count = len(s['photo_ids'])
                     send_seller(cid,
                         f"✅ {count}/5 media. Yana yuboring yoki davom eting:",
                         {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
