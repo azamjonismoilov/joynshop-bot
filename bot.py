@@ -3211,6 +3211,103 @@ def dashboard():
     html = open('dashboard.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/api/checkout', methods=['POST'])
+def api_checkout():
+    from flask import jsonify
+    data = request.json or {}
+
+    pid       = data.get('product_id', '')
+    uid       = data.get('user_id')
+    user_name = data.get('user_name', 'Foydalanuvchi')
+    otype     = data.get('type', 'group')       # 'group' | 'solo'
+    variant   = data.get('variant', '')
+    delivery  = data.get('delivery', 'pickup')  # 'pickup' | 'deliver'
+    address   = data.get('address', '')
+
+    # Validatsiya
+    if not pid or not uid:
+        return jsonify({'ok': False, 'error': 'product_id va user_id kerak'}), 400
+
+    p = products.get(pid)
+    if not p:
+        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
+    if p.get('status') == 'closed':
+        return jsonify({'ok': False, 'error': 'Mahsulot yopilgan'}), 400
+
+    uid = int(uid)
+
+    # Solo sotuv tekshiruvi
+    if otype == 'solo':
+        if not p.get('solo_price'):
+            return jsonify({'ok': False, 'error': 'Yakka sotish mavjud emas'}), 400
+        amount = p['solo_price']
+    else:
+        # Guruh — allaqachon qo'shilganmi?
+        if uid in groups.get(pid, []):
+            return jsonify({'ok': False, 'error': 'Allaqachon guruhdasiz'}), 400
+        amount = p['group_price']
+
+    # Buyurtma yaratish
+    code = gen_code()
+    orders[code] = {
+        'product_id': pid,
+        'user_id':    uid,
+        'user_name':  user_name,
+        'amount':     amount,
+        'type':       otype,
+        'variant':    variant,
+        'delivery':   delivery,
+        'address':    address,
+        'status':     'pending',
+        'created':    datetime.now().strftime('%d.%m.%Y %H:%M'),
+        'source':     'miniapp',
+    }
+    save_data()
+
+    # Xaridorga Telegram bot orqali to'lov ma'lumotlari
+    variant_line = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
+    delivery_text = "🚚 Yetkazib berish" if delivery == 'deliver' else "🏪 Olib ketish"
+    address_line  = f"\n📍 Manzil: {address}" if address else ''
+
+    send_buyer(uid,
+        f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {'Yakka' if otype=='solo' else 'Guruh'} buyurtma</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📦 {p['name']}{variant_line}\n"
+        f"💰 {fmt(amount)} so'm\n"
+        f"🚚 {delivery_text}{address_line}\n\n"
+        f"💳 <b>Payme orqali to'lang:</b>\n"
+        f"📱 <code>{PAYME_NUMBER}</code>\n"
+        f"💵 <code>{fmt(amount)}</code>\n"
+        f"📝 Izoh: <code>{code}</code>\n\n"
+        f"⚠️ Izohga <b>{code}</b> yozing!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🔒 Joynshop kafolati ostida",
+        {'inline_keyboard': [
+            [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+            [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}],
+        ]}
+    )
+
+    # Sotuvchiga xabar
+    sid = p.get('seller_id')
+    if sid:
+        send_seller(sid,
+            f"🔔 <b>YANGI BUYURTMA (Miniapp)</b>\n\n"
+            f"📦 {p.get('name','')}{variant_line}\n"
+            f"👤 {user_name} (ID: <code>{uid}</code>)\n"
+            f"💰 {fmt(amount)} so'm\n"
+            f"🛒 {'Yakka' if otype=='solo' else 'Guruh'}\n"
+            f"🚚 {delivery_text}{address_line}\n"
+            f"🆔 #{code}",
+            {'inline_keyboard': [[
+                {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'},
+            ]]}
+        )
+
+    return jsonify({'ok': True, 'code': code, 'amount': amount})
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
 
