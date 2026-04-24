@@ -46,7 +46,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 
 /* HEADER */
 .header-wrap{position:fixed;top:0;left:0;right:0;width:100%;z-index:100;margin-bottom:0;}
-.header{background:var(--o500);padding:58px 16px 12px;border-radius:0;border:none;width:100%;}
+.header{background:var(--o500);padding:12px 16px 12px;border-radius:0;border:none;width:100%;}
 .header-inner{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .header-top{display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
 .logo{font-size:20px;font-weight:800;letter-spacing:-.02em;}
@@ -412,6 +412,19 @@ const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 if(tg){
   tg.ready();
   tg.expand();
+  // Faqat mobile Telegram da close button uchun padding
+  function applyTgPadding(){
+    const header = document.querySelector('.header');
+    if(!header) return;
+    const safeTop = tg.safeAreaInsets?.top || 0;
+    const contentTop = tg.contentSafeAreaInsets?.top || 0;
+    const totalTop = Math.max(safeTop, contentTop);
+    // Faqat real mobile da (50px dan katta bo'lsa desktop hisoblash)
+    if(totalTop > 0 && totalTop < 100){
+      header.style.paddingTop = (totalTop + 12) + 'px';
+    }
+    syncShellPadding();
+  }
   function syncShellPadding(){
     const header = document.querySelector('.header');
     const shell = document.querySelector('.app-shell');
@@ -419,9 +432,8 @@ if(tg){
       shell.style.paddingTop = header.offsetHeight + 'px';
     }
   }
-  syncShellPadding();
-  setTimeout(syncShellPadding, 200);
-  setTimeout(syncShellPadding, 600);
+  applyTgPadding();
+  setTimeout(applyTgPadding, 300);
   const headerEl = document.querySelector('.header');
   if(headerEl && window.ResizeObserver){
     new ResizeObserver(syncShellPadding).observe(headerEl);
