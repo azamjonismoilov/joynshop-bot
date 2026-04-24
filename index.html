@@ -497,9 +497,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
     <button onclick="closeProfile()" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--n600);cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;margin-bottom:20px;padding:0"><i class="ri-arrow-left-line"></i> Orqaga</button>
 
     <!-- Avatar & Name -->
-    <div style="background:var(--white);border-radius:16px;border:1px solid var(--n200);padding:24px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
-      <div id="profAvatar" style="width:64px;height:64px;border-radius:50%;background:var(--o500);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--white);flex-shrink:0"></div>
-      <div style="flex:1">
+    <div style="background:var(--white);border-radius:16px;border:1px solid var(--n200);padding:20px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
+      <div id="profAvatar" style="width:64px;height:64px;border-radius:50%;background:var(--o500);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--white);flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
         <div id="profName" style="font-size:18px;font-weight:700;margin-bottom:3px"></div>
         <div id="profUsername" style="font-size:13px;color:var(--n400);margin-bottom:8px"></div>
         <span style="display:inline-flex;align-items:center;gap:4px;background:var(--o50);color:var(--o500);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--o100)"><i class="ri-medal-fill"></i> Joynshop a'zosi</span>
@@ -507,45 +507,59 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
     </div>
 
     <!-- Stats -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
-        <div id="profOrders" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:11px;color:var(--n400);margin-top:3px">Buyurtmalar</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
+        <div id="profOrders" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:10px;color:var(--n400);margin-top:3px">Buyurtmalar</div>
       </div>
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
-        <div id="profGroups" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:11px;color:var(--n400);margin-top:3px">Guruhlar</div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
+        <div id="profGroups" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:10px;color:var(--n400);margin-top:3px">Guruhlar</div>
       </div>
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
-        <div id="profSaved" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:11px;color:var(--n400);margin-top:3px">Saqlangan</div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
+        <div id="profSaved" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:10px;color:var(--n400);margin-top:3px">Saqlangan</div>
       </div>
-    </div>
-
-    <!-- Menu -->
-    <div style="background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;margin-bottom:12px">
-      <div style="padding:10px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);border-bottom:1px solid var(--n100)">Faoliyat</div>
-      <a id="profOrdersLink" href="#" style="display:flex;align-items:center;gap:12px;padding:14px 16px;text-decoration:none;border-bottom:1px solid var(--n100);cursor:pointer" onclick="event.preventDefault()">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--o50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-shopping-bag-3-fill" style="color:var(--o500);font-size:17px"></i></div>
-        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Buyurtmalarim</span>
-        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
-      </a>
-      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--n100)" onclick="closeProfile()">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--r50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-heart-3-fill" style="color:var(--r500);font-size:17px"></i></div>
-        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Saqlangan mahsulotlar</span>
-        <span style="font-size:12px;font-weight:600;color:var(--o500)" id="profSavedCount"></span>
-        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="shareRefLink()">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--g50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-share-forward-fill" style="color:var(--g800);font-size:17px"></i></div>
-        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Do'stni taklif qilish</span>
-        <span style="font-size:12px;color:var(--o500);font-weight:600">+10,000 so'm</span>
-        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
+      <div style="background:linear-gradient(135deg,var(--o500),var(--o600));border-radius:12px;padding:12px;text-align:center">
+        <div id="profCashback" style="font-size:16px;font-weight:700;color:var(--white)">—</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:3px">Cashback</div>
       </div>
     </div>
 
-    <!-- Logout -->
-    <button onclick="logoutUser()" style="width:100%;height:46px;border-radius:12px;border:1.5px solid var(--r500);background:transparent;color:var(--r500);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="ri-logout-circle-r-line"></i> Chiqish</button>
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;background:var(--n100);border-radius:10px;padding:3px;margin-bottom:12px">
+      <button id="tabOrders" onclick="switchProfTab('orders')" style="flex:1;height:34px;border-radius:8px;border:none;background:var(--white);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--n900);cursor:pointer;box-shadow:var(--ssm)">Buyurtmalar</button>
+      <button id="tabSaved" onclick="switchProfTab('saved')" style="flex:1;height:34px;border-radius:8px;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--n500);cursor:pointer">Saqlangan</button>
+      <button id="tabSettings" onclick="switchProfTab('settings')" style="flex:1;height:34px;border-radius:8px;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--n500);cursor:pointer">Sozlamalar</button>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="profTabOrders">
+      <div id="profOrdersList" style="display:flex;flex-direction:column;gap:10px">
+        <div style="text-align:center;padding:32px;color:var(--n400)"><i class="ri-loader-4-fill" style="font-size:24px"></i></div>
+      </div>
+    </div>
+
+    <!-- Saved Tab -->
+    <div id="profTabSaved" style="display:none">
+      <div id="profSavedList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="profTabSettings" style="display:none">
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;margin-bottom:12px">
+        <div style="padding:10px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);border-bottom:1px solid var(--n100)">Taklif</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="shareRefLink()">
+          <div style="width:36px;height:36px;border-radius:10px;background:var(--g50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-share-forward-fill" style="color:var(--g800);font-size:17px"></i></div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:500;color:var(--n700)">Do'stni taklif qilish</div>
+            <div style="font-size:12px;color:var(--n400)">Har bir do'st uchun +10,000 so'm</div>
+          </div>
+          <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
+        </div>
+      </div>
+      <button onclick="logoutUser()" style="width:100%;height:46px;border-radius:12px;border:1.5px solid var(--r500);background:transparent;color:var(--r500);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="ri-logout-circle-r-line"></i> Hisobdan chiqish</button>
+    </div>
   </div>
 </div>
 
@@ -1035,26 +1049,82 @@ function openProfile(){
   document.getElementById('shopPage').style.display='none';
   document.getElementById('profilePage').style.display='block';
   window.scrollTo(0,0);
-  // Fill profile data
   const u=currentUser;
   document.getElementById('profAvatar').textContent=(u.first_name||'U')[0].toUpperCase();
   document.getElementById('profName').textContent=[u.first_name,u.last_name].filter(Boolean).join(' ');
   document.getElementById('profUsername').textContent=u.username?'@'+u.username:'Telegram foydalanuvchisi';
-  // Saved count
   const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
   document.getElementById('profSaved').textContent=saved.length;
-  document.getElementById('profSavedCount').textContent=saved.length>0?saved.length+'ta':'';
-  // Orders link
-  document.getElementById('profOrdersLink').href='https://t.me/'+BUYER_BOT+'?start=mystatus';
-  document.getElementById('profOrdersLink').target='_blank';
-  // Load stats from API
+  // Load stats
   fetch(API+'/api/buyer_stats?uid='+u.id).then(r=>r.json()).then(d=>{
     document.getElementById('profOrders').textContent=d.total_orders||0;
-    document.getElementById('profGroups').textContent=d.total_groups||0;
+    document.getElementById('profGroups').textContent=d.groups_joined||0;
+    document.getElementById('profCashback').textContent=fmtFull(d.cashback||0)+" so'm";
   }).catch(()=>{
     document.getElementById('profOrders').textContent=0;
     document.getElementById('profGroups').textContent=0;
+    document.getElementById('profCashback').textContent="0 so'm";
   });
+  switchProfTab('orders');
+}
+
+function switchProfTab(tab){
+  ['orders','saved','settings'].forEach(t=>{
+    const btn=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const el=document.getElementById('profTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(btn){btn.style.background=t===tab?'var(--white)':'transparent';btn.style.color=t===tab?'var(--n900)':'var(--n500)';btn.style.fontWeight=t===tab?'600':'500';btn.style.boxShadow=t===tab?'var(--ssm)':'none';}
+    if(el) el.style.display=t===tab?'block':'none';
+  });
+  if(tab==='orders') loadProfOrders();
+  if(tab==='saved') loadProfSaved();
+}
+
+function loadProfOrders(){
+  const el=document.getElementById('profOrdersList');
+  el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400)"><i class="ri-loader-4-fill" style="font-size:24px"></i></div>';
+  const u=currentUser;if(!u)return;
+  fetch(API+'/api/buyer_orders?uid='+u.id).then(r=>r.json()).then(data=>{
+    if(!data.length){
+      el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400)"><i class="ri-inbox-fill" style="font-size:40px;display:block;margin-bottom:10px"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Buyurtma yo\'q</div><div style="font-size:12px;margin-top:4px">Mahsulot xarid qiling!</div></div>';
+      return;
+    }
+    const statusMap={confirmed:{label:'Tasdiqlandi',color:'var(--g500)',icon:'ri-checkbox-circle-fill'},pending:{label:"To'lov kutilmoqda",color:'var(--n400)',icon:'ri-time-fill'},confirming:{label:'Tekshirilmoqda',color:'var(--o500)',icon:'ri-refresh-fill'},rejected:{label:'Rad etildi',color:'var(--r500)',icon:'ri-close-circle-fill'}};
+    el.innerHTML=data.map(o=>{
+      const st=statusMap[o.status]||{label:o.status,color:'var(--n400)',icon:'ri-time-fill'};
+      const img=o.photo_url?`<img src="${o.photo_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<i class=ri-inbox-fill style=font-size:24px;color:var(--n300)></i>'">`:'<i class="ri-inbox-fill" style="font-size:24px;color:var(--n300)"></i>';
+      return `<div style="background:var(--white);border:1px solid var(--n200);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start">
+        <div style="width:56px;height:56px;border-radius:10px;background:var(--n100);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">${img}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.name}</div>
+          <div style="font-size:12px;color:var(--n400);margin-bottom:6px">${o.shop_name}</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.type==='solo'?'Yakka':'Guruh'}</span>
+            <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.delivery==='deliver'?'Yetkazib berish':'Olib ketish'}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:13px;font-weight:700;color:var(--o500)">${fmtFull(o.amount)} so'm</span>
+            <span style="font-size:11px;font-weight:600;color:${st.color};display:flex;align-items:center;gap:3px"><i class="${st.icon}"></i> ${st.label}</span>
+          </div>
+          <div style="font-size:10px;color:var(--n400);margin-top:4px">#${o.code}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }).catch(()=>{
+    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--r500)">Yuklashda xato</div>';
+  });
+}
+
+function loadProfSaved(){
+  const el=document.getElementById('profSavedList');
+  const savedIds=JSON.parse(localStorage.getItem('wishlist')||'[]');
+  const items=allProducts.filter(p=>savedIds.includes(p.id));
+  if(!items.length){
+    el.style.display='block';
+    el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400);grid-column:1/-1"><i class="ri-heart-3-fill" style="font-size:40px;display:block;margin-bottom:10px;color:var(--r500)"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Saqlangan mahsulot yo\'q</div></div>';
+    return;
+  }
+  el.style.display='grid';
+  el.innerHTML=items.map(p=>cardHtml(p)).join('');
 }
 
 function closeProfile(){
