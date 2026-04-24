@@ -216,6 +216,9 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 </style>
 </head>
 <body>
+
+<!-- DEBUG PANEL — push qilishdan oldin olib tashlang -->
+<div id="tg-debug" style="position:fixed;top:0;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;font-family:monospace;padding:6px 10px;z-index:9999;white-space:pre-wrap;line-height:1.5;"></div>
 <div class="app-shell">
 
 <!-- HEADER -->
@@ -418,13 +421,29 @@ function syncShellPadding(){
 function applyTgPadding(){
   const header=document.querySelector('.header');
   if(!header) return;
-  // contentSafeAreaInsets.top — FAQAT mobil Telegram ilovasida (iOS/Android app) musbat.
-  // Telegram Desktop va APK versiyasida 0 bo'ladi — ortiqcha padding qo'shilmaydi.
-  // safeAreaInsets.top ishlatilmaydi — u telefon notch/status bar balandligi bo'lib
-  // APK da ham musbat bo'ladi, bu esa keraksiz paddingga olib keladi.
+  const safeTop=(tg&&tg.safeAreaInsets?.top)||0;
   const contentTop=(tg&&tg.contentSafeAreaInsets?.top)||0;
-  header.style.paddingTop=(contentTop>0?contentTop+12:12)+'px';
+  const headerH=header.offsetHeight;
+  const platform=tg?tg.platform:'no-tg';
+  const version=tg?tg.version:'—';
+
+  // DEBUG
+  const dbg=document.getElementById('tg-debug');
+  if(dbg) dbg.textContent=
+    'platform: '+platform+'\n'+
+    'version: '+version+'\n'+
+    'safeAreaInsets.top: '+safeTop+'\n'+
+    'contentSafeAreaInsets.top: '+contentTop+'\n'+
+    'header.paddingTop before: '+header.style.paddingTop+'\n'+
+    'header.offsetHeight: '+headerH;
+
+  const contentTop2=(tg&&tg.contentSafeAreaInsets?.top)||0;
+  header.style.paddingTop=(contentTop2>0?contentTop2+12:12)+'px';
   syncShellPadding();
+
+  if(dbg) setTimeout(()=>{
+    dbg.textContent+=('\nheader.paddingTop after: '+header.style.paddingTop+'\nshell.paddingTop: '+(document.querySelector('.app-shell')?.style.paddingTop||'?'));
+  },50);
 }
 
 if(tg){tg.ready();tg.expand();}
