@@ -2625,10 +2625,6 @@ def buyer_handle_msg(msg):
                 "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
                 "🛍 Do'stlaringiz bilan xarid qiling — <b>40% gacha tejang!</b>\n\n"
                 "💰 Do'stingiz sizni taklif qildi — birinchi xariddan chegirma olasiz!",
-                {'inline_keyboard': [inline_row]}
-            )
-
-            send_buyer(cid, ".",
                 {
                     'keyboard': [
                         [{'text': "🌐 Saytga o'tish"}, {'text': "📋 Buyurtmalarim"}],
@@ -2638,6 +2634,10 @@ def buyer_handle_msg(msg):
                     'resize_keyboard': True,
                     'is_persistent':   True,
                 }
+            )
+            send_buyer(cid,
+                "🏪 Xarid boshlash uchun:",
+                {'inline_keyboard': [inline_row]}
             )
             return
 
@@ -2760,14 +2760,10 @@ def buyer_handle_msg(msg):
         if not inline_row:
             inline_row.append({'text': "🛍 Do'konga o'tish", 'callback_data': 'open_shop'})
 
+        # Birinchi xabar: salom + reply keyboard (pastki menyu)
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
             "🛍 Do'stlaringiz bilan xarid qiling — <b>40% gacha tejang!</b>",
-            {'inline_keyboard': [inline_row]}
-        )
-
-        # Doimiy pastki reply keyboard
-        send_buyer(cid, ".",
             {
                 'keyboard': [
                     [{'text': "🌐 Saytga o'tish"}, {'text': "📋 Buyurtmalarim"}],
@@ -2777,6 +2773,11 @@ def buyer_handle_msg(msg):
                 'resize_keyboard': True,
                 'is_persistent':   True,
             }
+        )
+        # Ikkinchi xabar: inline buttonlar (sayt + miniapp)
+        send_buyer(cid,
+            "🏪 Xarid boshlash uchun:",
+            {'inline_keyboard': [inline_row]}
         )
         return
 
