@@ -140,7 +140,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .price-input{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--n200);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;transition:border-color .15s;}
 .price-input:focus{border-color:var(--b500);}
 
-
 /* CAT CHIPS */
 .cat-filters{display:flex;flex-direction:column;gap:2px;}
 .cat-chip{padding:7px 10px;border-radius:8px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--n600);cursor:pointer;text-align:left;font-family:'Inter',sans-serif;transition:all .15s;}
@@ -167,7 +166,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .prod-img{position:relative;aspect-ratio:4/3;background:var(--n100);overflow:hidden;}
 .prod-img img{width:100%;height:100%;object-fit:cover;transition:transform .3s;}
 .prod-card:hover .prod-img img{transform:scale(1.04);}
-/* CARD SLIDER */
 .card-slider{position:relative;width:100%;height:100%;}
 .card-slides{display:flex;height:100%;transition:transform .3s ease;will-change:transform;}
 .card-slide{flex:0 0 100%;height:100%;overflow:hidden;}
@@ -185,8 +183,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .prod-badge-hot{position:absolute;bottom:8px;left:8px;background:var(--r500);color:var(--white);font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;animation:pulse 1.5s infinite;}
 .prod-badge-new{position:absolute;bottom:8px;left:8px;background:var(--b500);color:var(--white);font-size:10px;font-weight:700;padding:2px 7px;border-radius:9999px;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-
-/* SKELETON */
 .skeleton{background:linear-gradient(90deg,var(--n100) 25%,var(--n200) 50%,var(--n100) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skel-card{background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;}
@@ -198,12 +194,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .skel-line.full{width:100%;}
 .skel-price{height:16px;border-radius:6px;width:70%;margin-bottom:8px;}
 .skel-btn{height:38px;border-radius:8px;width:100%;margin-top:8px;}
-
-/* WISHLIST BTN */
 .wish-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;backdrop-filter:blur(4px);}
 .wish-btn:hover{background:var(--white);transform:scale(1.1);}
 .wish-btn.active{color:var(--r500);}
-
 .prod-body{padding:10px 12px;}
 .prod-shop{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--b500);font-weight:600;text-transform:uppercase;letter-spacing:.04em;text-decoration:none;margin-bottom:3px;}
 .prod-shop:hover{text-decoration:underline;}
@@ -223,14 +216,10 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .prod-cta{display:flex;flex-direction:column;gap:5px;}
 .btn-join-full{width:100%;height:38px;border-radius:8px;border:none;background:var(--o500);color:var(--white);font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:4px;}
 .btn-join-full:hover{background:var(--o600);}
-
-/* EMPTY */
 .empty-state{text-align:center;padding:60px 20px;color:var(--n400);}
 .empty-icon{font-size:48px;margin-bottom:12px;}
 .empty-title{font-size:16px;font-weight:600;color:var(--n600);margin-bottom:4px;}
 .empty-sub{font-size:13px;}
-
-/* DETAIL PAGE */
 .detail-page{display:none;max-width:1440px;margin:0 auto;padding:20px 16px;}
 .detail-back{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--n600);cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;margin-bottom:20px;padding:6px 0;}
 .detail-back:hover{color:var(--o500);}
@@ -261,11 +250,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .detail-group-row{display:flex;justify-content:space-between;font-size:13px;color:var(--n600);margin-bottom:8px;}
 .detail-group-row span:last-child{font-weight:600;color:var(--n900);}
 .detail-group-row .orange{color:var(--o500);}
-/* COUNTDOWN */
 .detail-countdown{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--r50);border-radius:10px;margin-bottom:14px;border:1px solid rgba(251,55,72,.15);}
 .countdown-label{font-size:12px;color:var(--r500);font-weight:600;flex-shrink:0;}
 .countdown-time{font-size:14px;font-weight:700;color:var(--r500);font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.02em;}
-/* VARIANTS */
 .detail-variants{margin-bottom:14px;}
 .detail-variants-title{font-size:12px;font-weight:600;color:var(--n500);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
 .variants-list{display:flex;gap:6px;flex-wrap:wrap;}
@@ -285,12 +272,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .detail-share-row{display:flex;gap:8px;margin-top:10px;}
 .share-btn{flex:1;height:40px;border-radius:8px;border:1px solid var(--n200);background:var(--white);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--n600);transition:all .15s;}
 .share-btn:hover{border-color:var(--n400);background:var(--n50);}
-/* RELATED */
 .related-section{max-width:1440px;margin:0 auto;padding:0 16px 32px;}
 .related-title{font-size:16px;font-weight:700;margin-bottom:14px;}
 .related-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-
-/* SHOP PAGE */
 .shop-page{display:none;}
 .shop-header{background:linear-gradient(135deg,var(--slate900),var(--slate800));padding:40px 24px 0;}
 .shop-header-inner{max-width:1440px;margin:0 auto;display:flex;align-items:flex-end;gap:24px;padding-bottom:24px;}
@@ -305,8 +289,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .shop-tab{padding:14px 20px;font-size:14px;font-weight:500;color:rgba(255,255,255,.45);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:'Inter',sans-serif;}
 .shop-tab.active{color:var(--white);border-bottom-color:var(--o500);}
 .shop-content{max-width:1440px;margin:0 auto;padding:20px 16px;}
-
-/* LOGIN */
 .login-overlay{position:fixed;inset:0;background:rgba(10,13,20,.6);z-index:300;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
 .login-overlay.open{display:flex;}
 .login-modal{background:var(--white);border-radius:20px;width:100%;max-width:400px;padding:32px 28px;margin:24px;text-align:center;position:relative;}
@@ -317,8 +299,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .nav-user{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;background:var(--n50);border-radius:9999px;border:1px solid var(--n200);cursor:pointer;}
 .nav-avatar{width:26px;height:26px;border-radius:50%;background:var(--o500);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--white);}
 .nav-user-name{font-size:13px;font-weight:600;color:var(--n700);}
-
-/* MOBILE */
 .mobile-filter-bar{display:none;padding:8px 14px;gap:6px;border-bottom:1px solid var(--n200);background:var(--white);position:sticky;top:64px;z-index:50;overflow-x:auto;scrollbar-width:none;}
 .mobile-filter-bar::-webkit-scrollbar{display:none;}
 .mobile-search-bar{display:none;padding:8px 14px;background:var(--white);border-bottom:1px solid var(--n200);position:sticky;top:64px;z-index:50;}
@@ -335,53 +315,29 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .toast-el{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--n900);color:var(--white);padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:999;animation:fadeUp .25s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 
-@media(max-width:1100px){
-  .products-grid,.related-grid{grid-template-columns:repeat(3,1fr)}
-  .banner-title{font-size:20px;}
-}
+@media(max-width:1100px){.products-grid,.related-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){
-  /* Layout */
   .page-layout{grid-template-columns:1fr;padding:8px;}
   .sidebar{display:none;}
   .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
-  /* Nav */
   .mobile-filter-bar,.mobile-search-bar{display:flex;}
   .nav-search{display:none;}
   .nav-actions .btn-ghost{display:none;}
-  /* Banner */
-  .banner-wrap{padding:8px 0 2px;}
-  .banner-slider{aspect-ratio:2/1;}
-  .banner-title{font-size:17px;}
-  .banner-sub{font-size:12px;display:none;}
-  .banner-slide-inner{padding:16px 20px;}
-  .banner-arr{display:none;}
-  /* Category nav */
-  .cat-nav{padding:4px 10px;}
-  .cat-nav-item{padding:5px 10px;gap:5px;}
-  .cat-nav-icon{width:18px;height:18px;font-size:13px;}
-  .cat-nav-label{font-size:11px;}
-  /* Detail */
   .detail-grid{grid-template-columns:1fr;}
   .detail-media-wrap{position:static;}
   .detail-name{font-size:18px;}
   .detail-prices{grid-template-columns:1fr 1fr;}
-  /* Profile */
   .prof-stats-grid{grid-template-columns:1fr 1fr!important;}
-  /* Tags row */
   .tags-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
   .tags-row::-webkit-scrollbar{display:none;}
-  /* Main header */
   .main-header{flex-direction:column;align-items:flex-start;gap:6px;}
 }
 @media(max-width:480px){
   .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
-  .banner-title{font-size:15px;}
-  .banner-badge{font-size:10px;}
+  .detail-prices{grid-template-columns:1fr;}
   .cat-nav-item{padding:5px 8px;gap:4px;}
   .cat-nav-icon{width:16px;height:16px;font-size:12px;}
   .cat-nav-label{font-size:10px;}
-  .detail-prices{grid-template-columns:1fr;}
-  .nav-logo-text{font-size:15px;}
 }
 </style>
 </head>
@@ -420,7 +376,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 
 <!-- MARKETPLACE -->
 <div id="marketplacePage">
-  <!-- CATEGORY NAV -->
   <div class="cat-nav">
     <div class="cat-nav-scroll" id="catNavScroll">
       <div class="cat-nav-item active" onclick="setCatNav(this,'all')" data-cat="all">
@@ -483,10 +438,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         <div class="cat-nav-icon"><i class="ri-hearts-fill" style="color:#FB3748"></i></div>
         <div class="cat-nav-label">Bolalar</div>
       </div>
-      <div class="cat-nav-item" onclick="setCatNav(this,"O'yin & Hobby")" data-cat="O'yin & Hobby">
-        <div class="cat-nav-icon"><i class="ri-gamepad-fill" style="color:#7C3AED"></i></div>
-        <div class="cat-nav-label">O'yin</div>
-      </div>
       <div class="cat-nav-item" onclick="setCatNav(this,'Boshqa')" data-cat="Boshqa">
         <div class="cat-nav-icon"><i class="ri-box-3-fill" style="color:#94A3B8"></i></div>
         <div class="cat-nav-label">Boshqa</div>
@@ -498,21 +449,12 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <div class="sidebar-section">
         <div class="sidebar-title open" onclick="toggleAcc(this)">Holat<i class="ri-arrow-down-s-line acc-arrow"></i></div>
         <div class="sidebar-body open"><div class="filter-group" id="statusFilter">
-          <button class="filter-item active" data-filter="all" onclick="setSideFilter('all',this)">
-            <span><i class="ri-apps-line"></i> Barchasi</span><span class="filter-count" id="cnt-all">0</span>
-          </button>
-          <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot',this)">
-            <span><i class="ri-fire-fill"></i> Ommabop</span><span class="filter-count" id="cnt-hot">0</span>
-          </button>
-          <button class="filter-item" data-filter="ending" onclick="setSideFilter('ending',this)">
-            <span><i class="ri-time-fill"></i> Tugayapti</span><span class="filter-count" id="cnt-ending">0</span>
-          </button>
-          <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this)">
-            <span><i class="ri-sparkling-fill"></i> Yangi</span><span class="filter-count" id="cnt-new">0</span>
-          </button>
-        </div>
+          <button class="filter-item active" data-filter="all" onclick="setSideFilter('all',this)"><span><i class="ri-apps-line"></i> Barchasi</span><span class="filter-count" id="cnt-all">0</span></button>
+          <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot',this)"><span><i class="ri-fire-fill"></i> Ommabop</span><span class="filter-count" id="cnt-hot">0</span></button>
+          <button class="filter-item" data-filter="ending" onclick="setSideFilter('ending',this)"><span><i class="ri-time-fill"></i> Tugayapti</span><span class="filter-count" id="cnt-ending">0</span></button>
+          <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this)"><span><i class="ri-sparkling-fill"></i> Yangi</span><span class="filter-count" id="cnt-new">0</span></button>
+        </div></div>
       </div>
-
       <div class="sidebar-section">
         <div class="sidebar-title open" onclick="toggleAcc(this)">Chegirma<i class="ri-arrow-down-s-line acc-arrow"></i></div>
         <div class="sidebar-body open"><div class="disc-filters">
@@ -534,8 +476,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         <div class="sidebar-title" onclick="toggleAcc(this)">Do'konlar<i class="ri-arrow-down-s-line acc-arrow"></i></div>
         <div class="sidebar-body"><div style="position:relative;margin-bottom:8px">
           <i class="ri-search-line" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--n400)"></i>
-          <input type="text" id="shopSearch" placeholder="Do'kon qidirish..." oninput="filterShopList()"
-            style="width:100%;height:30px;border:1px solid var(--n200);border-radius:7px;background:var(--n50);padding:0 8px 0 26px;font-family:'Inter',sans-serif;font-size:12px;outline:none;">
+          <input type="text" id="shopSearch" placeholder="Do'kon qidirish..." oninput="filterShopList()" style="width:100%;height:30px;border:1px solid var(--n200);border-radius:7px;background:var(--n50);padding:0 8px 0 26px;font-family:'Inter',sans-serif;font-size:12px;outline:none;">
         </div>
         <div class="filter-group" id="shopFilter" style="max-height:200px;overflow-y:auto;scrollbar-width:thin"></div></div>
       </div>
@@ -630,9 +571,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         </div>
       </div>
     </div>
-    <div class="shop-tabs">
-      <button class="shop-tab active">Mahsulotlar</button>
-    </div>
+    <div class="shop-tabs"><button class="shop-tab active">Mahsulotlar</button></div>
   </div>
   <div class="shop-content">
     <div class="products-grid" id="shopProductsGrid"></div>
@@ -643,8 +582,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 <div id="profilePage" style="display:none">
   <div style="max-width:680px;margin:0 auto;padding:24px 16px 48px">
     <button onclick="closeProfile()" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--n600);cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;margin-bottom:20px;padding:0"><i class="ri-arrow-left-line"></i> Orqaga</button>
-
-    <!-- Avatar & Name -->
     <div style="background:var(--white);border-radius:16px;border:1px solid var(--n200);padding:20px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
       <div id="profAvatar" style="width:64px;height:64px;border-radius:50%;background:var(--o500);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:var(--white);flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
@@ -653,56 +590,25 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         <span style="display:inline-flex;align-items:center;gap:4px;background:var(--o50);color:var(--o500);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--o100)"><i class="ri-medal-fill"></i> Joynshop a'zosi</span>
       </div>
     </div>
-
-    <!-- Stats -->
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px" class="prof-stats-grid">
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
-        <div id="profOrders" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:10px;color:var(--n400);margin-top:3px">Buyurtmalar</div>
-      </div>
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
-        <div id="profGroups" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:10px;color:var(--n400);margin-top:3px">Guruhlar</div>
-      </div>
-      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
-        <div id="profSaved" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
-        <div style="font-size:10px;color:var(--n400);margin-top:3px">Saqlangan</div>
-      </div>
-      <div style="background:linear-gradient(135deg,var(--o500),var(--o600));border-radius:12px;padding:12px;text-align:center">
-        <div id="profCashback" style="font-size:16px;font-weight:700;color:var(--white)">—</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:3px">Cashback</div>
-      </div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center"><div id="profOrders" style="font-size:20px;font-weight:700;color:var(--o500)">—</div><div style="font-size:10px;color:var(--n400);margin-top:3px">Buyurtmalar</div></div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center"><div id="profGroups" style="font-size:20px;font-weight:700;color:var(--o500)">—</div><div style="font-size:10px;color:var(--n400);margin-top:3px">Guruhlar</div></div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center"><div id="profSaved" style="font-size:20px;font-weight:700;color:var(--o500)">—</div><div style="font-size:10px;color:var(--n400);margin-top:3px">Saqlangan</div></div>
+      <div style="background:linear-gradient(135deg,var(--o500),var(--o600));border-radius:12px;padding:12px;text-align:center"><div id="profCashback" style="font-size:16px;font-weight:700;color:var(--white)">—</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:3px">Cashback</div></div>
     </div>
-
-    <!-- Tabs -->
     <div style="display:flex;gap:4px;background:var(--n100);border-radius:10px;padding:3px;margin-bottom:12px">
       <button id="tabOrders" onclick="switchProfTab('orders')" style="flex:1;height:34px;border-radius:8px;border:none;background:var(--white);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--n900);cursor:pointer;box-shadow:var(--ssm)">Buyurtmalar</button>
       <button id="tabSaved" onclick="switchProfTab('saved')" style="flex:1;height:34px;border-radius:8px;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--n500);cursor:pointer">Saqlangan</button>
       <button id="tabSettings" onclick="switchProfTab('settings')" style="flex:1;height:34px;border-radius:8px;border:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--n500);cursor:pointer">Sozlamalar</button>
     </div>
-
-    <!-- Orders Tab -->
-    <div id="profTabOrders">
-      <div id="profOrdersList" style="display:flex;flex-direction:column;gap:10px">
-        <div style="text-align:center;padding:32px;color:var(--n400)"><i class="ri-loader-4-fill" style="font-size:24px"></i></div>
-      </div>
-    </div>
-
-    <!-- Saved Tab -->
-    <div id="profTabSaved" style="display:none">
-      <div id="profSavedList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
-    </div>
-
-    <!-- Settings Tab -->
+    <div id="profTabOrders"><div id="profOrdersList" style="display:flex;flex-direction:column;gap:10px"><div style="text-align:center;padding:32px;color:var(--n400)"><i class="ri-loader-4-fill" style="font-size:24px"></i></div></div></div>
+    <div id="profTabSaved" style="display:none"><div id="profSavedList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div></div>
     <div id="profTabSettings" style="display:none">
       <div style="background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;margin-bottom:12px">
         <div style="padding:10px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);border-bottom:1px solid var(--n100)">Taklif</div>
         <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="shareRefLink()">
           <div style="width:36px;height:36px;border-radius:10px;background:var(--g50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-share-forward-fill" style="color:var(--g800);font-size:17px"></i></div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:500;color:var(--n700)">Do'stni taklif qilish</div>
-            <div style="font-size:12px;color:var(--n400)">Har bir do'st uchun +10,000 so'm</div>
-          </div>
+          <div style="flex:1"><div style="font-size:14px;font-weight:500;color:var(--n700)">Do'stni taklif qilish</div><div style="font-size:12px;color:var(--n400)">Har bir do'st uchun +10,000 so'm</div></div>
           <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
         </div>
       </div>
@@ -714,10 +620,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 <!-- FILTER DRAWER -->
 <div class="filter-drawer-overlay" id="filterDrawerOverlay" onclick="closeFilterDrawer()"></div>
 <div class="filter-drawer" id="filterDrawer">
-  <div class="filter-drawer-header">
-    <h3>Filtrlar</h3>
-    <button class="filter-drawer-close" onclick="closeFilterDrawer()"><i class="ri-close-line"></i></button>
-  </div>
+  <div class="filter-drawer-header"><h3>Filtrlar</h3><button class="filter-drawer-close" onclick="closeFilterDrawer()"><i class="ri-close-line"></i></button></div>
   <div class="sidebar-section">
     <div class="sidebar-title">Holat</div>
     <div class="filter-group">
@@ -727,7 +630,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this);closeFilterDrawer()"><span><i class="ri-sparkling-fill"></i> Yangi</span></button>
     </div>
   </div>
-  <div class="sidebar-divider"></div>
   <div class="sidebar-section">
     <div class="sidebar-title">Chegirma</div>
     <div class="disc-filters">
@@ -737,7 +639,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <button class="disc-chip" onclick="toggleDisc(this,40)">40%+</button>
     </div>
   </div>
-  <div class="sidebar-divider"></div>
   <div class="sidebar-section">
     <div class="sidebar-title">Kategoriya</div>
     <div style="display:flex;flex-direction:column;gap:2px" id="drawerCatFilter"></div>
@@ -770,10 +671,8 @@ let deferredPrompt=null;
 const fmt=n=>n?n>=1e9?(n/1e9).toFixed(1)+' mlrd':n>=1e6?(n/1e6).toFixed(1)+' mln':n>=1e3?(n/1e3).toFixed(0)+' ming':''+n:'0';
 const fmtFull=n=>(n||0).toLocaleString('uz-UZ');
 
-// ── PWA ──
 window.addEventListener('beforeinstallprompt',e=>{
   e.preventDefault();deferredPrompt=e;
-  // Show install button in nav after 30s
   setTimeout(()=>{
     if(deferredPrompt){
       const btn=document.createElement('button');
@@ -785,69 +684,40 @@ window.addEventListener('beforeinstallprompt',e=>{
   },30000);
 });
 
-// Register Service Worker
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(()=>{});
-}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 
-// ── SKELETON ──
 function showSkeletons(count=8){
   const grid=document.getElementById('productsGrid');
-  grid.innerHTML=Array(count).fill(0).map(()=>`
-    <div class="skel-card">
-      <div class="skel-img skeleton"></div>
-      <div class="skel-body">
-        <div class="skel-line short skeleton"></div>
-        <div class="skel-line mid skeleton"></div>
-        <div class="skel-line short skeleton"></div>
-        <div class="skel-price skeleton"></div>
-        <div class="skel-line full skeleton"></div>
-        <div class="skel-btn skeleton"></div>
-      </div>
-    </div>`).join('');
+  grid.innerHTML=Array(count).fill(0).map(()=>`<div class="skel-card"><div class="skel-img skeleton"></div><div class="skel-body"><div class="skel-line short skeleton"></div><div class="skel-line mid skeleton"></div><div class="skel-line short skeleton"></div><div class="skel-price skeleton"></div><div class="skel-line full skeleton"></div><div class="skel-btn skeleton"></div></div></div>`).join('');
 }
 
-// ── CATEGORY NAV ──
 function setCatNav(el,cat){
   document.querySelectorAll('.cat-nav-item').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   activeCat=cat==='all'?'all':cat;
-  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.toggle('active',b.dataset.cat===(activeCat)));
   renderProducts();
 }
 
-// ── AUTOCOMPLETE ──
 function showAutocomplete(){
   const q=document.getElementById('searchInput').value.toLowerCase().trim();
   const dd=document.getElementById('searchDropdown');
   if(!q||q.length<2){dd.classList.remove('open');return;}
-  const matches=allProducts.filter(p=>
-    p.name.toLowerCase().includes(q)||p.shop_name.toLowerCase().includes(q)
-  ).slice(0,6);
+  const matches=allProducts.filter(p=>p.name.toLowerCase().includes(q)||p.shop_name.toLowerCase().includes(q)).slice(0,6);
   if(!matches.length){dd.classList.remove('open');return;}
   dd.innerHTML=matches.map(p=>{
     const img=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
-    return `<div class="search-item" onclick="openDetail('${p.id}');hideAutocomplete()">
-      ${img?`<img class="search-item-img" src="${img}" onerror="this.style.display='none'">`:'<div class="search-item-img" style="display:flex;align-items:center;justify-content:center"><i class="ri-inbox-fill" style="color:var(--n300)"></i></div>'}
-      <span class="search-item-name">${p.name}</span>
-      <span class="search-item-price">${fmt(p.group_price)} so'm</span>
-    </div>`;
+    return `<div class="search-item" onclick="openDetail('${p.id}');hideAutocomplete()">${img?`<img class="search-item-img" src="${img}" onerror="this.style.display='none'">`:'<div class="search-item-img" style="display:flex;align-items:center;justify-content:center"><i class="ri-inbox-fill" style="color:var(--n300)"></i></div>'}<span class="search-item-name">${p.name}</span><span class="search-item-price">${fmt(p.group_price)} so'm</span></div>`;
   }).join('');
   dd.classList.add('open');
 }
 function hideAutocomplete(){document.getElementById('searchDropdown')?.classList.remove('open');}
 
-// ── LOAD ──
 async function loadProducts(){
   showSkeletons(8);
   try{
     const res=await fetch(API+'/api/products');
     allProducts=await res.json();
-    buildShops();
-    buildCats();
-    updateCounts();
-    renderShopFilter();
-    renderProducts();
+    buildShops();buildCats();updateCounts();renderShopFilter();renderProducts();
   }catch(e){
     document.getElementById('productsGrid').innerHTML='<div class="empty-state"><div class="empty-icon"><i class="ri-wifi-off-fill"></i></div><div class="empty-title">Ulanishda xato</div><div class="empty-sub">Sahifani yangilang</div></div>';
   }
@@ -865,12 +735,11 @@ function buildCats(){
   const cats=new Set();
   allProducts.forEach(p=>{if(p.category)cats.add(p.category);});
   if(!cats.size) return;
-  // Add dynamic categories to cat-nav if not already there
   const scroll=document.getElementById('catNavScroll');
   if(!scroll) return;
   const existing=new Set([...scroll.querySelectorAll('.cat-nav-item')].map(el=>el.dataset.cat));
-  const catIcons={'Kiyim':'ri-t-shirt-fill','Elektronika':'ri-smartphone-fill','Oziq-ovqat':'ri-restaurant-fill','Uy-joy':'ri-home-heart-fill',"Go'zallik":'ri-seedling-fill','Sport':'ri-run-fill','Bolalar':'ri-hearts-fill'};
-  const catColors={'Kiyim':'#335CFF','Elektronika':'#1A7544','Oziq-ovqat':'#E16614','Uy-joy':'#8B5CF6',"Go'zallik":'#EC4899','Sport':'#F59E0B','Bolalar':'#FB3748'};
+  const catIcons={'Kiyim':'ri-t-shirt-fill','Elektronika':'ri-smartphone-fill','Oziq-ovqat':'ri-restaurant-fill','Uy-joy':'ri-home-heart-fill','Sport':'ri-run-fill','Bolalar':'ri-hearts-fill'};
+  const catColors={'Kiyim':'#335CFF','Elektronika':'#1A7544','Oziq-ovqat':'#E16614','Uy-joy':'#8B5CF6','Sport':'#F59E0B','Bolalar':'#FB3748'};
   cats.forEach(cat=>{
     if(existing.has(cat)) return;
     const icon=catIcons[cat]||'ri-price-tag-3-fill';
@@ -886,9 +755,7 @@ function buildCats(){
 function updateCounts(){
   document.getElementById('cnt-all').textContent=allProducts.length;
   document.getElementById('cnt-hot').textContent=allProducts.filter(p=>p.count>0).length;
-  document.getElementById('cnt-ending').textContent=allProducts.filter(p=>{
-    const needed=p.min_group-p.count;return needed>0&&needed<=2;
-  }).length;
+  document.getElementById('cnt-ending').textContent=allProducts.filter(p=>{const needed=p.min_group-p.count;return needed>0&&needed<=2;}).length;
   document.getElementById('cnt-new').textContent=allProducts.filter(p=>p.count===0).length;
 }
 
@@ -899,24 +766,13 @@ function renderShopFilter(){
   el.innerHTML=list.map(s=>{
     const checked=activeShops.includes(s.name);
     const safeName=s.name.replace(/'/g,"\\'");
-    return `<label class="filter-item" style="cursor:pointer;gap:8px;padding:7px 10px">
-      <input type="checkbox" ${checked?'checked':''} onchange="toggleShopCheck('${safeName}',this)"
-        style="width:14px;height:14px;accent-color:var(--o500);flex-shrink:0;cursor:pointer">
-      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span>
-      <span class="filter-count">${s.products.length}</span>
-    </label>`;
+    return `<label class="filter-item" style="cursor:pointer;gap:8px;padding:7px 10px"><input type="checkbox" ${checked?'checked':''} onchange="toggleShopCheck('${safeName}',this)" style="width:14px;height:14px;accent-color:var(--o500);flex-shrink:0;cursor:pointer"><span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</span><span class="filter-count">${s.products.length}</span></label>`;
   }).join('');
 }
 
 function filterShopList(){renderShopFilter();}
+function toggleShopCheck(name,cb){if(cb.checked){if(!activeShops.includes(name))activeShops.push(name);}else{activeShops=activeShops.filter(n=>n!==name);}renderProducts();}
 
-function toggleShopCheck(name,cb){
-  if(cb.checked){if(!activeShops.includes(name))activeShops.push(name);}
-  else{activeShops=activeShops.filter(n=>n!==name);}
-  renderProducts();
-}
-
-// ── FILTERS ──
 function getFiltered(){
   let list=[...allProducts];
   const q=document.getElementById('searchInput')?.value.toLowerCase().trim()||'';
@@ -949,16 +805,12 @@ function getFiltered(){
   return list;
 }
 
-// ── RENDER CARDS ──
 function renderProducts(list,targetEl){
   const items=list||getFiltered();
   const grid=document.getElementById(targetEl||'productsGrid');
   const rc=document.getElementById('resultCount');
   if(rc)rc.textContent=' — '+items.length+' ta';
-  if(!items.length){
-    grid.innerHTML='<div class="empty-state"><div class="empty-icon"><i class="ri-inbox-fill"></i></div><div class="empty-title">Mahsulot topilmadi</div><div class="empty-sub">Boshqa filtr tanlang</div></div>';
-    return;
-  }
+  if(!items.length){grid.innerHTML='<div class="empty-state"><div class="empty-icon"><i class="ri-inbox-fill"></i></div><div class="empty-title">Mahsulot topilmadi</div><div class="empty-sub">Boshqa filtr tanlang</div></div>';return;}
   grid.innerHTML=items.map(p=>cardHtml(p)).join('');
 }
 
@@ -969,21 +821,12 @@ function cardHtml(p){
   const isNew=p.count===0;
   const wished=wishlist.includes(p.id);
   const timerHtml=getTimerBadge(p.deadline);
-  // Build image slider
-  const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls
-    :(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`)
-    :(p.photo_url)?[p.photo_url]
-    :(p.photo_id)?[`${API}/api/photo/${p.photo_id}`]:[];
+  const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls:(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`):(p.photo_url)?[p.photo_url]:(p.photo_id)?[`${API}/api/photo/${p.photo_id}`]:[];
   let imgHtml;
   if(urls.length>1){
     const slides=urls.map((u,i)=>`<div class="card-slide"><img src="${i===0?u:''}" data-src="${u}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join('');
     const dots=urls.map((_,i)=>`<div class="card-dot ${i===0?'active':''}"></div>`).join('');
-    imgHtml=`<div class="card-slider" data-idx="0" data-pid="${p.id}">
-      <div class="card-slides">${slides}</div>
-      <div class="card-dots">${dots}</div>
-      <button class="card-arr card-arr-prev" onclick="event.stopPropagation();slideCard(this.parentElement,-1)"><i class="ri-arrow-left-s-line"></i></button>
-      <button class="card-arr card-arr-next" onclick="event.stopPropagation();slideCard(this.parentElement,1)"><i class="ri-arrow-right-s-line"></i></button>
-    </div>`;
+    imgHtml=`<div class="card-slider" data-idx="0" data-pid="${p.id}"><div class="card-slides">${slides}</div><div class="card-dots">${dots}</div><button class="card-arr card-arr-prev" onclick="event.stopPropagation();slideCard(this.parentElement,-1)"><i class="ri-arrow-left-s-line"></i></button><button class="card-arr card-arr-next" onclick="event.stopPropagation();slideCard(this.parentElement,1)"><i class="ri-arrow-right-s-line"></i></button></div>`;
   } else if(urls.length===1){
     imgHtml=`<img src="${urls[0]}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover"><div class="prod-img-placeholder" style="display:none"><i class="ri-inbox-fill"></i></div>`;
   } else {
@@ -995,9 +838,7 @@ function cardHtml(p){
       ${p.count>0?`<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>`:''}
       ${almost?`<div class="prod-badge-hot"><i class="ri-flashlight-fill"></i> ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new"><i class="ri-sparkling-fill"></i> Yangi</div>`:''}
       ${p.grp_disc>=40?`<div class="wow-badge">WOW</div>`:''}
-      <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWish('${p.id}',this)" title="Wishlistga qo'shish">
-        <i class="ri-heart-${wished?'fill':'line'}"></i>
-      </button>
+      <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWish('${p.id}',this)" title="Wishlistga qo'shish"><i class="ri-heart-${wished?'fill':'line'}"></i></button>
     </div>
     <div class="prod-body">
       <a class="prod-shop" href="#" onclick="event.stopPropagation();openShop('${p.shop_name.replace(/'/g,"\\'")}')"><span class="prod-shop-dot"></span>${p.shop_name}</a>
@@ -1009,60 +850,60 @@ function cardHtml(p){
         <div class="prod-track"><div class="prod-fill" style="width:${pct}%"></div></div>
         ${timerHtml}
       </div>
-      <div class="prod-cta">
-        <button class="btn-join-full" onclick="event.stopPropagation();openDetail('${p.id}')"><i class="ri-shopping-bag-3-line"></i> Xarid qilish</button>
-      </div>
+      <div class="prod-cta"><button class="btn-join-full" onclick="event.stopPropagation();openDetail('${p.id}')"><i class="ri-shopping-bag-3-line"></i> Xarid qilish</button></div>
     </div>
   </div>`;
 }
 
-function slideCard(slider, dir){
-  const slides=slider.querySelector('.card-slides');
-  const dots=slider.querySelectorAll('.card-dot');
-  const total=dots.length;
-  let idx=parseInt(slider.dataset.idx||0);
-  idx=(idx+dir+total)%total;
-  slider.dataset.idx=idx;
-  slides.style.transform=`translateX(-${idx*100}%)`;
-  dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
-  // Lazy load next slide image
-  const imgs=slider.querySelectorAll('.card-slide img');
-  if(imgs[idx]&&imgs[idx].dataset.src&&!imgs[idx].src){
-    imgs[idx].src=imgs[idx].dataset.src;
-  }
+function slideCard(slider,dir){
+  const slides=slider.querySelector('.card-slides');const dots=slider.querySelectorAll('.card-dot');const total=dots.length;
+  let idx=parseInt(slider.dataset.idx||0);idx=(idx+dir+total)%total;slider.dataset.idx=idx;
+  slides.style.transform=`translateX(-${idx*100}%)`;dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
+  const imgs=slider.querySelectorAll('.card-slide img');if(imgs[idx]&&imgs[idx].dataset.src&&!imgs[idx].src){imgs[idx].src=imgs[idx].dataset.src;}
 }
 
 function getTimerBadge(deadline){
   if(!deadline) return '';
   try{
-    const parts=deadline.split(' ');
-    const d=parts[0].split('.'),t=(parts[1]||'').split(':');
-    const dt=new Date(d[2],d[1]-1,d[0],t[0]||0,t[1]||0);
-    const diff=dt-Date.now();
+    const parts=deadline.split(' ');const d=parts[0].split('.'),t=(parts[1]||'').split(':');
+    const dt=new Date(d[2],d[1]-1,d[0],t[0]||0,t[1]||0);const diff=dt-Date.now();
     if(diff<=0) return `<div class="prod-deadline"><i class="ri-time-line"></i> Tugagan</div>`;
-    const h=Math.floor(diff/3600000);
-    const m=Math.floor((diff%3600000)/60000);
+    const h=Math.floor(diff/3600000);const m=Math.floor((diff%3600000)/60000);
     if(h<24) return `<div class="prod-timer"><i class="ri-alarm-line"></i> ${h}s ${m}d qoldi</div>`;
     return `<div class="prod-deadline"><i class="ri-time-line"></i> ${deadline}</div>`;
   }catch{return `<div class="prod-deadline"><i class="ri-time-line"></i> ${deadline}</div>`;}
 }
 
-// ── WISHLIST ──
+// ── WISHLIST (server-side sync) ──
 function toggleWish(pid,btn){
   const idx=wishlist.indexOf(pid);
-  if(idx>=0){wishlist.splice(idx,1);btn.classList.remove('active');btn.innerHTML='<i class="ri-heart-line"></i>';}
-  else{wishlist.push(pid);btn.classList.add('active');btn.innerHTML='<i class="ri-heart-fill"></i>';showToast('Saqlandi!');}
+  const removing=idx>=0;
+  if(removing){wishlist.splice(idx,1);btn.classList.remove('active');btn.innerHTML='<i class="ri-heart-line"></i>';}
+  else{wishlist.push(pid);btn.classList.add('active');btn.innerHTML='<i class="ri-heart-fill"></i>';showToast('Saqlandi! ❤️');}
   localStorage.setItem('wishlist',JSON.stringify(wishlist));
+  if(currentUser){
+    fetch(API+(removing?'/api/wishlist/remove':'/api/wishlist/add'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid:currentUser.id,pid})
+    }).catch(()=>{});
+  }
 }
 function toggleWishDetail(){
   if(!currentProduct) return;
   const pid=currentProduct.id;
   const idx=wishlist.indexOf(pid);
   const btn=document.getElementById('wishBtnDetail');
-  if(idx>=0){wishlist.splice(idx,1);btn.innerHTML='<i class="ri-heart-line"></i> Saqlash';}
-  else{wishlist.push(pid);btn.innerHTML='<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi';showToast('Saqlandi!');}
+  const removing=idx>=0;
+  if(removing){wishlist.splice(idx,1);btn.innerHTML='<i class="ri-heart-line"></i> Saqlash';}
+  else{wishlist.push(pid);btn.innerHTML='<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi';showToast('Saqlandi! ❤️');}
   localStorage.setItem('wishlist',JSON.stringify(wishlist));
   renderProducts();
+  if(currentUser){
+    fetch(API+(removing?'/api/wishlist/remove':'/api/wishlist/add'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid:currentUser.id,pid})
+    }).catch(()=>{});
+  }
 }
 
 // ── DETAIL ──
@@ -1070,8 +911,6 @@ function openDetail(pid){
   const p=allProducts.find(x=>x.id===pid);if(!p)return;
   currentProduct=p;
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
-
-  // Update OG meta for sharing
   const detailImgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
   document.title=`${p.name} — ${fmt(p.group_price)} so'm | Joynshop`;
   document.querySelector('meta[property="og:title"]').content=`${p.name} — ${fmt(p.group_price)} so'm (-${p.grp_disc}%)`;
@@ -1079,209 +918,94 @@ function openDetail(pid){
   if(detailImgSrc) document.querySelector('meta[property="og:image"]').content=detailImgSrc;
   document.querySelector('meta[property="og:url"]').content=window.location.origin+'?p='+pid;
   history.replaceState(null,'','?p='+pid);
-
-  // Recently viewed
-  recentlyViewed=recentlyViewed.filter(id=>id!==pid);
-  recentlyViewed.unshift(pid);
+  recentlyViewed=recentlyViewed.filter(id=>id!==pid);recentlyViewed.unshift(pid);
   if(recentlyViewed.length>10) recentlyViewed=recentlyViewed.slice(0,10);
   localStorage.setItem('recently_viewed',JSON.stringify(recentlyViewed));
-
   document.getElementById('marketplacePage').style.display='none';
   document.getElementById('shopPage').style.display='none';
   document.getElementById('detailPage').style.display='block';
   window.scrollTo(0,0);
-
   const detailImg=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
-  document.getElementById('detailMedia').innerHTML=detailImg
-    ?`<img src="${detailImg}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder><i class=ri-inbox-fill></i></div>'">`
-    :`<div class="detail-main-placeholder"><i class="ri-inbox-fill"></i></div>`;
-
-  // Thumbnails
-  const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls
-    :(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`)
-    :detailImg?[detailImg]:[];
+  document.getElementById('detailMedia').innerHTML=detailImg?`<img src="${detailImg}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder><i class=ri-inbox-fill></i></div>'">`:`<div class="detail-main-placeholder"><i class="ri-inbox-fill"></i></div>`;
+  const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls:(p.photo_ids&&p.photo_ids.length)?p.photo_ids.map(id=>`${API}/api/photo/${id}`):detailImg?[detailImg]:[];
   const thumbs=document.getElementById('detailThumbs');
   thumbs.innerHTML=urls.length>1?urls.map((u,i)=>`<div class="detail-thumb ${i===0?'active':''}" onclick="switchImg('${u}',this)"><img src="${u}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`).join(''):'';
-
   const soloAvail=p.solo_available!==false&&p.solo_price;
-  const needed=p.min_group-p.count;
-  const pct=Math.min(100,Math.round(p.count/p.min_group*100));
-
+  const needed=p.min_group-p.count;const pct=Math.min(100,Math.round(p.count/p.min_group*100));
   document.getElementById('detailBreadShop').textContent=p.shop_name;
   document.getElementById('detailShop').textContent=p.shop_name;
   document.getElementById('detailShop').onclick=function(){closeDetail();openShop(p.shop_name);};
   document.getElementById('detailName').textContent=p.name;
   document.getElementById('detailOrig').textContent='Asl narx: '+fmtFull(p.original_price)+' so\'m';
-
-  document.getElementById('detailPrices').innerHTML=`
-    <div class="detail-price-card best">
-      <div class="dpc-label">Guruhli narx</div>
-      <div class="dpc-val">${fmt(p.group_price)} so'm</div>
-      <div class="dpc-disc">↓ ${p.grp_disc}% chegirma</div>
-    </div>
-    ${soloAvail?`<div class="detail-price-card">
-      <div class="dpc-label">Yakkalik narxi</div>
-      <div class="dpc-val">${fmt(p.solo_price)} so'm</div>
-      <div class="dpc-disc">↓ ${p.solo_disc||0}% chegirma</div>
-    </div>`:''}`;
-
-  document.getElementById('detailGroup').innerHTML=`
-    <div class="detail-group-row"><span>Guruh holati</span><span class="orange">${p.count}/${p.min_group} kishi</span></div>
-    <div class="prod-track" style="margin-bottom:8px"><div class="prod-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:13px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div>`;
-
-  // Countdown
+  document.getElementById('detailPrices').innerHTML=`<div class="detail-price-card best"><div class="dpc-label">Guruhli narx</div><div class="dpc-val">${fmt(p.group_price)} so'm</div><div class="dpc-disc">↓ ${p.grp_disc}% chegirma</div></div>${soloAvail?`<div class="detail-price-card"><div class="dpc-label">Yakkalik narxi</div><div class="dpc-val">${fmt(p.solo_price)} so'm</div><div class="dpc-disc">↓ ${p.solo_disc||0}% chegirma</div></div>`:''}`;
+  document.getElementById('detailGroup').innerHTML=`<div class="detail-group-row"><span>Guruh holati</span><span class="orange">${p.count}/${p.min_group} kishi</span></div><div class="prod-track" style="margin-bottom:8px"><div class="prod-fill" style="width:${pct}%"></div></div><div style="font-size:13px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div>`;
   if(p.deadline){
     try{
-      const parts=p.deadline.split(' ');
-      const d=parts[0].split('.'),t=(parts[1]||'').split(':');
+      const parts=p.deadline.split(' ');const d=parts[0].split('.'),t=(parts[1]||'').split(':');
       const dt=new Date(d[2],d[1]-1,d[0],t[0]||0,t[1]||0);
-      function updateCD(){
-        const diff=dt-Date.now();
-        if(diff<=0){clearInterval(countdownInterval);document.getElementById('detailCountdown').style.display='none';return;}
-        const days=Math.floor(diff/86400000);
-        const hours=Math.floor((diff%86400000)/3600000);
-        const mins=Math.floor((diff%3600000)/60000);
-        const secs=Math.floor((diff%60000)/1000);
-        let str=days>0?`${days}k ${hours}s ${mins}d`:hours>0?`${hours}s ${mins}d ${secs}s`:`${mins}d ${secs}s`;
-        document.getElementById('countdownTimer').textContent=str;
-      }
-      document.getElementById('detailCountdown').style.display='flex';
-      updateCD();
-      countdownInterval=setInterval(updateCD,1000);
+      function updateCD(){const diff=dt-Date.now();if(diff<=0){clearInterval(countdownInterval);document.getElementById('detailCountdown').style.display='none';return;}const days=Math.floor(diff/86400000);const hours=Math.floor((diff%86400000)/3600000);const mins=Math.floor((diff%3600000)/60000);const secs=Math.floor((diff%60000)/1000);let str=days>0?`${days}k ${hours}s ${mins}d`:hours>0?`${hours}s ${mins}d ${secs}s`:`${mins}d ${secs}s`;document.getElementById('countdownTimer').textContent=str;}
+      document.getElementById('detailCountdown').style.display='flex';updateCD();countdownInterval=setInterval(updateCD,1000);
     }catch{document.getElementById('detailCountdown').style.display='none';}
-  } else {
-    document.getElementById('detailCountdown').style.display='none';
-  }
-
-  // Variants
-  if(p.variants&&p.variants.length){
-    document.getElementById('detailVariants').style.display='block';
-    document.getElementById('variantsList').innerHTML=p.variants.map((v,i)=>`<button class="variant-chip ${i===0?'active':''}" onclick="selectVariant(this)">${v}</button>`).join('');
-  } else document.getElementById('detailVariants').style.display='none';
-
-  // Desc
+  } else {document.getElementById('detailCountdown').style.display='none';}
+  if(p.variants&&p.variants.length){document.getElementById('detailVariants').style.display='block';document.getElementById('variantsList').innerHTML=p.variants.map((v,i)=>`<button class="variant-chip ${i===0?'active':''}" onclick="selectVariant(this)">${v}</button>`).join('');}
+  else document.getElementById('detailVariants').style.display='none';
   const descEl=document.getElementById('detailDesc');
-  if(p.description){descEl.textContent=p.description;descEl.style.display='block';}
-  else descEl.style.display='none';
-
-  // Contact
+  if(p.description){descEl.textContent=p.description;descEl.style.display='block';}else descEl.style.display='none';
   const contEl=document.getElementById('detailContact');
-  if(p.contact){contEl.innerHTML=`<i class="ri-phone-line"></i> <strong>${p.contact}</strong>${p.phone2?`&nbsp;&nbsp;<i class="ri-phone-line"></i> <strong>${p.phone2}</strong>`:''}${p.address?`<br><i class="ri-map-pin-line"></i> ${p.address}`:''}`;contEl.style.display='flex';}
-  else contEl.style.display='none';
-
-  // Social
+  if(p.contact){contEl.innerHTML=`<i class="ri-phone-line"></i> <strong>${p.contact}</strong>${p.phone2?`&nbsp;&nbsp;<i class="ri-phone-line"></i> <strong>${p.phone2}</strong>`:''}${p.address?`<br><i class="ri-map-pin-line"></i> ${p.address}`:''}`;contEl.style.display='flex';}else contEl.style.display='none';
   const socEl=document.getElementById('detailSocial');
   const icons={'instagram':'ri-instagram-line','telegram':'ri-telegram-line','youtube':'ri-youtube-line','website':'ri-global-line','tiktok':'ri-tiktok-line'};
-  if(p.social&&Object.keys(p.social).length){
-    socEl.innerHTML=Object.entries(p.social).map(([k,v])=>{
-      const ic=icons[k.toLowerCase()]||'ri-link';
-      const href=k.toLowerCase()==='website'?(v.startsWith('http')?v:'https://'+v):`https://${k.toLowerCase()}.com/${v.replace('@','')}`;
-      return `<a class="social-link" href="${href}" target="_blank"><i class="${ic}"></i> ${v}</a>`;
-    }).join('');
-    socEl.style.display='flex';
-  } else socEl.style.display='none';
-
-  // Buttons
-  document.getElementById('detailBtns').innerHTML=`
-    <a class="detail-btn-primary" href="https://t.me/${BUYER_BOT}?start=join_${p.id}" target="_blank"><i class="ri-group-line"></i> Guruhli xarid — ${fmt(p.group_price)} so'm</a>
-    ${soloAvail?`<a class="detail-btn-secondary" href="https://t.me/${BUYER_BOT}?start=solo_${p.id}" target="_blank"><i class="ri-shopping-cart-line"></i> Yakkalik xarid — ${fmt(p.solo_price)} so'm</a>`:''}`;
-
-  // Wishlist btn
+  if(p.social&&Object.keys(p.social).length){socEl.innerHTML=Object.entries(p.social).map(([k,v])=>{const ic=icons[k.toLowerCase()]||'ri-link';const href=k.toLowerCase()==='website'?(v.startsWith('http')?v:'https://'+v):`https://${k.toLowerCase()}.com/${v.replace('@','')}`;return `<a class="social-link" href="${href}" target="_blank"><i class="${ic}"></i> ${v}</a>`;}).join('');socEl.style.display='flex';}else socEl.style.display='none';
+  document.getElementById('detailBtns').innerHTML=`<a class="detail-btn-primary" href="https://t.me/${BUYER_BOT}?start=join_${p.id}" target="_blank"><i class="ri-group-line"></i> Guruhli xarid — ${fmt(p.group_price)} so'm</a>${soloAvail?`<a class="detail-btn-secondary" href="https://t.me/${BUYER_BOT}?start=solo_${p.id}" target="_blank"><i class="ri-shopping-cart-line"></i> Yakkalik xarid — ${fmt(p.solo_price)} so'm</a>`:''}`;
   const wished=wishlist.includes(p.id);
   document.getElementById('wishBtnDetail').innerHTML=wished?'<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi':'<i class="ri-heart-line"></i> Saqlash';
-
-  // Related
   const related=allProducts.filter(x=>x.id!==p.id&&x.shop_name===p.shop_name).slice(0,4);
   const relSec=document.getElementById('relatedSection');
-  if(related.length){
-    document.getElementById('relatedGrid').innerHTML=related.map(r=>cardHtml(r)).join('');
-    relSec.style.display='block';
-  } else relSec.style.display='none';
+  if(related.length){document.getElementById('relatedGrid').innerHTML=related.map(r=>cardHtml(r)).join('');relSec.style.display='block';}else relSec.style.display='none';
 }
 
-function switchImg(url,el){
-  document.getElementById('detailMedia').innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
-  document.querySelectorAll('.detail-thumb').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function selectVariant(btn){
-  document.querySelectorAll('.variant-chip').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-}
+function switchImg(url,el){document.getElementById('detailMedia').innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;document.querySelectorAll('.detail-thumb').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+function selectVariant(btn){document.querySelectorAll('.variant-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
 function closeDetail(){
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
   document.getElementById('detailPage').style.display='none';
   document.getElementById('marketplacePage').style.display='';
   document.title='Joynshop — Guruh xarid platformasi';
-  history.replaceState(null,'','/');
-  window.scrollTo(0,0);
+  history.replaceState(null,'','/');window.scrollTo(0,0);
 }
 
-// ── SHARE ──
-function shareProduct(){
-  if(!currentProduct) return;
-  const url=window.location.origin+'?p='+currentProduct.id;
-  if(navigator.share){navigator.share({title:currentProduct.name,url});}
-  else{navigator.clipboard.writeText(url);showToast('Havola nusxalandi!');}
-}
-function shareToTelegram(){
-  if(!currentProduct) return;
-  const url=encodeURIComponent(window.location.origin+'?p='+currentProduct.id);
-  const text=encodeURIComponent(currentProduct.name+' — '+fmt(currentProduct.group_price)+" so'm (-"+currentProduct.grp_disc+"%)");
-  window.open(`https://t.me/share/url?url=${url}&text=${text}`,'_blank');
-}
+function shareProduct(){if(!currentProduct)return;const url=window.location.origin+'?p='+currentProduct.id;if(navigator.share){navigator.share({title:currentProduct.name,url});}else{navigator.clipboard.writeText(url);showToast('Havola nusxalandi!');}}
+function shareToTelegram(){if(!currentProduct)return;const url=encodeURIComponent(window.location.origin+'?p='+currentProduct.id);const text=encodeURIComponent(currentProduct.name+' — '+fmt(currentProduct.group_price)+" so'm (-"+currentProduct.grp_disc+"%)");window.open(`https://t.me/share/url?url=${url}&text=${text}`,'_blank');}
 
-// ── SHOP ──
 function openShop(shopName){
   const shop=shops[shopName];if(!shop)return;
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
-  document.getElementById('marketplacePage').style.display='none';
-  document.getElementById('detailPage').style.display='none';
-  document.getElementById('shopPage').style.display='block';
-  window.scrollTo(0,0);
-  document.getElementById('shopAvatar').textContent=shopName[0].toUpperCase();
-  document.getElementById('shopName').textContent=shop.name;
-  document.getElementById('shopUsername').textContent=shop.contact||'';
-  document.getElementById('shopProductCount').textContent=shop.products.length;
-  const avgDisc=shop.products.length?Math.round(shop.products.reduce((s,p)=>s+p.grp_disc,0)/shop.products.length):0;
-  document.getElementById('shopAvgDisc').textContent=avgDisc+'%';
+  document.getElementById('marketplacePage').style.display='none';document.getElementById('detailPage').style.display='none';document.getElementById('shopPage').style.display='block';window.scrollTo(0,0);
+  document.getElementById('shopAvatar').textContent=shopName[0].toUpperCase();document.getElementById('shopName').textContent=shop.name;document.getElementById('shopUsername').textContent=shop.contact||'';document.getElementById('shopProductCount').textContent=shop.products.length;
+  const avgDisc=shop.products.length?Math.round(shop.products.reduce((s,p)=>s+p.grp_disc,0)/shop.products.length):0;document.getElementById('shopAvgDisc').textContent=avgDisc+'%';
   setTimeout(()=>renderProducts(shop.products,'shopProductsGrid'),100);
 }
 
 function showMarketplace(){
   if(countdownInterval){clearInterval(countdownInterval);countdownInterval=null;}
-  document.getElementById('marketplacePage').style.display='';
-  document.getElementById('shopPage').style.display='none';
-  document.getElementById('detailPage').style.display='none';
-  window.scrollTo(0,0);
+  document.getElementById('marketplacePage').style.display='';document.getElementById('shopPage').style.display='none';document.getElementById('detailPage').style.display='none';window.scrollTo(0,0);
 }
 
-// ── FILTER FUNCS ──
-function toggleAcc(titleEl){
-  titleEl.classList.toggle('open');
-  const body=titleEl.nextElementSibling;
-  if(body&&body.classList.contains('sidebar-body')){
-    body.classList.toggle('open');
-  }
-}
-
+function toggleAcc(titleEl){titleEl.classList.toggle('open');const body=titleEl.nextElementSibling;if(body&&body.classList.contains('sidebar-body')){body.classList.toggle('open');}}
 function setSideFilter(f,btn){activeFilter=f;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');activeTag='all';document.querySelectorAll('.tag-chip').forEach(t=>t.classList.toggle('active',t.dataset.tag==='all'));renderProducts();}
 function setTag(btn,tag){activeTag=tag;document.querySelectorAll('.tag-chip').forEach(t=>t.classList.remove('active'));btn.classList.add('active');activeFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));renderProducts();}
-
 function toggleDisc(btn,pct){if(activeDisc===pct){activeDisc=0;btn.classList.remove('active');}else{activeDisc=pct;document.querySelectorAll('.disc-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}renderProducts();}
-
 function onSearch(){renderProducts();}
 
 // ── LOGIN ──
 function onTelegramAuth(user){
-  currentUser=user;
-  localStorage.setItem('tg_user',JSON.stringify(user));
-  renderNavUser(user);
-  closeLoginModal({target:document.getElementById('loginModalOverlay')});
-  showToast('Xush kelibsiz, '+user.first_name+'!');
+  currentUser=user;localStorage.setItem('tg_user',JSON.stringify(user));renderNavUser(user);
+  closeLoginModal({target:document.getElementById('loginModalOverlay')});showToast('Xush kelibsiz, '+user.first_name+'!');
+  // Server wishlist ni yuklab localStorage ni sync qilish
+  fetch(API+'/api/wishlist?uid='+user.id).then(r=>r.json()).then(items=>{
+    wishlist=items.map(p=>p.id);localStorage.setItem('wishlist',JSON.stringify(wishlist));renderProducts();
+  }).catch(()=>{});
 }
 
 function renderNavUser(user){
@@ -1291,34 +1015,29 @@ function renderNavUser(user){
 
 function openProfile(){
   if(!currentUser){openLoginModal();return;}
-  document.getElementById('marketplacePage').style.display='none';
-  document.getElementById('detailPage').style.display='none';
-  document.getElementById('shopPage').style.display='none';
-  document.getElementById('profilePage').style.display='block';
-  window.scrollTo(0,0);
+  document.getElementById('marketplacePage').style.display='none';document.getElementById('detailPage').style.display='none';document.getElementById('shopPage').style.display='none';document.getElementById('profilePage').style.display='block';window.scrollTo(0,0);
   const u=currentUser;
   document.getElementById('profAvatar').textContent=(u.first_name||'U')[0].toUpperCase();
   document.getElementById('profName').textContent=[u.first_name,u.last_name].filter(Boolean).join(' ');
   document.getElementById('profUsername').textContent=u.username?'@'+u.username:'Telegram foydalanuvchisi';
-  const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
-  document.getElementById('profSaved').textContent=saved.length;
-  // Load stats
+  // Saqlangan sonini server dan olish
+  const savedLocal=JSON.parse(localStorage.getItem('wishlist')||'[]');
+  document.getElementById('profSaved').textContent=savedLocal.length;
+  if(currentUser){
+    fetch(API+'/api/wishlist?uid='+currentUser.id).then(r=>r.json()).then(items=>{
+      wishlist=items.map(p=>p.id);localStorage.setItem('wishlist',JSON.stringify(wishlist));
+      document.getElementById('profSaved').textContent=items.length;
+    }).catch(()=>{});
+  }
   fetch(API+'/api/buyer_stats?uid='+u.id).then(r=>r.json()).then(d=>{
-    document.getElementById('profOrders').textContent=d.total_orders||0;
-    document.getElementById('profGroups').textContent=d.groups_joined||0;
-    document.getElementById('profCashback').textContent=fmtFull(d.cashback||0)+" so'm";
-  }).catch(()=>{
-    document.getElementById('profOrders').textContent=0;
-    document.getElementById('profGroups').textContent=0;
-    document.getElementById('profCashback').textContent="0 so'm";
-  });
+    document.getElementById('profOrders').textContent=d.total_orders||0;document.getElementById('profGroups').textContent=d.groups_joined||0;document.getElementById('profCashback').textContent=fmtFull(d.cashback||0)+" so'm";
+  }).catch(()=>{document.getElementById('profOrders').textContent=0;document.getElementById('profGroups').textContent=0;document.getElementById('profCashback').textContent="0 so'm";});
   switchProfTab('orders');
 }
 
 function switchProfTab(tab){
   ['orders','saved','settings'].forEach(t=>{
-    const btn=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
-    const el=document.getElementById('profTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    const btn=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));const el=document.getElementById('profTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(btn){btn.style.background=t===tab?'var(--white)':'transparent';btn.style.color=t===tab?'var(--n900)':'var(--n500)';btn.style.fontWeight=t===tab?'600':'500';btn.style.boxShadow=t===tab?'var(--ssm)':'none';}
     if(el) el.style.display=t===tab?'block':'none';
   });
@@ -1331,102 +1050,88 @@ function loadProfOrders(){
   el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400)"><i class="ri-loader-4-fill" style="font-size:24px"></i></div>';
   const u=currentUser;if(!u)return;
   fetch(API+'/api/buyer_orders?uid='+u.id).then(r=>r.json()).then(data=>{
-    if(!data.length){
-      el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400)"><i class="ri-inbox-fill" style="font-size:40px;display:block;margin-bottom:10px"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Buyurtma yo\'q</div><div style="font-size:12px;margin-top:4px">Mahsulot xarid qiling!</div></div>';
-      return;
-    }
+    if(!data.length){el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400)"><i class="ri-inbox-fill" style="font-size:40px;display:block;margin-bottom:10px"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Buyurtma yo\'q</div><div style="font-size:12px;margin-top:4px">Mahsulot xarid qiling!</div></div>';return;}
     const statusMap={confirmed:{label:'Tasdiqlandi',color:'var(--g500)',icon:'ri-checkbox-circle-fill'},pending:{label:"To'lov kutilmoqda",color:'var(--n400)',icon:'ri-time-fill'},confirming:{label:'Tekshirilmoqda',color:'var(--o500)',icon:'ri-refresh-fill'},rejected:{label:'Rad etildi',color:'var(--r500)',icon:'ri-close-circle-fill'}};
     el.innerHTML=data.map(o=>{
       const st=statusMap[o.status]||{label:o.status,color:'var(--n400)',icon:'ri-time-fill'};
       const img=o.photo_url?`<img src="${o.photo_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<i class=ri-inbox-fill style=font-size:24px;color:var(--n300)></i>'">`:'<i class="ri-inbox-fill" style="font-size:24px;color:var(--n300)"></i>';
-      return `<div style="background:var(--white);border:1px solid var(--n200);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start">
-        <div style="width:56px;height:56px;border-radius:10px;background:var(--n100);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">${img}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.name}</div>
-          <div style="font-size:12px;color:var(--n400);margin-bottom:6px">${o.shop_name}</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
-            <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.type==='solo'?'Yakka':'Guruh'}</span>
-            <span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.delivery==='deliver'?'Yetkazib berish':'Olib ketish'}</span>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-size:13px;font-weight:700;color:var(--o500)">${fmtFull(o.amount)} so'm</span>
-            <span style="font-size:11px;font-weight:600;color:${st.color};display:flex;align-items:center;gap:3px"><i class="${st.icon}"></i> ${st.label}</span>
-          </div>
-          <div style="font-size:10px;color:var(--n400);margin-top:4px">#${o.code}</div>
-        </div>
-      </div>`;
+      return `<div style="background:var(--white);border:1px solid var(--n200);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start"><div style="width:56px;height:56px;border-radius:10px;background:var(--n100);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden">${img}</div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.name}</div><div style="font-size:12px;color:var(--n400);margin-bottom:6px">${o.shop_name}</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px"><span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.type==='solo'?'Yakka':'Guruh'}</span><span style="background:var(--n100);color:var(--n600);font-size:11px;padding:2px 8px;border-radius:99px">${o.delivery==='deliver'?'Yetkazib berish':'Olib ketish'}</span></div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:var(--o500)">${fmtFull(o.amount)} so'm</span><span style="font-size:11px;font-weight:600;color:${st.color};display:flex;align-items:center;gap:3px"><i class="${st.icon}"></i> ${st.label}</span></div><div style="font-size:10px;color:var(--n400);margin-top:4px">#${o.code}</div></div></div>`;
     }).join('');
-  }).catch(()=>{
-    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--r500)">Yuklashda xato</div>';
-  });
+  }).catch(()=>{el.innerHTML='<div style="text-align:center;padding:32px;color:var(--r500)">Yuklashda xato</div>';});
 }
 
-function loadProfSaved(){
+// ── WISHLIST SAVED TAB (server-first, localStorage fallback) ──
+async function loadProfSaved(){
   const el=document.getElementById('profSavedList');
+  el.style.display='block';
+  el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400);grid-column:1/-1"><i class="ri-loader-4-fill" style="font-size:24px"></i></div>';
+  if(currentUser){
+    try{
+      const res=await fetch(API+'/api/wishlist?uid='+currentUser.id);
+      const items=await res.json();
+      wishlist=items.map(p=>p.id);
+      localStorage.setItem('wishlist',JSON.stringify(wishlist));
+      document.getElementById('profSaved').textContent=items.length;
+      if(!items.length){
+        el.style.display='block';
+        el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400);grid-column:1/-1"><i class="ri-heart-3-fill" style="font-size:40px;display:block;margin-bottom:10px;color:var(--r500)"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Saqlangan mahsulot yo\'t</div></div>';
+        return;
+      }
+      el.style.display='grid';
+      el.innerHTML=items.map(p=>cardHtml(p)).join('');
+      return;
+    }catch(e){}
+  }
+  // Fallback: localStorage
   const savedIds=JSON.parse(localStorage.getItem('wishlist')||'[]');
   const items=allProducts.filter(p=>savedIds.includes(p.id));
   if(!items.length){
     el.style.display='block';
-    el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400);grid-column:1/-1"><i class="ri-heart-3-fill" style="font-size:40px;display:block;margin-bottom:10px;color:var(--r500)"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Saqlangan mahsulot yo\'q</div></div>';
+    el.innerHTML='<div style="text-align:center;padding:48px 24px;color:var(--n400);grid-column:1/-1"><i class="ri-heart-3-fill" style="font-size:40px;display:block;margin-bottom:10px;color:var(--r500)"></i><div style="font-size:14px;font-weight:600;color:var(--n600)">Saqlangan mahsulot yo\'t</div></div>';
     return;
   }
   el.style.display='grid';
   el.innerHTML=items.map(p=>cardHtml(p)).join('');
 }
 
-function closeProfile(){
-  document.getElementById('profilePage').style.display='none';
-  document.getElementById('marketplacePage').style.display='';
-  window.scrollTo(0,0);
-}
+function closeProfile(){document.getElementById('profilePage').style.display='none';document.getElementById('marketplacePage').style.display='';window.scrollTo(0,0);}
 
 function logoutUser(){
   if(!confirm('Hisobdan chiqmoqchimisiz?')) return;
-  currentUser=null;
-  localStorage.removeItem('tg_user');
+  currentUser=null;localStorage.removeItem('tg_user');
   document.getElementById('navUserArea').innerHTML='<a href="#" class="btn btn-sm btn-ghost" onclick="openLoginModal();return false"><i class="ri-user-line"></i> Kirish</a>';
-  closeProfile();
-  showToast('Chiqildi!');
+  closeProfile();showToast('Chiqildi!');
 }
 
-function shareRefLink(){
-  const url=encodeURIComponent('https://t.me/'+BUYER_BOT+(currentUser?'?start=ref_'+currentUser.id:''));
-  const text=encodeURIComponent('Joynshop da guruh xarid qiling — 40% gacha tejang!');
-  window.open('https://t.me/share/url?url='+url+'&text='+text,'_blank');
-}
+function shareRefLink(){const url=encodeURIComponent('https://t.me/'+BUYER_BOT+(currentUser?'?start=ref_'+currentUser.id:''));const text=encodeURIComponent('Joynshop da guruh xarid qiling — 40% gacha tejang!');window.open('https://t.me/share/url?url='+url+'&text='+text,'_blank');}
 function openLoginModal(){document.getElementById('loginModalOverlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeLoginModal(e){if(e.target===document.getElementById('loginModalOverlay')){document.getElementById('loginModalOverlay').classList.remove('open');document.body.style.overflow='';}}
-function openFilterDrawer(){
-  document.getElementById('filterDrawer').classList.add('open');
-  document.getElementById('filterDrawerOverlay').classList.add('open');
-  document.body.style.overflow='hidden';
-  // Populate drawer categories
-  const el=document.getElementById('drawerCatFilter');
-  if(!el) return;
-  const allCats=['all',...new Set(allProducts.filter(p=>p.category).map(p=>p.category))];
-  el.innerHTML=allCats.map(cat=>`
-    <button class="filter-item ${activeCat===cat?'active':''}" onclick="activeCat='${cat}';renderProducts();document.querySelectorAll('#drawerCatFilter .filter-item').forEach(b=>b.classList.remove('active'));this.classList.add('active');syncCatNav('${cat}')">
-      <span>${cat==='all'?'Hammasi':cat}</span>
-      <span class="filter-count">${cat==='all'?allProducts.length:allProducts.filter(p=>p.category===cat).length}</span>
-    </button>`).join('');
-}
 
-function syncCatNav(cat){
-  document.querySelectorAll('.cat-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));
+function openFilterDrawer(){
+  document.getElementById('filterDrawer').classList.add('open');document.getElementById('filterDrawerOverlay').classList.add('open');document.body.style.overflow='hidden';
+  const el=document.getElementById('drawerCatFilter');if(!el)return;
+  const allCats=['all',...new Set(allProducts.filter(p=>p.category).map(p=>p.category))];
+  el.innerHTML=allCats.map(cat=>`<button class="filter-item ${activeCat===cat?'active':''}" onclick="activeCat='${cat}';renderProducts();document.querySelectorAll('#drawerCatFilter .filter-item').forEach(b=>b.classList.remove('active'));this.classList.add('active');syncCatNav('${cat}')"><span>${cat==='all'?'Hammasi':cat}</span><span class="filter-count">${cat==='all'?allProducts.length:allProducts.filter(p=>p.category===cat).length}</span></button>`).join('');
 }
+function syncCatNav(cat){document.querySelectorAll('.cat-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));}
 function closeFilterDrawer(){document.getElementById('filterDrawer').classList.remove('open');document.getElementById('filterDrawerOverlay').classList.remove('open');document.body.style.overflow='';}
 function showToast(msg){const t=document.createElement('div');t.className='toast-el';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);}
 
-// Deep link ?p=pid
 const urlParams=new URLSearchParams(window.location.search);
 const deepPid=urlParams.get('p');
-
 const saved=localStorage.getItem('tg_user');
-if(saved){try{currentUser=JSON.parse(saved);renderNavUser(currentUser);}catch(e){}}
+if(saved){
+  try{
+    currentUser=JSON.parse(saved);renderNavUser(currentUser);
+    // Login bo'lganida server wishlist ni sync qilish
+    fetch(API+'/api/wishlist?uid='+currentUser.id).then(r=>r.json()).then(items=>{
+      wishlist=items.map(p=>p.id);localStorage.setItem('wishlist',JSON.stringify(wishlist));
+    }).catch(()=>{});
+  }catch(e){}
+}
 
 loadProducts().then(()=>{if(deepPid)openDetail(deepPid);});
 
-// Auto refresh every 60s
 setInterval(()=>{
   fetch(API+'/api/products').then(r=>r.json()).then(data=>{
     allProducts=data;buildShops();updateCounts();renderShopFilter();
