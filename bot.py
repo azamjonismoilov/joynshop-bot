@@ -3211,6 +3211,69 @@ def dashboard():
     html = open('dashboard.html').read()
     return Response(html, mimetype='text/html')
 
+
+@app.route('/api/wishlist', methods=['GET'])
+def api_wishlist_get():
+    from flask import jsonify
+    uid = request.args.get('uid', type=int)
+    if not uid: return jsonify([]), 400
+    wl  = wishlists.get(uid, [])
+    result = []
+    for pid in wl:
+        p = products.get(pid)
+        if not p or p.get('status') == 'closed': continue
+        count = len(groups.get(pid, []))
+        orig  = p.get('original_price', 0)
+        grp   = p.get('group_price', 0)
+        result.append({
+            'id':             pid,
+            'name':           p.get('name', ''),
+            'shop_name':      p.get('shop_name', ''),
+            'group_price':    grp,
+            'original_price': orig,
+            'grp_disc':       round((orig - grp) / orig * 100) if orig else 0,
+            'min_group':      p.get('min_group', 3),
+            'count':          count,
+            'photo_id':       p.get('photo_id', ''),
+            'photo_url':      p.get('photo_url', ''),
+            'deadline':       p.get('deadline', ''),
+            'join_url':       f"https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}",
+        })
+    return jsonify(result)
+
+
+@app.route('/api/wishlist/add', methods=['POST'])
+def api_wishlist_add():
+    from flask import jsonify
+    data = request.json or {}
+    uid  = data.get('uid')
+    pid  = data.get('pid', '')
+    if not uid or not pid:
+        return jsonify({'ok': False, 'error': 'uid va pid kerak'}), 400
+    uid = int(uid)
+    if pid not in products:
+        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
+    if uid not in wishlists: wishlists[uid] = []
+    if pid not in wishlists[uid]:
+        wishlists[uid].append(pid)
+        save_data()
+    return jsonify({'ok': True, 'count': len(wishlists[uid])})
+
+
+@app.route('/api/wishlist/remove', methods=['POST'])
+def api_wishlist_remove():
+    from flask import jsonify
+    data = request.json or {}
+    uid  = data.get('uid')
+    pid  = data.get('pid', '')
+    if not uid or not pid:
+        return jsonify({'ok': False, 'error': 'uid va pid kerak'}), 400
+    uid = int(uid)
+    if uid in wishlists and pid in wishlists[uid]:
+        wishlists[uid].remove(pid)
+        save_data()
+    return jsonify({'ok': True, 'count': len(wishlists.get(uid, []))})
+
 @app.route('/api/categories', methods=['GET'])
 def api_categories():
     from flask import jsonify
