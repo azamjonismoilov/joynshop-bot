@@ -517,6 +517,7 @@ threading.Thread(target=live_update_loop, daemon=True).start()
 PROD_ALLOWED_CBS = {
     'prod_photo_done', 'prod_skip_desc', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
     'prod_confirm_publish', 'prod_continue', 'prod_restart',
+    'prod_deadline_24', 'prod_deadline_48', 'prod_deadline_72', 'prod_deadline_168',
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
@@ -814,6 +815,18 @@ def seller_handle_cb(cb):
         if not s: answer_cb(cbid, token=SELLER_TOKEN); return
         s['step'] = 'prod_edit_solo'; answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid, "Yakka sotuv narxini yozing (so'm):"); return
+
+    if d.startswith('prod_deadline_'):
+        s = seller_state.get(uid)
+        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        hours_map = {'prod_deadline_24': 24, 'prod_deadline_48': 48,
+                     'prod_deadline_72': 72, 'prod_deadline_168': 168}
+        h = hours_map.get(d, 48)
+        s['deadline_hours'] = h
+        answer_cb(cbid, token=SELLER_TOKEN)
+        shop = seller_shops.get(uid, [{}])[s.get('shop_idx', 0)]
+        show_prod_confirm(uid, s, shop)
+        return
 
     if d == 'prod_add_variants':
         s = seller_state.get(uid)
@@ -1266,15 +1279,25 @@ def show_prod_confirm(cid, s, shop):
     sale_labels = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
     sale_line   = f"\n{sale_labels.get(s.get('sale_type','both'), '')}"
     min_group_line = f"\n👥 Min guruh: {s['min_group']} kishi" if s.get('sale_type') != 'solo' else ''
+    # Deadline
+    hours = int(s.get('deadline_hours', 48))
+    deadline_labels = {24: '24 soat', 48: '2 kun', 72: '3 kun', 168: '1 hafta'}
+    deadline_line = f"\n⏰ Muddat: {deadline_labels.get(hours, str(hours)+' soat')}"
+    # Deadline tugmalari — hozirgi tanlangan belgilangan
+    def dl_btn(h, label):
+        mark = '✅ ' if hours == h else ''
+        return {'text': f"{mark}{label}", 'callback_data': f'prod_deadline_{h}'}
     send_seller(cid,
         f"📋 <b>Mahsulotni tekshiring:</b>\n\n"
         f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}"
         f"{cat_line}{sale_line}\n"
         f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
         f"{min_group_line}\n📢 {shop.get('channel','—')}"
+        f"{deadline_line}"
         f"{desc_line}{solo_line}{variants_line}",
         {'inline_keyboard': [
             [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
+            [dl_btn(24,'24 soat'), dl_btn(48,'2 kun'), dl_btn(72,'3 kun'), dl_btn(168,'1 hafta')],
             [{'text': "📝 Tavsif",        'callback_data': 'prod_add_desc'},
              {'text': "💰 Yakka narx",    'callback_data': 'prod_add_solo'}],
             [{'text': "🎨 Variantlar",    'callback_data': 'prod_add_variants'}],
