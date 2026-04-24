@@ -367,7 +367,8 @@ def expire_product(pid):
                 f"😔 <b>Guruh to'lmadi</b>\n\n"
                 f"<b>{p['name']}</b>\n"
                 f"👥 {count}/{p['min_group']} kishi\n\n"
-                f"Qayta urinib ko'ring: /addproduct"
+                f"Yangi mahsulot qo'shib ko'ring.",
+                {'inline_keyboard': [[{'text': "➕ Yangi mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
             )
 
 # ─── REMINDER & LIVE UPDATE ──────────────────────────────────────────
@@ -405,7 +406,8 @@ def reminder_loop():
                             f"<b>{p['name']}</b>\n"
                             f"👥 {count}/{p['min_group']} kishi\n"
                             f"⏰ {int(hours)} soat qoldi\n\n"
-                            f"Kanalda qayta e'lon qiling: /boost {pid}"
+                            f"Kanalda qayta e'lon qiling:",
+                        {'inline_keyboard': [[{'text': "📢 Qayta e'lon qilish", 'callback_data': f'boost_{pid}'}]]}
                         )
         except Exception as e:
             logging.error(f"Reminder error: {e}")
@@ -3204,7 +3206,8 @@ def expire_product(pid):
                 f"😔 <b>Guruh to'lmadi</b>\n\n"
                 f"<b>{p['name']}</b>\n"
                 f"👥 {count}/{p['min_group']} kishi\n\n"
-                f"Qayta urinib ko'ring: /addproduct"
+                f"Yangi mahsulot qo'shib ko'ring.",
+                {'inline_keyboard': [[{'text': "➕ Yangi mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
             )
 
 # ─── SPAM ────────────────────────────────────────────────────────────
