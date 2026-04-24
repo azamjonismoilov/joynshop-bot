@@ -118,8 +118,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 
 /* SIDEBAR */
 .sidebar{position:sticky;top:80px;}
-.sidebar-section{margin-bottom:20px;}
-.sidebar-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);margin-bottom:8px;padding:0 4px;}
+.sidebar-section{margin-bottom:0;border-bottom:1px solid var(--n200);}
+.sidebar-section:last-child{border-bottom:none;}
+.sidebar-title{font-size:12px;font-weight:600;color:var(--n700);padding:12px 4px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;letter-spacing:0;text-transform:none;}
+.sidebar-title:hover{color:var(--n900);}
+.sidebar-title .acc-arrow{font-size:16px;color:var(--n400);transition:transform .2s;flex-shrink:0;}
+.sidebar-title.open .acc-arrow{transform:rotate(180deg);}
+.sidebar-body{overflow:hidden;max-height:0;transition:max-height .25s ease,padding .25s ease;padding:0 0 0;}
+.sidebar-body.open{max-height:400px;padding:0 0 12px;}
 .filter-group{display:flex;flex-direction:column;gap:1px;}
 .filter-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--n600);transition:all .15s;border:none;background:transparent;font-family:'Inter',sans-serif;text-align:left;width:100%;}
 .filter-item:hover{background:var(--n100);color:var(--n900);}
@@ -133,7 +139,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .price-inputs{display:flex;gap:6px;align-items:center;}
 .price-input{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--n200);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;transition:border-color .15s;}
 .price-input:focus{border-color:var(--b500);}
-.sidebar-divider{height:1px;background:var(--n200);margin:14px 0;}
+
 
 /* CAT CHIPS */
 .cat-filters{display:flex;flex-direction:column;gap:2px;}
@@ -454,8 +460,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   <div class="page-layout">
     <aside class="sidebar">
       <div class="sidebar-section">
-        <div class="sidebar-title">Holat</div>
-        <div class="filter-group" id="statusFilter">
+        <div class="sidebar-title open" onclick="toggleAcc(this)">Holat<i class="ri-arrow-down-s-line acc-arrow"></i></div>
+        <div class="sidebar-body open"><div class="filter-group" id="statusFilter">
           <button class="filter-item active" data-filter="all" onclick="setSideFilter('all',this)">
             <span><i class="ri-apps-line"></i> Barchasi</span><span class="filter-count" id="cnt-all">0</span>
           </button>
@@ -471,34 +477,31 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         </div>
       </div>
 
-      <div class="sidebar-divider"></div>
       <div class="sidebar-section">
-        <div class="sidebar-title">Chegirma</div>
-        <div class="disc-filters">
+        <div class="sidebar-title open" onclick="toggleAcc(this)">Chegirma<i class="ri-arrow-down-s-line acc-arrow"></i></div>
+        <div class="sidebar-body open"><div class="disc-filters">
           <button class="disc-chip" onclick="toggleDisc(this,10)">10%+</button>
           <button class="disc-chip" onclick="toggleDisc(this,20)">20%+</button>
           <button class="disc-chip" onclick="toggleDisc(this,30)">30%+</button>
           <button class="disc-chip" onclick="toggleDisc(this,40)">40%+</button>
-        </div>
+        </div></div>
       </div>
-      <div class="sidebar-divider"></div>
       <div class="sidebar-section">
-        <div class="sidebar-title">Narx oralig'i</div>
-        <div class="price-inputs">
+        <div class="sidebar-title" onclick="toggleAcc(this)">Narx oralig'i<i class="ri-arrow-down-s-line acc-arrow"></i></div>
+        <div class="sidebar-body"><div class="price-inputs">
           <input class="price-input" type="number" id="priceMin" placeholder="Dan" oninput="onSearch()">
           <span style="color:var(--n400);font-size:12px">—</span>
           <input class="price-input" type="number" id="priceMax" placeholder="Gacha" oninput="onSearch()">
-        </div>
+        </div></div>
       </div>
-      <div class="sidebar-divider"></div>
       <div class="sidebar-section">
-        <div class="sidebar-title">Do'konlar</div>
-        <div style="position:relative;margin-bottom:8px">
+        <div class="sidebar-title" onclick="toggleAcc(this)">Do'konlar<i class="ri-arrow-down-s-line acc-arrow"></i></div>
+        <div class="sidebar-body"><div style="position:relative;margin-bottom:8px">
           <i class="ri-search-line" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--n400)"></i>
           <input type="text" id="shopSearch" placeholder="Do'kon qidirish..." oninput="filterShopList()"
             style="width:100%;height:30px;border:1px solid var(--n200);border-radius:7px;background:var(--n50);padding:0 8px 0 26px;font-family:'Inter',sans-serif;font-size:12px;outline:none;">
         </div>
-        <div class="filter-group" id="shopFilter" style="max-height:200px;overflow-y:auto;scrollbar-width:thin"></div>
+        <div class="filter-group" id="shopFilter" style="max-height:200px;overflow-y:auto;scrollbar-width:thin"></div></div>
       </div>
     </aside>
     <main>
@@ -1221,6 +1224,14 @@ function showMarketplace(){
 }
 
 // ── FILTER FUNCS ──
+function toggleAcc(titleEl){
+  titleEl.classList.toggle('open');
+  const body=titleEl.nextElementSibling;
+  if(body&&body.classList.contains('sidebar-body')){
+    body.classList.toggle('open');
+  }
+}
+
 function setSideFilter(f,btn){activeFilter=f;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');activeTag='all';document.querySelectorAll('.tag-chip').forEach(t=>t.classList.toggle('active',t.dataset.tag==='all'));renderProducts();}
 function setTag(btn,tag){activeTag=tag;document.querySelectorAll('.tag-chip').forEach(t=>t.classList.remove('active'));btn.classList.add('active');activeFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));renderProducts();}
 
