@@ -50,11 +50,15 @@
 }
 
 /* BANNER SLIDER */
-.banner-wrap{max-width:1440px;margin:0 auto;padding:10px 16px 4px;}
-.banner-slider{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:5/1;}
-@media(max-width:1100px){.banner-slider{aspect-ratio:4/1;}}
-@media(max-width:768px){.banner-slider{aspect-ratio:3/1;}}
-@media(max-width:480px){.banner-slider{aspect-ratio:2.5/1;}}
+.banner-wrap{max-width:1440px;margin:0 auto;padding:10px 0 4px;}
+.banner-outer{overflow:hidden;padding:0 120px;}
+.banner-slider{position:relative;border-radius:12px;overflow:visible;aspect-ratio:5/1;}
+.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);}
+.banner-slide{flex:0 0 100%;position:relative;border-radius:12px;overflow:hidden;transform:scale(.97);opacity:.5;transition:transform .4s,opacity .4s;cursor:pointer;}
+.banner-slide.active{transform:scale(1);opacity:1;}
+@media(max-width:1100px){.banner-slider{aspect-ratio:4/1;}.banner-outer{padding:0 80px;}}
+@media(max-width:768px){.banner-slider{aspect-ratio:3/1;}.banner-outer{padding:0 40px;}}
+@media(max-width:480px){.banner-slider{aspect-ratio:2.2/1;}.banner-outer{padding:0 24px;}}
 .banner-slides{display:flex;height:100%;transition:transform .4s ease;}
 .banner-slide{flex:0 0 100%;position:relative;cursor:pointer;}
 .banner-slide img{width:100%;height:100%;object-fit:cover;}
@@ -65,9 +69,7 @@
 .banner-nav{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:2;}
 .banner-nav-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);cursor:pointer;transition:all .2s;}
 .banner-nav-dot.active{background:var(--white);width:18px;border-radius:3px;}
-.banner-arr{position:absolute;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.9);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--n700);z-index:3;box-shadow:var(--ssm);}
-.banner-arr-prev{left:12px;}
-.banner-arr-next{right:12px;}
+
 /* CATEGORY NAV */
 .cat-nav{max-width:1440px;margin:0 auto;padding:6px 16px;}
 .cat-nav-scroll{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
@@ -435,9 +437,10 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 <div id="marketplacePage">
   <!-- BANNER SLIDER -->
   <div class="banner-wrap">
+    <div class="banner-outer">
     <div class="banner-slider" id="bannerSlider">
       <div class="banner-slides" id="bannerSlides">
-        <div class="banner-slide">
+        <div class="banner-slide active">
           <div class="banner-slide-inner" style="background:linear-gradient(135deg,#FA7319,#E16614)">
             <div>
               <div class="banner-badge"><i class="ri-group-fill"></i> Guruhli xarid</div>
@@ -470,9 +473,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
         <div class="banner-nav-dot" onclick="goBanner(1)"></div>
         <div class="banner-nav-dot" onclick="goBanner(2)"></div>
       </div>
-      <button class="banner-arr banner-arr-prev" onclick="slideBanner(-1)"><i class="ri-arrow-left-s-line"></i></button>
-      <button class="banner-arr banner-arr-next" onclick="slideBanner(1)"><i class="ri-arrow-right-s-line"></i></button>
+
     </div>
+    </div><!-- /banner-outer -->
   </div>
   <!-- CATEGORY NAV -->
   <div class="cat-nav">
@@ -530,13 +533,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
           </button>
         </div>
       </div>
-      <div class="sidebar-divider"></div>
-      <div class="sidebar-section">
-        <div class="sidebar-title">Kategoriya</div>
-        <div class="cat-filters" id="catFilter">
-          <button class="cat-chip active" data-cat="all" onclick="setCat(this,'all')">Hammasi</button>
-        </div>
-      </div>
+
       <div class="sidebar-divider"></div>
       <div class="sidebar-section">
         <div class="sidebar-title">Chegirma</div>
@@ -764,6 +761,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       <button class="disc-chip" onclick="toggleDisc(this,40)">40%+</button>
     </div>
   </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <div class="sidebar-title">Kategoriya</div>
+    <div style="display:flex;flex-direction:column;gap:2px" id="drawerCatFilter"></div>
+  </div>
 </div>
 
 <!-- LOGIN MODAL -->
@@ -830,24 +832,85 @@ function showSkeletons(count=8){
 }
 
 // ── BANNER SLIDER ──
-let bannerIdx=0,bannerAutoTimer=null;
+let bannerIdx=1,bannerAutoTimer=null; // 1 = first real slide (0 is clone of last)
 function slideBanner(dir){
-  const slides=document.getElementById('bannerSlides');
+  const wrap=document.getElementById('bannerSlides');
+  if(!wrap) return;
+  const allSlides=wrap.querySelectorAll('.banner-slide');
   const dots=document.querySelectorAll('.banner-nav-dot');
   const total=dots.length;
-  bannerIdx=(bannerIdx+dir+total)%total;
-  if(slides)slides.style.transform=`translateX(-${bannerIdx*100}%)`;
-  dots.forEach((d,i)=>d.classList.toggle('active',i===bannerIdx));
+  const realTotal=allSlides.length; // includes clones
+
+  bannerIdx+=dir;
+
+  // Apply transition
+  wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';
+  wrap.style.transform=`translateX(-${bannerIdx*100}%)`;
+
+  // Update dots (real index)
+  const realIdx=((bannerIdx-1)%total+total)%total;
+  dots.forEach((d,i)=>d.classList.toggle('active',i===realIdx));
+  allSlides.forEach((s,i)=>{s.classList.toggle('active',i===bannerIdx);});
+
+  // Infinite: after transition, jump silently
+  if(bannerIdx>=realTotal-1){
+    setTimeout(()=>{
+      wrap.style.transition='none';
+      bannerIdx=1;
+      wrap.style.transform=`translateX(-100%)`;
+      allSlides.forEach((s,i)=>s.classList.toggle('active',i===1));
+    },420);
+  } else if(bannerIdx<=0){
+    setTimeout(()=>{
+      wrap.style.transition='none';
+      bannerIdx=realTotal-2;
+      wrap.style.transform=`translateX(-${bannerIdx*100}%)`;
+      allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
+    },420);
+  }
 }
-function goBanner(idx){bannerIdx=idx;slideBanner(0);}
+
+function goBanner(dotIdx){
+  bannerIdx=dotIdx+1; // +1 because of prepended clone
+  const wrap=document.getElementById('bannerSlides');
+  const allSlides=wrap?wrap.querySelectorAll('.banner-slide'):[];
+  const dots=document.querySelectorAll('.banner-nav-dot');
+  if(wrap){wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';wrap.style.transform=`translateX(-${bannerIdx*100}%)`;}
+  dots.forEach((d,i)=>d.classList.toggle('active',i===dotIdx));
+  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
+}
 function startBannerAuto(){
   clearInterval(bannerAutoTimer);
   bannerAutoTimer=setInterval(()=>slideBanner(1),4000);
 }
 window.addEventListener('DOMContentLoaded',()=>{
+  // Init: clone first and last slides for infinite loop
+  const wrap=document.getElementById('bannerSlides');
+  if(wrap){
+    const slides=[...wrap.querySelectorAll('.banner-slide')];
+    const first=slides[0].cloneNode(true);
+    const last=slides[slides.length-1].cloneNode(true);
+    wrap.appendChild(first);
+    wrap.insertBefore(last,slides[0]);
+    // Start at real first slide (index 1)
+    wrap.style.transition='none';
+    wrap.style.transform='translateX(-100%)';
+    wrap.querySelectorAll('.banner-slide').forEach((s,i)=>s.classList.toggle('active',i===1));
+  }
   startBannerAuto();
   const bs=document.getElementById('bannerSlider');
-  if(bs){bs.addEventListener('mouseenter',()=>clearInterval(bannerAutoTimer));bs.addEventListener('mouseleave',startBannerAuto);}
+  if(bs){
+    bs.addEventListener('mouseenter',()=>clearInterval(bannerAutoTimer));
+    bs.addEventListener('mouseleave',startBannerAuto);
+    // Touch swipe support
+    let tx=0;
+    bs.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;clearInterval(bannerAutoTimer);},{passive:true});
+    bs.addEventListener('touchend',e=>{
+      const diff=tx-e.changedTouches[0].clientX;
+      if(Math.abs(diff)>40) slideBanner(diff>0?1:-1);
+      startBannerAuto();
+    },{passive:true});
+  }
 });
 
 // ── CATEGORY NAV ──
@@ -907,15 +970,23 @@ function buildShops(){
 function buildCats(){
   const cats=new Set();
   allProducts.forEach(p=>{if(p.category)cats.add(p.category);});
-  const cf=document.getElementById('catFilter');
-  if(cats.size>0){
-    cats.forEach(c=>{
-      const b=document.createElement('button');
-      b.className='cat-chip';b.dataset.cat=c;b.textContent=c;
-      b.onclick=function(){setCat(this,c);};
-      cf.appendChild(b);
-    });
-  }
+  if(!cats.size) return;
+  // Add dynamic categories to cat-nav if not already there
+  const scroll=document.getElementById('catNavScroll');
+  if(!scroll) return;
+  const existing=new Set([...scroll.querySelectorAll('.cat-nav-item')].map(el=>el.dataset.cat));
+  const catIcons={'Kiyim':'ri-t-shirt-fill','Elektronika':'ri-smartphone-fill','Oziq-ovqat':'ri-restaurant-fill','Uy-joy':'ri-home-heart-fill',"Go'zallik":'ri-seedling-fill','Sport':'ri-run-fill','Bolalar':'ri-hearts-fill'};
+  const catColors={'Kiyim':'#335CFF','Elektronika':'#1A7544','Oziq-ovqat':'#E16614','Uy-joy':'#8B5CF6',"Go'zallik":'#EC4899','Sport':'#F59E0B','Bolalar':'#FB3748'};
+  cats.forEach(cat=>{
+    if(existing.has(cat)) return;
+    const icon=catIcons[cat]||'ri-price-tag-3-fill';
+    const color=catColors[cat]||'var(--o500)';
+    const btn=document.createElement('div');
+    btn.className='cat-nav-item'; btn.dataset.cat=cat;
+    btn.innerHTML=`<div class="cat-nav-icon"><i class="${icon}" style="color:${color}"></i></div><div class="cat-nav-label">${cat}</div>`;
+    btn.onclick=function(){setCatNav(this,cat);};
+    scroll.appendChild(btn);
+  });
 }
 
 function updateCounts(){
@@ -1297,7 +1368,7 @@ function showMarketplace(){
 // ── FILTER FUNCS ──
 function setSideFilter(f,btn){activeFilter=f;document.querySelectorAll('[data-filter]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');activeTag='all';document.querySelectorAll('.tag-chip').forEach(t=>t.classList.toggle('active',t.dataset.tag==='all'));renderProducts();}
 function setTag(btn,tag){activeTag=tag;document.querySelectorAll('.tag-chip').forEach(t=>t.classList.remove('active'));btn.classList.add('active');activeFilter='all';document.querySelectorAll('[data-filter]').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));renderProducts();}
-function setCat(btn,cat){activeCat=cat;document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderProducts();}
+
 function toggleDisc(btn,pct){if(activeDisc===pct){activeDisc=0;btn.classList.remove('active');}else{activeDisc=pct;document.querySelectorAll('.disc-chip').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}renderProducts();}
 
 function onSearch(){renderProducts();}
@@ -1423,7 +1494,24 @@ function shareRefLink(){
 }
 function openLoginModal(){document.getElementById('loginModalOverlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeLoginModal(e){if(e.target===document.getElementById('loginModalOverlay')){document.getElementById('loginModalOverlay').classList.remove('open');document.body.style.overflow='';}}
-function openFilterDrawer(){document.getElementById('filterDrawer').classList.add('open');document.getElementById('filterDrawerOverlay').classList.add('open');document.body.style.overflow='hidden';}
+function openFilterDrawer(){
+  document.getElementById('filterDrawer').classList.add('open');
+  document.getElementById('filterDrawerOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  // Populate drawer categories
+  const el=document.getElementById('drawerCatFilter');
+  if(!el) return;
+  const allCats=['all',...new Set(allProducts.filter(p=>p.category).map(p=>p.category))];
+  el.innerHTML=allCats.map(cat=>`
+    <button class="filter-item ${activeCat===cat?'active':''}" onclick="activeCat='${cat}';renderProducts();document.querySelectorAll('#drawerCatFilter .filter-item').forEach(b=>b.classList.remove('active'));this.classList.add('active');syncCatNav('${cat}')">
+      <span>${cat==='all'?'Hammasi':cat}</span>
+      <span class="filter-count">${cat==='all'?allProducts.length:allProducts.filter(p=>p.category===cat).length}</span>
+    </button>`).join('');
+}
+
+function syncCatNav(cat){
+  document.querySelectorAll('.cat-nav-item').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));
+}
 function closeFilterDrawer(){document.getElementById('filterDrawer').classList.remove('open');document.getElementById('filterDrawerOverlay').classList.remove('open');document.body.style.overflow='';}
 function showToast(msg){const t=document.createElement('div');t.className='toast-el';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);}
 
