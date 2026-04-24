@@ -73,8 +73,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .logo{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0;cursor:pointer;}
 .logo-mark{width:34px;height:34px;background:var(--o500);border-radius:10px;display:flex;align-items:center;justify-content:center;}
 .logo-mark i{color:var(--white);font-size:18px;}
-.logo-text{font-size:18px;font-weight:700;color:var(--n900);letter-spacing:-.02em;}
-.logo-text span{color:var(--o500);}
+.logo-text{font-size:18px;font-weight:700;letter-spacing:-.02em;}
+.logo-text .joyn{color:var(--n900);}
+.logo-text .shop{color:var(--o500);}
 .nav-search{flex:1;max-width:480px;position:relative;}
 .nav-search input{width:100%;height:40px;border:1px solid var(--n200);border-radius:8px;background:var(--n50);padding:0 16px 0 40px;font-family:'Inter',sans-serif;font-size:14px;outline:none;transition:border-color .15s;}
 .nav-search input:focus{border-color:var(--b500);background:var(--white);}
@@ -312,7 +313,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   <div class="nav-inner">
     <div class="logo" onclick="showMarketplace()">
       <div class="logo-mark"><i class="ri-shopping-bag-3-line"></i></div>
-      <span class="logo-text">Joyn<span>shop</span></span>
+      <span class="logo-text"><span class="joyn">Joyn</span><span class="shop">shop</span></span>
     </div>
     <div class="nav-search">
       <i class="ri-search-line nav-search-icon"></i>
@@ -334,8 +335,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   <button class="mobile-filter-btn" onclick="openFilterDrawer()"><i class="ri-filter-3-line"></i> Filtr</button>
   <button class="mobile-filter-btn tag-chip active" data-tag="all" onclick="setTag(this,'all')">Barchasi</button>
   <button class="mobile-filter-btn tag-chip" data-tag="new" onclick="setTag(this,'new')">Yangi</button>
-  <button class="mobile-filter-btn tag-chip" data-tag="hot" onclick="setTag(this,'hot')">🔥 Ommabop</button>
-  <button class="mobile-filter-btn tag-chip" data-tag="ending" onclick="setTag(this,'ending')">⚡ Tugayapti</button>
+  <button class="mobile-filter-btn tag-chip" data-tag="hot" onclick="setTag(this,'hot')"><i class="ri-fire-fill"></i> Ommabop</button>
+  <button class="mobile-filter-btn tag-chip" data-tag="ending" onclick="setTag(this,'ending')"><i class="ri-flashlight-fill"></i> Tugayapti</button>
 </div>
 
 <!-- MARKETPLACE -->
@@ -349,13 +350,13 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
             <span><i class="ri-apps-line"></i> Barchasi</span><span class="filter-count" id="cnt-all">0</span>
           </button>
           <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot',this)">
-            <span>🔥 Ommabop</span><span class="filter-count" id="cnt-hot">0</span>
+            <span><i class="ri-fire-fill"></i> Ommabop</span><span class="filter-count" id="cnt-hot">0</span>
           </button>
           <button class="filter-item" data-filter="ending" onclick="setSideFilter('ending',this)">
-            <span>⏳ Tugayapti</span><span class="filter-count" id="cnt-ending">0</span>
+            <span><i class="ri-time-fill"></i> Tugayapti</span><span class="filter-count" id="cnt-ending">0</span>
           </button>
           <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this)">
-            <span>✨ Yangi</span><span class="filter-count" id="cnt-new">0</span>
+            <span><i class="ri-sparkling-fill"></i> Yangi</span><span class="filter-count" id="cnt-new">0</span>
           </button>
         </div>
       </div>
@@ -408,9 +409,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
       </div>
       <div class="tags-row">
         <button class="tag-chip active" data-tag="all" onclick="setTag(this,'all')">Barchasi</button>
-        <button class="tag-chip" data-tag="new" onclick="setTag(this,'new')">✨ Yangi</button>
-        <button class="tag-chip" data-tag="hot" onclick="setTag(this,'hot')">🔥 Ommabop</button>
-        <button class="tag-chip" data-tag="ending" onclick="setTag(this,'ending')">⚡ Tugayapti</button>
+        <button class="tag-chip" data-tag="new" onclick="setTag(this,'new')"><i class="ri-sparkling-fill"></i> Yangi</button>
+        <button class="tag-chip" data-tag="hot" onclick="setTag(this,'hot')"><i class="ri-fire-fill"></i> Ommabop</button>
+        <button class="tag-chip" data-tag="ending" onclick="setTag(this,'ending')"><i class="ri-flashlight-fill"></i> Tugayapti</button>
         <button class="tag-chip" data-tag="disc30" onclick="setTag(this,'disc30')">30%+ chegirma</button>
         <button class="tag-chip" data-tag="disc40" onclick="setTag(this,'disc40')">40%+ chegirma</button>
         <button class="tag-chip" data-tag="cheap" onclick="setTag(this,'cheap')">1 mln gacha</button>
@@ -501,9 +502,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
     <div class="sidebar-title">Holat</div>
     <div class="filter-group">
       <button class="filter-item active" data-filter="all" onclick="setSideFilter('all',this);closeFilterDrawer()"><span>Barchasi</span></button>
-      <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot',this);closeFilterDrawer()"><span>🔥 Ommabop</span></button>
-      <button class="filter-item" data-filter="ending" onclick="setSideFilter('ending',this);closeFilterDrawer()"><span>⏳ Tugayapti</span></button>
-      <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this);closeFilterDrawer()"><span>✨ Yangi</span></button>
+      <button class="filter-item" data-filter="hot" onclick="setSideFilter('hot',this);closeFilterDrawer()"><span><i class="ri-fire-fill"></i> Ommabop</span></button>
+      <button class="filter-item" data-filter="ending" onclick="setSideFilter('ending',this);closeFilterDrawer()"><span><i class="ri-time-fill"></i> Tugayapti</span></button>
+      <button class="filter-item" data-filter="new" onclick="setSideFilter('new',this);closeFilterDrawer()"><span><i class="ri-sparkling-fill"></i> Yangi</span></button>
     </div>
   </div>
   <div class="sidebar-divider"></div>
@@ -593,7 +594,7 @@ async function loadProducts(){
     renderShopFilter();
     renderProducts();
   }catch(e){
-    document.getElementById('productsGrid').innerHTML='<div class="empty-state"><div class="empty-icon">📡</div><div class="empty-title">Ulanishda xato</div><div class="empty-sub">Sahifani yangilang</div></div>';
+    document.getElementById('productsGrid').innerHTML='<div class="empty-state"><div class="empty-icon"><i class="ri-wifi-off-fill"></i></div><div class="empty-title">Ulanishda xato</div><div class="empty-sub">Sahifani yangilang</div></div>';
   }
 }
 
@@ -677,7 +678,7 @@ function renderProducts(list,targetEl){
   const rc=document.getElementById('resultCount');
   if(rc)rc.textContent=' — '+items.length+' ta';
   if(!items.length){
-    grid.innerHTML='<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Mahsulot topilmadi</div><div class="empty-sub">Boshqa filtr tanlang</div></div>';
+    grid.innerHTML='<div class="empty-state"><div class="empty-icon"><i class="ri-inbox-fill"></i></div><div class="empty-title">Mahsulot topilmadi</div><div class="empty-sub">Boshqa filtr tanlang</div></div>';
     return;
   }
   grid.innerHTML=items.map(p=>cardHtml(p)).join('');
@@ -690,15 +691,15 @@ function cardHtml(p){
   const isNew=p.count===0;
   const imgSrc=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
   const img=imgSrc
-    ?`<img src="${imgSrc}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover"><div class="prod-img-placeholder" style="display:none">📦</div>`
-    :`<div class="prod-img-placeholder">📦</div>`;
+    ?`<img src="${imgSrc}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="width:100%;height:100%;object-fit:cover"><div class="prod-img-placeholder" style="display:none"><i class="ri-inbox-fill"></i></div>`
+    :`<div class="prod-img-placeholder"><i class="ri-inbox-fill"></i></div>`;
   const wished=wishlist.includes(p.id);
   const timerHtml=getTimerBadge(p.deadline);
   return `<div class="prod-card" onclick="openDetail('${p.id}')">
     <div class="prod-img">${img}
       <div class="prod-badge-disc">-${p.grp_disc}%</div>
       ${p.count>0?`<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>`:''}
-      ${almost?`<div class="prod-badge-hot">⚡ ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new">✨ Yangi</div>`:''}
+      ${almost?`<div class="prod-badge-hot"><i class="ri-flashlight-fill"></i> ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new"><i class="ri-sparkling-fill"></i> Yangi</div>`:''}
       <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWish('${p.id}',this)" title="Wishlistga qo'shish">
         <i class="ri-heart-${wished?'fill':'line'}"></i>
       </button>
@@ -739,7 +740,7 @@ function getTimerBadge(deadline){
 function toggleWish(pid,btn){
   const idx=wishlist.indexOf(pid);
   if(idx>=0){wishlist.splice(idx,1);btn.classList.remove('active');btn.innerHTML='<i class="ri-heart-line"></i>';}
-  else{wishlist.push(pid);btn.classList.add('active');btn.innerHTML='<i class="ri-heart-fill"></i>';showToast('💛 Saqlandi!');}
+  else{wishlist.push(pid);btn.classList.add('active');btn.innerHTML='<i class="ri-heart-fill"></i>';showToast('Saqlandi!');}
   localStorage.setItem('wishlist',JSON.stringify(wishlist));
 }
 function toggleWishDetail(){
@@ -748,7 +749,7 @@ function toggleWishDetail(){
   const idx=wishlist.indexOf(pid);
   const btn=document.getElementById('wishBtnDetail');
   if(idx>=0){wishlist.splice(idx,1);btn.innerHTML='<i class="ri-heart-line"></i> Saqlash';}
-  else{wishlist.push(pid);btn.innerHTML='<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi';showToast('💛 Saqlandi!');}
+  else{wishlist.push(pid);btn.innerHTML='<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi';showToast('Saqlandi!');}
   localStorage.setItem('wishlist',JSON.stringify(wishlist));
   renderProducts();
 }
@@ -781,8 +782,8 @@ function openDetail(pid){
 
   const detailImg=p.photo_url||(p.photo_id?`${API}/api/photo/${p.photo_id}`:'');
   document.getElementById('detailMedia').innerHTML=detailImg
-    ?`<img src="${detailImg}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder>📦</div>'">`
-    :`<div class="detail-main-placeholder">📦</div>`;
+    ?`<img src="${detailImg}" style="width:100%;height:100%;object-fit:cover" onerror="this.outerHTML='<div class=detail-main-placeholder><i class=ri-inbox-fill></i></div>'">`
+    :`<div class="detail-main-placeholder"><i class="ri-inbox-fill"></i></div>`;
 
   // Thumbnails
   const urls=(p.photo_urls&&p.photo_urls.length)?p.photo_urls
@@ -816,7 +817,7 @@ function openDetail(pid){
   document.getElementById('detailGroup').innerHTML=`
     <div class="detail-group-row"><span>Guruh holati</span><span class="orange">${p.count}/${p.min_group} kishi</span></div>
     <div class="prod-track" style="margin-bottom:8px"><div class="prod-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:13px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':"✅ Guruh to'ldi!"}</div>`;
+    <div style="font-size:13px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div>`;
 
   // Countdown
   if(p.deadline){
@@ -913,7 +914,7 @@ function shareProduct(){
   if(!currentProduct) return;
   const url=window.location.origin+'?p='+currentProduct.id;
   if(navigator.share){navigator.share({title:currentProduct.name,url});}
-  else{navigator.clipboard.writeText(url);showToast('🔗 Havola nusxalandi!');}
+  else{navigator.clipboard.writeText(url);showToast('Havola nusxalandi!');}
 }
 function shareToTelegram(){
   if(!currentProduct) return;
