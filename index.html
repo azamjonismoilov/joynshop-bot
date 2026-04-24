@@ -50,12 +50,17 @@
 }
 
 /* BANNER SLIDER */
-.banner-wrap{max-width:900px;margin:0 auto;padding:10px 0 4px;overflow:hidden;}
-.banner-outer{padding:0;}
-.banner-slider{position:relative;overflow:visible;aspect-ratio:3/1;}
-.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);gap:12px;}
-.banner-slide{flex:0 0 100%;position:relative;overflow:hidden;filter:saturate(0.3) brightness(0.65);transition:filter .4s;cursor:pointer;border-radius:12px;}
-.banner-slide.active{filter:saturate(1) brightness(1);}
+.banner-wrap{max-width:1100px;margin:0 auto;padding:10px 16px 4px;}
+.banner-outer{display:flex;gap:10px;align-items:stretch;}
+.banner-side{flex:0 0 18%;min-width:0;border-radius:12px;overflow:hidden;cursor:pointer;filter:saturate(0.35) brightness(0.7);transition:filter .4s;}
+.banner-side:hover{filter:saturate(0.6) brightness(0.85);}
+.banner-side .banner-slide-inner{height:100%;min-height:120px;border-radius:0;}
+.banner-center{flex:1;min-width:0;border-radius:12px;overflow:hidden;position:relative;}
+.banner-slider{position:relative;overflow:hidden;aspect-ratio:2.8/1;border-radius:12px;}
+.banner-slides{display:flex;height:100%;transition:transform .4s cubic-bezier(.25,.46,.45,.94);}
+.banner-slide{flex:0 0 100%;position:relative;overflow:hidden;cursor:pointer;}
+.banner-slide.active{filter:none;}
+@media(max-width:768px){.banner-side{display:none;}.banner-wrap{padding:8px 12px 4px;}}
 @media(max-width:1100px){.banner-wrap{max-width:760px;}}
 @media(max-width:768px){.banner-wrap{max-width:100%;padding:8px 16px 4px;}.banner-slider{aspect-ratio:2.5/1;}}
 @media(max-width:480px){.banner-slider{aspect-ratio:2/1;}}
@@ -438,44 +443,64 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   <!-- BANNER SLIDER -->
   <div class="banner-wrap">
     <div class="banner-outer">
-    <div class="banner-slider" id="bannerSlider">
-      <div class="banner-slides" id="bannerSlides">
-        <div class="banner-slide active">
-          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#FA7319,#E16614)">
-            <div>
-              <div class="banner-badge"><i class="ri-group-fill"></i> Guruhli xarid</div>
-              <div class="banner-title">Do'stlar bilan<br>40% gacha tejang!</div>
-              <div class="banner-sub">O'zbekistondagi eng yaxshi guruh xarid platformasi</div>
-            </div>
-          </div>
-        </div>
-        <div class="banner-slide">
-          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
-            <div>
-              <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
-              <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
-              <div class="banner-sub">Buyurtma bering va tez oling</div>
-            </div>
-          </div>
-        </div>
-        <div class="banner-slide">
-          <div class="banner-slide-inner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
-            <div>
-              <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
-              <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
-              <div class="banner-sub">Minglab xaridorlarga yeting</div>
-            </div>
+      <!-- Chap yon -->
+      <div class="banner-side" id="bannerSideLeft" onclick="slideBanner(-1)">
+        <div class="banner-slide-inner" id="bannerSideLeftInner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
+          <div>
+            <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
+            <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
           </div>
         </div>
       </div>
-      <div class="banner-nav" id="bannerNav">
-        <div class="banner-nav-dot active" onclick="goBanner(0)"></div>
-        <div class="banner-nav-dot" onclick="goBanner(1)"></div>
-        <div class="banner-nav-dot" onclick="goBanner(2)"></div>
+      <!-- Markaz -->
+      <div class="banner-center">
+        <div class="banner-slider" id="bannerSlider">
+          <div class="banner-slides" id="bannerSlides">
+            <div class="banner-slide active">
+              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#FA7319,#E16614)">
+                <div>
+                  <div class="banner-badge"><i class="ri-group-fill"></i> Guruhli xarid</div>
+                  <div class="banner-title">Do'stlar bilan<br>40% gacha tejang!</div>
+                  <div class="banner-sub">O'zbekistondagi eng yaxshi guruh xarid platformasi</div>
+                </div>
+              </div>
+            </div>
+            <div class="banner-slide">
+              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
+                <div>
+                  <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
+                  <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
+                  <div class="banner-sub">Buyurtma bering va tez oling</div>
+                </div>
+              </div>
+            </div>
+            <div class="banner-slide">
+              <div class="banner-slide-inner" style="background:linear-gradient(135deg,#1A7544,#0F5430)">
+                <div>
+                  <div class="banner-badge"><i class="ri-store-3-fill"></i> Yangi sotuvchi</div>
+                  <div class="banner-title">Do'koningizni<br>Joynshop da oching</div>
+                  <div class="banner-sub">Minglab xaridorlarga yeting</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="banner-nav" id="bannerNav">
+            <div class="banner-nav-dot active" onclick="goBanner(0)"></div>
+            <div class="banner-nav-dot" onclick="goBanner(1)"></div>
+            <div class="banner-nav-dot" onclick="goBanner(2)"></div>
+          </div>
+        </div>
       </div>
-
+      <!-- O'ng yon -->
+      <div class="banner-side" id="bannerSideRight" onclick="slideBanner(1)">
+        <div class="banner-slide-inner" id="bannerSideRightInner" style="background:linear-gradient(135deg,#335CFF,#1A3FCC)">
+          <div>
+            <div class="banner-badge"><i class="ri-flashlight-fill"></i> Tez yetkazish</div>
+            <div class="banner-title">Toshkent bo'ylab<br>24 soatda yetkazish</div>
+          </div>
+        </div>
+      </div>
     </div>
-    </div><!-- /banner-outer -->
   </div>
   <!-- CATEGORY NAV -->
   <div class="cat-nav">
@@ -832,44 +857,52 @@ function showSkeletons(count=8){
 }
 
 // ── BANNER SLIDER ──
-let bannerIdx=1,bannerAutoTimer=null; // 1 = first real slide (0 is clone of last)
+let bannerIdx=1,bannerAutoTimer=null;
+const BANNERS=[
+  {bg:'linear-gradient(135deg,#FA7319,#E16614)',icon:'ri-group-fill',label:'Guruhli xarid',title:"Do'stlar bilan<br>40% gacha tejang!"},
+  {bg:'linear-gradient(135deg,#335CFF,#1A3FCC)',icon:'ri-flashlight-fill',label:'Tez yetkazish',title:"Toshkent bo'ylab<br>24 soatda yetkazish"},
+  {bg:'linear-gradient(135deg,#1A7544,#0F5430)',icon:'ri-store-3-fill',label:'Yangi sotuvchi',title:"Do'koningizni<br>Joynshop da oching"},
+];
+function updateSideBanners(realIdx){
+  const total=BANNERS.length;
+  const prevIdx=(realIdx-1+total)%total;
+  const nextIdx=(realIdx+1)%total;
+  const li=document.getElementById('bannerSideLeftInner');
+  const ri=document.getElementById('bannerSideRightInner');
+  if(li){const b=BANNERS[prevIdx];li.style.background=b.bg;li.innerHTML=`<div><div class="banner-badge"><i class="${b.icon}"></i> ${b.label}</div><div class="banner-title" style="font-size:13px;line-height:1.3">${b.title}</div></div>`;}
+  if(ri){const b=BANNERS[nextIdx];ri.style.background=b.bg;ri.innerHTML=`<div><div class="banner-badge"><i class="${b.icon}"></i> ${b.label}</div><div class="banner-title" style="font-size:13px;line-height:1.3">${b.title}</div></div>`;}
+}
 function slideBanner(dir){
   const wrap=document.getElementById('bannerSlides');
   if(!wrap) return;
   const allSlides=wrap.querySelectorAll('.banner-slide');
   const dots=document.querySelectorAll('.banner-nav-dot');
   const total=dots.length;
-  const realTotal=allSlides.length; // includes clones
-
+  const realTotal=allSlides.length;
   bannerIdx+=dir;
-
-  // Apply transition
   wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';
   wrap.style.transform=`translateX(-${bannerIdx*100}%)`;
-
-  // Update dots (real index)
   const realIdx=((bannerIdx-1)%total+total)%total;
   dots.forEach((d,i)=>d.classList.toggle('active',i===realIdx));
-  allSlides.forEach((s,i)=>{s.classList.toggle('active',i===bannerIdx);});
-
-  // Infinite: after transition, jump silently
+  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
+  updateSideBanners(realIdx);
   if(bannerIdx>=realTotal-1){
-    setTimeout(()=>{
-      wrap.style.transition='none';
-      bannerIdx=1;
-      const g=8,pw=wrap.parentElement.offsetWidth;wrap.style.transform=`translateX(calc(-100% - ${g}px))`;
-      allSlides.forEach((s,i)=>s.classList.toggle('active',i===1));
-    },420);
+    setTimeout(()=>{wrap.style.transition='none';bannerIdx=1;wrap.style.transform='translateX(-100%)';allSlides.forEach((s,i)=>s.classList.toggle('active',i===1));updateSideBanners(0);},420);
   } else if(bannerIdx<=0){
-    setTimeout(()=>{
-      wrap.style.transition='none';
-      bannerIdx=realTotal-2;
-      const g2=8;wrap.style.transform=`translateX(calc(-${bannerIdx*100}% - ${bannerIdx*g2}px))`;
-      allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
-    },420);
+    setTimeout(()=>{wrap.style.transition='none';bannerIdx=realTotal-2;wrap.style.transform=`translateX(-${bannerIdx*100}%)`;allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));updateSideBanners(realTotal-3);},420);
   }
 }
 
+function goBanner(dotIdx){
+  bannerIdx=dotIdx+1;
+  const wrap=document.getElementById('bannerSlides');
+  const allSlides=wrap?wrap.querySelectorAll('.banner-slide'):[];
+  const dots=document.querySelectorAll('.banner-nav-dot');
+  if(wrap){wrap.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94)';wrap.style.transform=`translateX(-${bannerIdx*100}%)`;}
+  dots.forEach((d,i)=>d.classList.toggle('active',i===dotIdx));
+  allSlides.forEach((s,i)=>s.classList.toggle('active',i===bannerIdx));
+  updateSideBanners(dotIdx);
+}
 function goBanner(dotIdx){
   bannerIdx=dotIdx+1; // +1 because of prepended clone
   const wrap=document.getElementById('bannerSlides');
