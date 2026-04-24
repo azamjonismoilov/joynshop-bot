@@ -199,7 +199,6 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 .nav-item.active{background:var(--o500);}
 .nav-icon{font-size:20px;line-height:1;color:rgba(255,255,255,.5);transition:color .2s;}
 .nav-item.active .nav-icon{color:var(--white);}
-.nav-label{font-size:10px;font-weight:500;color:var(--n400);}
 .nav-label{font-size:9px;font-weight:500;color:rgba(255,255,255,.5);transition:color .2s;white-space:nowrap;}
 .nav-item.active .nav-label{color:var(--white);}
 
@@ -409,51 +408,35 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <script>
 let allProducts=[],currentFilter='all',searchQuery='';
 const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
-if(tg){
-  tg.ready();
-  tg.expand();
-  // Faqat mobile Telegram da close button uchun padding
-  function applyTgPadding(){
-    const header = document.querySelector('.header');
-    if(!header) return;
-    const safeTop = tg.safeAreaInsets?.top || 0;
-    const contentTop = tg.contentSafeAreaInsets?.top || 0;
-    const totalTop = Math.max(safeTop, contentTop);
-    // Faqat real mobile da (50px dan katta bo'lsa desktop hisoblash)
-    if(totalTop > 0 && totalTop < 100){
-      header.style.paddingTop = (totalTop + 12) + 'px';
-    }
-    syncShellPadding();
-  }
-  function syncShellPadding(){
-    const header = document.querySelector('.header');
-    const shell = document.querySelector('.app-shell');
-    if(header && shell){
-      shell.style.paddingTop = header.offsetHeight + 'px';
-    }
-  }
-  applyTgPadding();
-  setTimeout(applyTgPadding, 300);
-  const headerEl = document.querySelector('.header');
-  if(headerEl && window.ResizeObserver){
-    new ResizeObserver(syncShellPadding).observe(headerEl);
-  }
-} else {
-  // Telegram bo'lmasa ham (brauzer, desktop)
-  function syncShellPadding(){
-    const header = document.querySelector('.header');
-    const shell = document.querySelector('.app-shell');
-    if(header && shell){
-      shell.style.paddingTop = header.offsetHeight + 'px';
-    }
-  }
-  window.addEventListener('load', syncShellPadding);
-  setTimeout(syncShellPadding, 100);
-  const headerEl = document.querySelector('.header');
-  if(headerEl && window.ResizeObserver){
-    new ResizeObserver(syncShellPadding).observe(headerEl);
-  }
+
+function syncShellPadding(){
+  const header=document.querySelector('.header');
+  const shell=document.querySelector('.app-shell');
+  if(header&&shell) shell.style.paddingTop=header.offsetHeight+'px';
 }
+
+function applyTgPadding(){
+  const header=document.querySelector('.header');
+  if(!header) return;
+  // contentSafeAreaInsets.top — FAQAT mobil Telegram ilovasida (iOS/Android app) musbat.
+  // Telegram Desktop va APK versiyasida 0 bo'ladi — ortiqcha padding qo'shilmaydi.
+  // safeAreaInsets.top ishlatilmaydi — u telefon notch/status bar balandligi bo'lib
+  // APK da ham musbat bo'ladi, bu esa keraksiz paddingga olib keladi.
+  const contentTop=(tg&&tg.contentSafeAreaInsets?.top)||0;
+  header.style.paddingTop=(contentTop>0?contentTop+12:12)+'px';
+  syncShellPadding();
+}
+
+if(tg){tg.ready();tg.expand();}
+
+applyTgPadding();
+setTimeout(applyTgPadding,300);
+window.addEventListener('load',syncShellPadding);
+const headerEl=document.querySelector('.header');
+if(headerEl&&window.ResizeObserver){
+  new ResizeObserver(syncShellPadding).observe(headerEl);
+}
+
 function fmt(n){return n.toLocaleString('uz-UZ');}
 
 async function loadProducts(){
