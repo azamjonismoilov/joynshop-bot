@@ -3211,6 +3211,24 @@ def dashboard():
     html = open('dashboard.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/api/categories', methods=['GET'])
+def api_categories():
+    from flask import jsonify
+    # Mahsulotlarda mavjud kategoriyalarni va sonini qaytaradi
+    cat_counts = {}
+    for p in products.values():
+        if p.get('status') == 'closed': continue
+        cat = p.get('category', '')
+        if cat:
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+    # CATEGORIES tartibida qaytaramiz
+    result = []
+    for name, icon in CATEGORIES:
+        if name in cat_counts:
+            result.append({'name': name, 'icon': icon, 'count': cat_counts[name]})
+    return jsonify(result)
+
+
 @app.route('/api/checkout', methods=['POST'])
 def api_checkout():
     from flask import jsonify
