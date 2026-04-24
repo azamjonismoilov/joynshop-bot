@@ -491,6 +491,64 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
   </div>
 </div>
 
+<!-- PROFILE PAGE -->
+<div id="profilePage" style="display:none">
+  <div style="max-width:680px;margin:0 auto;padding:24px 16px 48px">
+    <button onclick="closeProfile()" style="display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--n600);cursor:pointer;border:none;background:none;font-family:'Inter',sans-serif;margin-bottom:20px;padding:0"><i class="ri-arrow-left-line"></i> Orqaga</button>
+
+    <!-- Avatar & Name -->
+    <div style="background:var(--white);border-radius:16px;border:1px solid var(--n200);padding:24px;margin-bottom:12px;display:flex;align-items:center;gap:16px">
+      <div id="profAvatar" style="width:64px;height:64px;border-radius:50%;background:var(--o500);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--white);flex-shrink:0"></div>
+      <div style="flex:1">
+        <div id="profName" style="font-size:18px;font-weight:700;margin-bottom:3px"></div>
+        <div id="profUsername" style="font-size:13px;color:var(--n400);margin-bottom:8px"></div>
+        <span style="display:inline-flex;align-items:center;gap:4px;background:var(--o50);color:var(--o500);font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--o100)"><i class="ri-medal-fill"></i> Joynshop a'zosi</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
+        <div id="profOrders" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:11px;color:var(--n400);margin-top:3px">Buyurtmalar</div>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
+        <div id="profGroups" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:11px;color:var(--n400);margin-top:3px">Guruhlar</div>
+      </div>
+      <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:14px;text-align:center">
+        <div id="profSaved" style="font-size:22px;font-weight:700;color:var(--o500)">—</div>
+        <div style="font-size:11px;color:var(--n400);margin-top:3px">Saqlangan</div>
+      </div>
+    </div>
+
+    <!-- Menu -->
+    <div style="background:var(--white);border:1px solid var(--n200);border-radius:16px;overflow:hidden;margin-bottom:12px">
+      <div style="padding:10px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--n400);border-bottom:1px solid var(--n100)">Faoliyat</div>
+      <a id="profOrdersLink" href="#" style="display:flex;align-items:center;gap:12px;padding:14px 16px;text-decoration:none;border-bottom:1px solid var(--n100);cursor:pointer" onclick="event.preventDefault()">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--o50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-shopping-bag-3-fill" style="color:var(--o500);font-size:17px"></i></div>
+        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Buyurtmalarim</span>
+        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
+      </a>
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-bottom:1px solid var(--n100)" onclick="closeProfile()">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--r50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-heart-3-fill" style="color:var(--r500);font-size:17px"></i></div>
+        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Saqlangan mahsulotlar</span>
+        <span style="font-size:12px;font-weight:600;color:var(--o500)" id="profSavedCount"></span>
+        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="shareRefLink()">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--g50);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="ri-share-forward-fill" style="color:var(--g800);font-size:17px"></i></div>
+        <span style="flex:1;font-size:14px;font-weight:500;color:var(--n700)">Do'stni taklif qilish</span>
+        <span style="font-size:12px;color:var(--o500);font-weight:600">+10,000 so'm</span>
+        <i class="ri-arrow-right-s-line" style="color:var(--n300);font-size:18px"></i>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <button onclick="logoutUser()" style="width:100%;height:46px;border-radius:12px;border:1.5px solid var(--r500);background:transparent;color:var(--r500);font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><i class="ri-logout-circle-r-line"></i> Chiqish</button>
+  </div>
+</div>
+
 <!-- FILTER DRAWER -->
 <div class="filter-drawer-overlay" id="filterDrawerOverlay" onclick="closeFilterDrawer()"></div>
 <div class="filter-drawer" id="filterDrawer">
@@ -957,8 +1015,68 @@ function setShopFilter(name,btn){if(activeShop===name){activeShop='';btn.classLi
 function onSearch(){renderProducts();}
 
 // ── LOGIN ──
-function onTelegramAuth(user){currentUser=user;localStorage.setItem('tg_user',JSON.stringify(user));const area=document.getElementById('navUserArea');area.innerHTML=`<div class="nav-user" onclick="showUserMenu()"><div class="nav-avatar">${(user.first_name||'U')[0].toUpperCase()}</div><span class="nav-user-name">${user.first_name}</span></div>`;closeLoginModal({target:document.getElementById('loginModalOverlay')});showToast('Xush kelibsiz, '+user.first_name+'!');}
-function showUserMenu(){if(confirm('Chiqish?')){currentUser=null;localStorage.removeItem('tg_user');document.getElementById('navUserArea').innerHTML='';}}
+function onTelegramAuth(user){
+  currentUser=user;
+  localStorage.setItem('tg_user',JSON.stringify(user));
+  renderNavUser(user);
+  closeLoginModal({target:document.getElementById('loginModalOverlay')});
+  showToast('Xush kelibsiz, '+user.first_name+'!');
+}
+
+function renderNavUser(user){
+  const area=document.getElementById('navUserArea');
+  area.innerHTML=`<div class="nav-user" onclick="openProfile()"><div class="nav-avatar">${(user.first_name||'U')[0].toUpperCase()}</div><span class="nav-user-name">${user.first_name}</span></div>`;
+}
+
+function openProfile(){
+  if(!currentUser){openLoginModal();return;}
+  document.getElementById('marketplacePage').style.display='none';
+  document.getElementById('detailPage').style.display='none';
+  document.getElementById('shopPage').style.display='none';
+  document.getElementById('profilePage').style.display='block';
+  window.scrollTo(0,0);
+  // Fill profile data
+  const u=currentUser;
+  document.getElementById('profAvatar').textContent=(u.first_name||'U')[0].toUpperCase();
+  document.getElementById('profName').textContent=[u.first_name,u.last_name].filter(Boolean).join(' ');
+  document.getElementById('profUsername').textContent=u.username?'@'+u.username:'Telegram foydalanuvchisi';
+  // Saved count
+  const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
+  document.getElementById('profSaved').textContent=saved.length;
+  document.getElementById('profSavedCount').textContent=saved.length>0?saved.length+'ta':'';
+  // Orders link
+  document.getElementById('profOrdersLink').href='https://t.me/'+BUYER_BOT+'?start=mystatus';
+  document.getElementById('profOrdersLink').target='_blank';
+  // Load stats from API
+  fetch(API+'/api/buyer_stats?uid='+u.id).then(r=>r.json()).then(d=>{
+    document.getElementById('profOrders').textContent=d.total_orders||0;
+    document.getElementById('profGroups').textContent=d.total_groups||0;
+  }).catch(()=>{
+    document.getElementById('profOrders').textContent=0;
+    document.getElementById('profGroups').textContent=0;
+  });
+}
+
+function closeProfile(){
+  document.getElementById('profilePage').style.display='none';
+  document.getElementById('marketplacePage').style.display='';
+  window.scrollTo(0,0);
+}
+
+function logoutUser(){
+  if(!confirm('Hisobdan chiqmoqchimisiz?')) return;
+  currentUser=null;
+  localStorage.removeItem('tg_user');
+  document.getElementById('navUserArea').innerHTML='<a href="#" class="btn btn-sm btn-ghost" onclick="openLoginModal();return false"><i class="ri-user-line"></i> Kirish</a>';
+  closeProfile();
+  showToast('Chiqildi!');
+}
+
+function shareRefLink(){
+  const url=encodeURIComponent('https://t.me/'+BUYER_BOT+(currentUser?'?start=ref_'+currentUser.id:''));
+  const text=encodeURIComponent('Joynshop da guruh xarid qiling — 40% gacha tejang!');
+  window.open('https://t.me/share/url?url='+url+'&text='+text,'_blank');
+}
 function openLoginModal(){document.getElementById('loginModalOverlay').classList.add('open');document.body.style.overflow='hidden';}
 function closeLoginModal(e){if(e.target===document.getElementById('loginModalOverlay')){document.getElementById('loginModalOverlay').classList.remove('open');document.body.style.overflow='';}}
 function openFilterDrawer(){document.getElementById('filterDrawer').classList.add('open');document.getElementById('filterDrawerOverlay').classList.add('open');document.body.style.overflow='hidden';}
@@ -970,7 +1088,7 @@ const urlParams=new URLSearchParams(window.location.search);
 const deepPid=urlParams.get('p');
 
 const saved=localStorage.getItem('tg_user');
-if(saved){try{currentUser=JSON.parse(saved);const u=currentUser;document.getElementById('navUserArea').innerHTML=`<div class="nav-user" onclick="showUserMenu()"><div class="nav-avatar">${(u.first_name||'U')[0].toUpperCase()}</div><span class="nav-user-name">${u.first_name}</span></div>`;}catch(e){}}
+if(saved){try{currentUser=JSON.parse(saved);renderNavUser(currentUser);}catch(e){}}
 
 loadProducts().then(()=>{if(deepPid)openDetail(deepPid);});
 
