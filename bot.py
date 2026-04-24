@@ -2759,10 +2759,14 @@ def buyer_handle_msg(msg):
         if not inline_row:
             inline_row.append({'text': "🛍 Do'konga o'tish", 'callback_data': 'open_shop'})
 
-        # Birinchi xabar: salom + reply keyboard (pastki menyu)
+        # 1: reply keyboard (pastki menyu) — bo'sh matn bilan
         send_buyer(cid,
             "👋 <b>Joynshop ga xush kelibsiz!</b>\n\n"
             "🛍 Do'stlaringiz bilan xarid qiling — <b>40% gacha tejang!</b>",
+            {'inline_keyboard': [inline_row]}
+        )
+        # 2: reply keyboard ni o'rnatish
+        send_buyer(cid, "📌 Asosiy menyu:",
             {
                 'keyboard': [
                     [{'text': "📋 Buyurtmalarim"}, {'text': "👤 Profilim"}],
@@ -2771,11 +2775,6 @@ def buyer_handle_msg(msg):
                 'resize_keyboard': True,
                 'is_persistent':   True,
             }
-        )
-        # Ikkinchi xabar: inline buttonlar (sayt + miniapp)
-        send_buyer(cid,
-            "🏪 Xarid boshlash uchun:",
-            {'inline_keyboard': [inline_row]}
         )
         return
 
