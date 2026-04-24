@@ -583,6 +583,38 @@ function setCat(cat,btn){
 function filterProducts(){searchQuery=document.getElementById('searchInput').value.toLowerCase();renderProducts();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
 
+async function toggleWishServer(pid, forceRemove, btn){
+  const user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
+  if(!user){showToast('Telegram orqali kiring');return;}
+  // Avval localStorage holatini tekshiramiz
+  const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
+  const inWish=saved.includes(pid);
+  const remove=forceRemove===true?true:inWish;
+  const endpoint=remove?'/api/wishlist/remove':'/api/wishlist/add';
+  try{
+    await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:user.id,pid})});
+    // localStorage ham yangilash
+    if(remove){
+      const idx=saved.indexOf(pid);
+      if(idx>=0) saved.splice(idx,1);
+      showToast('Wishlistdan olib tashlandi');
+    } else {
+      if(!saved.includes(pid)) saved.push(pid);
+      showToast('Wishlistga saqlandi! ❤️');
+    }
+    localStorage.setItem('wishlist',JSON.stringify(saved));
+    // Tugma holatini yangilash
+    if(btn){
+      btn.textContent=remove?'🤍':'❤️';
+      btn.style.color=remove?'var(--n400)':'var(--r500)';
+    }
+    // Saqlangan sahifasini yangilash
+    if(remove && document.getElementById('saqlanganPage').style.display!=='none'){
+      renderSaqlangan();
+    }
+  }catch(e){showToast('Xato yuz berdi');}
+}
+
 let refLink='';
 function openProfile(){
   document.getElementById('profileScreen').classList.add('open');
@@ -632,16 +664,42 @@ function setPage(page){
   else if(page==='profile'){document.getElementById('profilePage').style.display='block';loadProfile();}
 }
 
-function renderSaqlangan(){
+async function renderSaqlangan(){
   const el=document.getElementById('saqlanganPage');
-  const saved=JSON.parse(localStorage.getItem('wishlist')||'[]');
-  const items=allProducts.filter(p=>saved.includes(p.id));
-  if(!items.length){
-    el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px"><i class=\"ri-heart-3-fill\" style=\"color:var(--r500)\"></i></div><div style="font-size:15px;font-weight:600;color:var(--n600)">Saqlangan bo&#39;sh</div><div style="font-size:13px;margin-top:4px">Yoqtirgan mahsulotlaringizni saqlang</div></div>';
+  el.innerHTML='<div style="text-align:center;padding:32px"><div class="loader" style="margin:0 auto"></div></div>';
+  const user=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user:null;
+  if(!user){
+    el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px"><i class="ri-lock-fill"></i></div><div style="font-size:14px">Telegram orqali kiring</div></div>';
     return;
   }
-  el.innerHTML='<div style="padding:12px 16px;font-size:15px;font-weight:700">Saqlanganlar ('+items.length+')</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px">'+items.map(p=>productCard(p)).join('')+'</div>';
+  try{
+    const res=await fetch('/api/wishlist?uid='+user.id);
+    const items=await res.json();
+    if(!items.length){
+      el.innerHTML='<div style="text-align:center;padding:60px 24px;color:var(--n400)"><div style="font-size:40px;margin-bottom:12px"><i class="ri-heart-3-fill" style="color:var(--r500)"></i></div><div style="font-size:15px;font-weight:600;color:var(--n600)">Saqlangan bo\'sh</div><div style="font-size:13px;margin-top:4px">Yoqtirgan mahsulotlaringizni saqlang</div></div>';
+      return;
+    }
+    el.innerHTML='<div style="padding:12px 16px;font-size:15px;font-weight:700">Saqlanganlar ('+items.length+')</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 16px">'
+      +items.map(p=>{
+        const pct=Math.min(100,Math.round(p.count/p.min_group*100));
+        const needed=p.min_group-p.count;
+        const img=p.photo_id?`<img src="/api/photo/${p.photo_id}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="placeholder" style="display:none">📦</div>`:'<div class="placeholder">📦</div>';
+        return '<div class="product-card" onclick="openProduct(\''+p.id+'\')"><div class="product-img">'+img
+          +'<div class="discount-badge">-'+p.grp_disc+'%</div>'
+          +'<button style="position:absolute;top:6px;right:6px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--r500)" onclick="event.stopPropagation();toggleWishServer(\''+p.id+'\',true,this)">❤️</button></div>'
+          +'<div class="product-info"><div class="product-name">'+p.name+'</div>'
+          +'<div class="price-group">'+fmt(p.group_price)+' so\'m</div>'
+          +'<div class="price-orig">'+fmt(p.original_price)+' so\'m</div>'
+          +'<div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div>'
+          +'<div class="progress-text">'+(needed>0?'<span class="highlight">'+needed+' kishi</span> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!')+'</div></div>'
+          +'<a class="btn-buy" href="'+p.join_url+'"><i class="ri-group-line"></i> Qo\'shilish</a></div></div>';
+      }).join('')+'</div>';
+  }catch(e){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--n400)">Xato yuz berdi</div>';
+  }
 }
+
 
 async function renderOrders(){
   const el=document.getElementById('ordersList');
