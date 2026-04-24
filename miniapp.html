@@ -73,6 +73,13 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 .filter-wrap::-webkit-scrollbar{display:none;}
 .filter-btn{padding:7px 14px;border-radius:99px;border:1.5px solid var(--n200);background:var(--white);font-size:13px;font-weight:500;color:var(--n600);cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0;}
 .filter-btn.active{background:var(--o500);border-color:var(--o500);color:var(--white);}
+/* CATEGORY CHIPS */
+.cat-wrap{padding:8px 16px 0;display:flex;gap:6px;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none;border-bottom:1px solid var(--n200);margin-bottom:4px;}
+.cat-wrap::-webkit-scrollbar{display:none;}
+.cat-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:99px;border:1.5px solid var(--n200);background:var(--white);font-size:12px;font-weight:500;color:var(--n600);cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0;}
+.cat-chip:active{opacity:.8;}
+.cat-chip.active{background:var(--o500);border-color:var(--o500);color:var(--white);}
+.cat-chip .cat-icon{font-size:14px;line-height:1;}
 
 /* SECTION */
 .section{padding:12px 16px 0;}
@@ -249,6 +256,26 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
   <button class="filter-btn" onclick="setFilter('almost',this)"><i class="ri-flashlight-fill"></i> Tugayapti</button>
   <button class="filter-btn" onclick="setFilter('new',this)"><i class="ri-sparkling-fill"></i> Yangi</button>
 </div>
+<!-- KATEGORIYALAR -->
+<div class="cat-wrap" id="catWrap">
+  <button class="cat-chip active" onclick="setCat('all',this)">🛍 Hammasi</button>
+  <button class="cat-chip" onclick="setCat('Kiyim',this)">👕 Kiyim</button>
+  <button class="cat-chip" onclick="setCat('Poyabzal',this)">👟 Poyabzal</button>
+  <button class="cat-chip" onclick="setCat('Sumka',this)">👜 Sumka</button>
+  <button class="cat-chip" onclick="setCat('Soat & Zargarlik',this)">⌚ Soat</button>
+  <button class="cat-chip" onclick="setCat('Elektronika',this)">📱 Elektronika</button>
+  <button class="cat-chip" onclick="setCat('Ofis & Kompyuter',this)">💻 Ofis</button>
+  <button class="cat-chip" onclick="setCat('Kantselyariya',this)">✏️ Kantsel.</button>
+  <button class="cat-chip" onclick="setCat('Avto',this)">🚗 Avto</button>
+  <button class="cat-chip" onclick="setCat('Oziq-ovqat',this)">🍎 Oziq-ovqat</button>
+  <button class="cat-chip" onclick="setCat('Uy-joy',this)">🏠 Uy-joy</button>
+  <button class="cat-chip" onclick="setCat('Parfyumeriya',this)">💄 Parfyum</button>
+  <button class="cat-chip" onclick="setCat('Salomatlik',this)">💊 Salomatlik</button>
+  <button class="cat-chip" onclick="setCat('Sport',this)">⚽ Sport</button>
+  <button class="cat-chip" onclick="setCat('Bolalar',this)">🧸 Bolalar</button>
+  <button class="cat-chip" onclick="setCat("O'yin & Hobby",this)">🎮 O'yin</button>
+  <button class="cat-chip" onclick="setCat('Boshqa',this)">📦 Boshqa</button>
+</div>
 
 <!-- PRODUCTS -->
 <div class="section"><div class="section-title" id="sectionTitle">Barcha mahsulotlar</div></div>
@@ -406,7 +433,7 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 <div class="toast" id="toast"></div>
 
 <script>
-let allProducts=[],currentFilter='all',searchQuery='';
+let allProducts=[],currentFilter='all',searchQuery='',currentCat='all';
 const tg=window.Telegram&&window.Telegram.WebApp?window.Telegram.WebApp:null;
 
 function syncShellPadding(){
@@ -452,13 +479,43 @@ if(headerEl&&window.ResizeObserver){
 function fmt(n){return n.toLocaleString('uz-UZ');}
 
 async function loadProducts(){
-  try{const res=await fetch('/api/products');allProducts=await res.json();renderProducts();}
-  catch(e){document.getElementById('productGrid').innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="emoji">😕</div><p>Ma\'lumot yuklanmadi</p></div>';}
+  try{
+    const [prodRes,catRes]=await Promise.all([fetch('/api/products'),fetch('/api/categories')]);
+    allProducts=await prodRes.json();
+    const cats=await catRes.json();
+    buildCatChips(cats);
+    renderProducts();
+  }catch(e){
+    document.getElementById('productGrid').innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="emoji">😕</div><p>Ma\'lumot yuklanmadi</p></div>';
+  }
+}
+
+function buildCatChips(cats){
+  const wrap=document.getElementById('catWrap');
+  if(!wrap) return;
+  // "Hammasi" tugmasi
+  const allBtn=document.createElement('button');
+  allBtn.className='cat-chip active';
+  allBtn.dataset.cat='all';
+  allBtn.textContent='🛍 Hammasi';
+  allBtn.onclick=function(){setCat('all',this);};
+  wrap.innerHTML='';
+  wrap.appendChild(allBtn);
+  // Kategoriyalar
+  cats.forEach(cat=>{
+    const btn=document.createElement('button');
+    btn.className='cat-chip';
+    btn.dataset.cat=cat.name;
+    btn.textContent=cat.icon+' '+cat.name;
+    btn.onclick=function(){setCat(cat.name,this);};
+    wrap.appendChild(btn);
+  });
 }
 
 function getFilteredProducts(){
   let list=[...allProducts];
   if(searchQuery)list=list.filter(p=>p.name.toLowerCase().includes(searchQuery)||p.shop_name.toLowerCase().includes(searchQuery));
+  if(currentCat!=='all')list=list.filter(p=>p.category===currentCat);
   if(currentFilter==='hot')list=list.filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
   else if(currentFilter==='almost')list=list.filter(p=>p.count>=p.min_group-2&&p.count<p.min_group);
   else if(currentFilter==='new')list=[...list].reverse();
@@ -517,6 +574,12 @@ function openProduct(pid){
 function closeModal(e){if(e.target===document.getElementById('modalOverlay')){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';}}
 
 function setFilter(f,btn){currentFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const titles={all:'Barcha mahsulotlar',hot:'Ommabop mahsulotlar',almost:'Tugayotgan guruhlar',new:'Yangi mahsulotlar'};document.getElementById('sectionTitle').textContent=titles[f];renderProducts();}
+function setCat(cat,btn){
+  currentCat=cat;
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProducts();
+}
 function filterProducts(){searchQuery=document.getElementById('searchInput').value.toLowerCase();renderProducts();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
 
@@ -554,14 +617,14 @@ function setPage(page){
   currentPage=page;
   ['productGrid','statsRow','ordersPage','profilePage','saqlanganPage'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const banner=document.querySelector('.banner');if(banner)banner.style.display='none';
-  const filterWrap=document.getElementById('filterWrap');if(filterWrap)filterWrap.style.display='none';
+  const filterWrap=document.getElementById('filterWrap');if(filterWrap)filterWrap.style.display='none';const catWrapEl=document.getElementById('catWrap');if(catWrapEl)catWrapEl.style.display='none';
   const sectionEl=document.querySelector('.section');if(sectionEl)sectionEl.style.display='none';
   ['home','saqlangan','orders','profile'].forEach(p=>{const el=document.getElementById('nav-'+p);if(el)el.classList.toggle('active',p===page);});
   if(page==='home'){
     document.getElementById('productGrid').style.display='grid';
     const sr=document.getElementById('statsRow');if(sr)sr.style.display='grid';
     if(banner)banner.style.display='flex';
-    if(filterWrap)filterWrap.style.display='flex';
+    if(filterWrap)filterWrap.style.display='flex';if(catWrapEl)catWrapEl.style.display='flex';
     if(sectionEl)sectionEl.style.display='block';
     renderProducts();
   }else if(page==='saqlangan'){document.getElementById('saqlanganPage').style.display='block';renderSaqlangan();}
