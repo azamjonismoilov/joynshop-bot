@@ -345,16 +345,52 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
 .toast-el{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--n900);color:var(--white);padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:999;animation:fadeUp .25s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
 
-@media(max-width:1100px){.products-grid,.related-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1100px){
+  .products-grid,.related-grid{grid-template-columns:repeat(3,1fr)}
+  .banner-title{font-size:20px;}
+}
 @media(max-width:768px){
-  .page-layout{grid-template-columns:1fr;}.sidebar{display:none;}
-  .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);}
+  /* Layout */
+  .page-layout{grid-template-columns:1fr;padding:8px;}
+  .sidebar{display:none;}
+  .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+  /* Nav */
   .mobile-filter-bar,.mobile-search-bar{display:flex;}
   .nav-search{display:none;}
+  .nav-actions .btn-ghost{display:none;}
+  /* Banner */
+  .banner-wrap{padding:8px 10px 2px;}
+  .banner-slider{aspect-ratio:2/1;}
+  .banner-title{font-size:17px;}
+  .banner-sub{font-size:12px;display:none;}
+  .banner-slide-inner{padding:16px 20px;}
+  .banner-arr{display:none;}
+  /* Category nav */
+  .cat-nav{padding:6px 10px;}
+  .cat-nav-icon{width:38px;height:38px;font-size:17px;}
+  .cat-nav-label{font-size:10px;}
+  /* Detail */
   .detail-grid{grid-template-columns:1fr;}
   .detail-media-wrap{position:static;}
+  .detail-name{font-size:18px;}
+  .detail-prices{grid-template-columns:1fr 1fr;}
+  /* Profile */
+  .prof-stats-grid{grid-template-columns:1fr 1fr!important;}
+  /* Tags row */
+  .tags-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
+  .tags-row::-webkit-scrollbar{display:none;}
+  /* Main header */
+  .main-header{flex-direction:column;align-items:flex-start;gap:6px;}
 }
-@media(max-width:480px){.products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:8px;}}
+@media(max-width:480px){
+  .products-grid,.related-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .banner-title{font-size:15px;}
+  .banner-badge{font-size:10px;}
+  .cat-nav-item{padding:6px 8px;}
+  .cat-nav-icon{width:34px;height:34px;font-size:15px;}
+  .detail-prices{grid-template-columns:1fr;}
+  .nav-logo-text{font-size:15px;}
+}
 </style>
 </head>
 <body>
@@ -641,7 +677,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.96);backdrop-
     </div>
 
     <!-- Stats -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px" class="prof-stats-grid">
       <div style="background:var(--white);border:1px solid var(--n200);border-radius:12px;padding:12px;text-align:center">
         <div id="profOrders" style="font-size:20px;font-weight:700;color:var(--o500)">—</div>
         <div style="font-size:10px;color:var(--n400);margin-top:3px">Buyurtmalar</div>
