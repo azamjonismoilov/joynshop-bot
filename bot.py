@@ -2627,9 +2627,8 @@ def buyer_handle_msg(msg):
                 "💰 Do'stingiz sizni taklif qildi — birinchi xariddan chegirma olasiz!",
                 {
                     'keyboard': [
-                        [{'text': "🌐 Saytga o'tish"}, {'text': "📋 Buyurtmalarim"}],
-                        [{'text': "👤 Profilim"},       {'text': "🤍 Wishlist"}],
-                        [{'text': "❓ Yordam"}],
+                        [{'text': "📋 Buyurtmalarim"}, {'text': "👤 Profilim"}],
+                        [{'text': "🤍 Wishlist"},       {'text': "❓ Yordam"}],
                     ],
                     'resize_keyboard': True,
                     'is_persistent':   True,
@@ -2766,9 +2765,8 @@ def buyer_handle_msg(msg):
             "🛍 Do'stlaringiz bilan xarid qiling — <b>40% gacha tejang!</b>",
             {
                 'keyboard': [
-                    [{'text': "🌐 Saytga o'tish"}, {'text': "📋 Buyurtmalarim"}],
-                    [{'text': "👤 Profilim"},       {'text': "🤍 Wishlist"}],
-                    [{'text': "❓ Yordam"}],
+                    [{'text': "📋 Buyurtmalarim"}, {'text': "👤 Profilim"}],
+                    [{'text': "🤍 Wishlist"},       {'text': "❓ Yordam"}],
                 ],
                 'resize_keyboard': True,
                 'is_persistent':   True,
