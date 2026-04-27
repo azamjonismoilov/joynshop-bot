@@ -370,6 +370,41 @@ def bar(count, min_g):
     return '🟢' * count + '⚪️' * (min_g - count)
 
 # ─── POST CAPTION ────────────────────────────────────────────────────
+def strip_html(text):
+    """HTML teglarini olib tashlash — invoice description uchun"""
+    import re
+    return re.sub(r'<[^>]+>', '', text)
+
+def invoice_description(p, pid):
+    """Invoice uchun toza matn (HTML yo'q)"""
+    count     = len(groups.get(pid, []))
+    min_g     = p['min_group']
+    orig      = p['original_price']
+    solo      = p.get('solo_price', 0)
+    group     = p['group_price']
+    sale_type = p.get('sale_type', 'both')
+    solo_disc = round((orig - solo) / orig * 100) if solo and orig else 0
+    grp_disc  = round((orig - group) / orig * 100) if orig else 0
+    lines = []
+    if sale_type == 'solo':
+        if p.get('description'):
+            lines.append(p['description'][:100])
+        lines.append(f"🏪 {p.get('shop_name','')} | {p.get('contact','')}")
+        return "\n".join(lines)[:255]
+    elif sale_type == 'group':
+        lines.append(f"👥 Guruh narxi: {fmt(group)} so'm (-{grp_disc}%)")
+        lines.append(f"👥 Guruh: {count}/{min_g} • Kerak: {max(0, min_g-count)} kishi")
+    else:
+        if solo:
+            lines.append(f"👤 Yakka: {fmt(solo)} so'm (-{solo_disc}%)")
+        lines.append(f"👥 Guruh: {fmt(group)} so'm (-{grp_disc}%)")
+        lines.append(f"👥 Guruh: {count}/{min_g} • Kerak: {max(0, min_g-count)} kishi")
+    lines.append(f"🕐 {p.get('deadline','')}")
+    if p.get('description'):
+        lines.append(p['description'][:100])
+    lines.append(f"🏪 {p.get('shop_name','')} | {p.get('contact','')}")
+    return "\n".join(lines)[:255]
+
 def post_caption(p, pid):
     count     = len(groups.get(pid, []))
     min_g     = p['min_group']
@@ -1676,12 +1711,16 @@ def publish_product(uid, cid, s):
             photo_url = p_data.get('photo_url') or None
             sale_t    = s.get('sale_type', 'both')
             # Narx: yakka bo'lsa solo_price, aks holda group_price
-            price_amt = p_data.get('solo_price') or p_data['group_price']
-            price_lbl = "Yakka narx" if sale_t == 'solo' else "Guruh narxi"
+            if sale_t == 'solo':
+                price_amt = p_data.get('solo_price') or p_data['group_price']
+                price_lbl = "Yakka narx"
+            else:
+                price_amt = p_data['group_price']
+                price_lbl = "Guruh narxi"
             inv_data  = {
                 'chat_id':          channel,
-                'title':            p_data['name'][:32],
-                'description':      (caption[:255] if caption else p_data['name'][:255]),
+                'title':            strip_html(p_data['name'])[:32],
+                'description':      invoice_description(p_data, pid),
                 'payload':          f"channel_{pid}",
                 'provider_token':   CLICK_TOKEN,
                 'currency':         'UZS',
