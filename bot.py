@@ -276,12 +276,12 @@ def send_invoice(cid, title, description, payload, amount, photo_url=None):
         data['photo_size'] = 512
     return api('sendInvoice', data, BUYER_TOKEN)
 
-def answer_pre_checkout(query_id, ok=True, error=None):
+def answer_pre_checkout(query_id, ok=True, error=None, token=None):
     """PreCheckoutQuery ga javob berish"""
     data = {'pre_checkout_query_id': query_id, 'ok': ok}
     if error:
         data['error_message'] = error
-    return api('answerPreCheckoutQuery', data, BUYER_TOKEN)
+    return api('answerPreCheckoutQuery', data, token or SELLER_TOKEN)
 
 # ─── CRM HELPER ─────────────────────────────────────────────────────
 def update_customer(seller_id, user_id, user_name, amount, product_name, source='order'):
@@ -414,13 +414,17 @@ def post_caption(p, pid):
 
     return "\n".join(lines)
 
-def join_kb(pid, count, min_g, has_solo=False):
+def join_kb(pid, count, min_g, has_solo=False, sale_type='both'):
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    if has_solo:
+    # sale_type: 'solo' = faqat yakka, 'group' = faqat guruh, 'both' = ikkalasi
+    if sale_type in ('solo', 'both') and has_solo:
         kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
-    kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
+    if sale_type in ('group', 'both'):
+        kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
+    if not kb:
+        kb.append([{'text': "🛍 Xarid qilish", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
     return kb_inline(kb)
 
 def kb_inline(rows):
@@ -718,8 +722,14 @@ def moderate_chat(msg):
 @app.route('/seller/webhook', methods=['POST'])
 def seller_webhook():
     data = request.json
-    if 'callback_query' in data: seller_handle_cb(data['callback_query'])
-    elif 'message'        in data: seller_handle_msg(data['message'])
+    if 'callback_query'   in data: seller_handle_cb(data['callback_query'])
+    elif 'pre_checkout_query' in data: handle_pre_checkout(data['pre_checkout_query'])
+    elif 'message'        in data:
+        msg = data['message']
+        if 'successful_payment' in msg:
+            handle_successful_payment(msg)
+        else:
+            seller_handle_msg(msg)
     return 'ok'
 
 def seller_handle_cb(cb):
@@ -1277,7 +1287,7 @@ def seller_handle_cb(cb):
         count    = len(groups.get(pid, []))
         channel  = p.get('seller_channel')
         caption  = post_caption(p, pid)
-        kb       = json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price'))))
+        kb       = json.dumps(join_kb(pid, count, p['min_group'], has_solo=bool(p.get('solo_price')), sale_type=p.get('sale_type','both')))
         photo_ids = p.get('photo_ids') or ([p['photo_id']] if p.get('photo_id') else [])
 
         if len(photo_ids) > 1:
@@ -1638,7 +1648,7 @@ def publish_product(uid, cid, s):
     seller_products[uid].append(pid)
 
     caption = post_caption(products[pid], pid)
-    kb      = json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price'))))
+    kb      = json.dumps(join_kb(pid, 0, s['min_group'], has_solo=bool(s.get('solo_price')), sale_type=s.get('sale_type','both')))
 
     if len(photo_ids) > 1:
         media = []
@@ -1661,26 +1671,32 @@ def publish_product(uid, cid, s):
             products[pid]['channel_chat_id']    = channel
     else:
         if CLICK_TOKEN:
-            # Click invoice kanalga yuborish
-            photo_url = products[pid].get('photo_url') or None
-            inv_data = {
-                'chat_id':         channel,
-                'title':           products[pid]['name'][:32],
-                'description':     (products[pid].get('description') or products[pid]['name'])[:255],
-                'payload':         f"channel_{pid}",
-                'provider_token':  CLICK_TOKEN,
-                'currency':        'UZS',
-                'prices':          json.dumps([{'label': 'Guruh narxi', 'amount': products[pid]['group_price'] * 100}]),
-                'need_name':       True,
+            # Click invoice kanalga yuborish — SELLER_TOKEN bilan (seller bot kanal admin)
+            p_data   = products[pid]
+            photo_url = p_data.get('photo_url') or None
+            sale_t    = s.get('sale_type', 'both')
+            # Narx: yakka bo'lsa solo_price, aks holda group_price
+            price_amt = p_data.get('solo_price') or p_data['group_price']
+            price_lbl = "Yakka narx" if sale_t == 'solo' else "Guruh narxi"
+            inv_data  = {
+                'chat_id':          channel,
+                'title':            p_data['name'][:32],
+                'description':      (caption[:255] if caption else p_data['name'][:255]),
+                'payload':          f"channel_{pid}",
+                'provider_token':   CLICK_TOKEN,
+                'currency':         'UZS',
+                'prices':           json.dumps([{'label': price_lbl, 'amount': price_amt * 100}]),
+                'need_name':        True,
                 'need_phone_number': True,
                 'need_shipping_address': False,
-                'is_flexible':     False,
-                'protect_content': False,
+                'is_flexible':      False,
             }
             if photo_url:
                 inv_data['photo_url']  = photo_url
-                inv_data['photo_size'] = 512
-            result = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data).json()
+                inv_data['photo_size'] = 800
+            # Seller bot kanal admin — seller token ishlatamiz
+            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendInvoice', json=inv_data).json()
+            logging.info(f"sendInvoice result: {result}")
         else:
             result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
                 'chat_id': channel, 'photo': first_photo,
