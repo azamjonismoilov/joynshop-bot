@@ -27,6 +27,7 @@ BUYER_TOKEN     = os.environ.get('BUYER_TOKEN')
 ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE = 0.05  # 5%
+CLICK_TOKEN    = os.environ.get('CLICK_TOKEN', '')  # Click Terminal payment token
 
 # Kategoriyalar — bot va sayt uchun bir xil
 CATEGORIES = [
@@ -144,6 +145,7 @@ wishlists       = {}
 buyer_profiles  = {}
 refund_requests = {}
 seller_state    = {}
+customers       = {}  # {seller_id: {user_id: {...}}}
 _photo_url_cache = {}
 seller_shops    = {}
 seller_products = {}
@@ -197,6 +199,7 @@ def save_data():
             'pending_moderator_codes':pending_moderator_codes,
             'referrals':              referrals,
             'referral_map':           {str(k): v for k, v in referral_map.items()},
+            'customers':              {str(k): v for k, v in customers.items()},
         }
         payload = json.dumps(data, ensure_ascii=False, default=str)
         conn    = get_db()
@@ -215,7 +218,7 @@ def save_data():
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
     global refund_requests, seller_products, verified_channels
-    global pending_moderator_codes, referrals, referral_map, seller_shops
+    global pending_moderator_codes, referrals, referral_map, seller_shops, customers
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
@@ -244,9 +247,75 @@ def load_data():
         referral_map           = {int(k) if str(k).isdigit() else k: v for k, v in raw_rm.items()}
         raw_sp                 = data.get('seller_products', {})
         seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
+        raw_cu = data.get('customers', {})
+        customers = {int(k) if str(k).isdigit() else k: v for k, v in raw_cu.items()}
         logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
     except Exception as e:
         logging.error(f"load_data error: {e}", exc_info=True)
+
+# ─── CLICK PAYMENT HELPERS ──────────────────────────────────────────
+def send_invoice(cid, title, description, payload, amount, photo_url=None):
+    """Telegram Bot Payments orqali Click invoice yuborish"""
+    if not CLICK_TOKEN:
+        return None
+    data = {
+        'chat_id':          cid,
+        'title':            title,
+        'description':      description,
+        'payload':          payload,
+        'provider_token':   CLICK_TOKEN,
+        'currency':         'UZS',
+        'prices':           json.dumps([{'label': title, 'amount': amount * 100}]),
+        'need_name':        True,
+        'need_phone_number': True,
+        'need_shipping_address': False,
+        'is_flexible':      False,
+    }
+    if photo_url:
+        data['photo_url'] = photo_url
+        data['photo_size'] = 512
+    return api('sendInvoice', data, BUYER_TOKEN)
+
+def answer_pre_checkout(query_id, ok=True, error=None):
+    """PreCheckoutQuery ga javob berish"""
+    data = {'pre_checkout_query_id': query_id, 'ok': ok}
+    if error:
+        data['error_message'] = error
+    return api('answerPreCheckoutQuery', data, BUYER_TOKEN)
+
+# ─── CRM HELPER ─────────────────────────────────────────────────────
+def update_customer(seller_id, user_id, user_name, amount, product_name, source='order'):
+    """Sotuvchining CRM bazasini yangilash"""
+    sid = str(seller_id)
+    uid = str(user_id)
+    if sid not in customers:
+        customers[sid] = {}
+    if uid not in customers[sid]:
+        customers[sid][uid] = {
+            'name':         user_name,
+            'user_id':      user_id,
+            'total_orders': 0,
+            'total_spent':  0,
+            'orders':       [],
+            'first_order':  datetime.now().strftime('%d.%m.%Y'),
+            'last_order':   datetime.now().strftime('%d.%m.%Y'),
+            'source':       source,
+            'tags':         [],
+        }
+    cust = customers[sid][uid]
+    cust['name']         = user_name
+    cust['total_orders'] += 1
+    cust['total_spent']  += amount
+    cust['last_order']   = datetime.now().strftime('%d.%m.%Y')
+    cust['orders'].append({
+        'product': product_name,
+        'amount':  amount,
+        'date':    datetime.now().strftime('%d.%m.%Y %H:%M')
+    })
+    # Faqat oxirgi 20 ta buyurtmani saqlash
+    if len(cust['orders']) > 20:
+        cust['orders'] = cust['orders'][-20:]
+    save_data()
 
 # ─── HELPERS ────────────────────────────────────────────────────────
 def api(method, data, token=None):
@@ -585,7 +654,7 @@ PROD_ALLOWED_CBS = {
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
-    'back_menu', 'noop',
+    'back_menu', 'noop', 'menu_mycustomers',
 }
 
 PROD_BLOCKED_TEXTS = {
@@ -661,7 +730,7 @@ def seller_handle_cb(cb):
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
 
-    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_'):
+    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_') and not d.startswith('crm_'):
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid, get_prod_progress_text(uid),
             {'inline_keyboard': [
@@ -964,6 +1033,119 @@ def seller_handle_cb(cb):
         )
         return
 
+    if d == 'menu_mycustomers' or d.startswith('crm_page_') or d.startswith('crm_view_') or d.startswith('crm_tag_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        sid = str(uid)
+        my_customers = customers.get(sid, {})
+
+        # Sahifalash
+        per_page = 5
+        if d.startswith('crm_page_'):
+            page = int(d.split('_')[2])
+        else:
+            page = 1
+
+        # Mijoz kartasini ko'rish
+        if d.startswith('crm_view_'):
+            cuid = d[9:]
+            cust = my_customers.get(cuid, {})
+            if not cust:
+                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+            orders_text = ""
+            for o in reversed(cust.get('orders', [])[-5:]):
+                orders_text += f"  \u2022 {o['product']} \u2014 {fmt(o['amount'])} so'm ({o['date']})\n"
+            avg = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
+            tags = ', '.join(cust.get('tags', [])) or '—'
+            send_seller(uid,
+                "👤 <b>" + cust['name'] + "</b>\n"
+                "━━━━━━━━━━━━━━━\n"
+                "📊 <b>Statistika:</b>\n"
+                "🛒 Jami xaridlar: " + str(cust['total_orders']) + " ta\n"
+                "💰 Jami sarflagan: " + fmt(cust['total_spent']) + " so'm\n"
+                "📈 O'rtacha check: " + fmt(avg) + " so'm\n"
+                "📅 Birinchi xarid: " + cust.get('first_order','—') + "\n"
+                "📅 Oxirgi xarid: " + cust.get('last_order','—') + "\n"
+                "🏷 Teglar: " + tags + "\n\n"
+                "🛍 <b>So'nggi xaridlar:</b>\n" + (orders_text or "  Hali yo'q"),
+                {'inline_keyboard': [
+                    [{'text': "⭐ VIP belgilash",   'callback_data': 'crm_tag_'+cuid+'_vip'},
+                     {'text': "🔴 Muammoli",         'callback_data': 'crm_tag_'+cuid+'_problem'}],
+                    [{'text': "⬅️ Orqaga",           'callback_data': 'menu_mycustomers'}],
+                ]},
+                token=SELLER_TOKEN
+            )
+            return
+
+        # Teg qo'yish
+        if d.startswith('crm_tag_'):
+            parts = d.split('_')
+            cuid, tag = parts[2], parts[3]
+            if cuid in my_customers:
+                tags = my_customers[cuid].get('tags', [])
+                if tag in tags:
+                    tags.remove(tag)
+                    msg = f"🏷 Teg olib tashlandi: {tag}"
+                else:
+                    tags.append(tag)
+                    msg = f"✅ Teg qo'shildi: {tag}"
+                my_customers[cuid]['tags'] = tags
+                customers[sid] = my_customers
+                save_data()
+                send_seller(uid, msg, token=SELLER_TOKEN)
+            return
+
+        # Ro'yxat ko'rsatish
+        if not my_customers:
+            send_seller(uid,
+                "👥 <b>Mijozlar bazasi</b>\n\nHali mijoz yo'q.\n"
+                "Buyurtmalar tasdiqlanganidan keyin mijozlar bu yerda ko'rinadi.",
+                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]},
+                token=SELLER_TOKEN
+            )
+            return
+
+        # Saralash — eng ko'p xarid qilganlar birinchi
+        sorted_custs = sorted(my_customers.items(), key=lambda x: x[1]['total_spent'], reverse=True)
+        total = len(sorted_custs)
+        start = (page - 1) * per_page
+        page_custs = sorted_custs[start:start + per_page]
+
+        # Umumiy statistika
+        total_revenue = sum(v['total_spent'] for v in my_customers.values())
+        repeat = sum(1 for v in my_customers.values() if v['total_orders'] > 1)
+
+        text = (
+            "👥 <b>Mijozlar bazasi</b> — " + str(total) + " ta\n"
+            "━━━━━━━━━━━━━━━\n"
+            "💰 Jami daromad: " + fmt(total_revenue) + " so'm\n"
+            "🔄 Qayta xaridorlar: " + str(repeat) + " ta\n\n"
+        )
+
+        kb_rows = []
+        for i, (cuid, cust) in enumerate(page_custs, start=start+1):
+            medal = ['🥇','🥈','🥉'][i-1] if i <= 3 else str(i) + "."
+            vip = " ⭐" if 'vip' in cust.get('tags', []) else ""
+            text += (
+                medal + " <b>" + cust['name'] + vip + "</b>\n"
+                "   🛒 " + str(cust['total_orders']) + " ta • 💰 " + fmt(cust['total_spent']) + " so'm\n"
+                "   📅 Oxirgi: " + cust.get('last_order','—') + "\n\n"
+            )
+            kb_rows.append([{'text': "👤 " + cust['name'], 'callback_data': 'crm_view_' + cuid}])
+
+
+        # Navigatsiya
+        nav = []
+        if page > 1:
+            nav.append({'text': "◀️", 'callback_data': f'crm_page_{page-1}'})
+        if start + per_page < total:
+            nav.append({'text': "▶️", 'callback_data': f'crm_page_{page+1}'})
+        if nav:
+            kb_rows.append(nav)
+        kb_rows.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
+
+        send_seller(uid, text, {'inline_keyboard': kb_rows}, token=SELLER_TOKEN)
+        return
+
     if d == 'menu_myorders':
         answer_cb(cbid, token=SELLER_TOKEN)
         my_pids = seller_products.get(uid, [])
@@ -1033,6 +1215,9 @@ def seller_handle_cb(cb):
                 ],
                 [
                     {'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'},
+                    {'text': "👥 Mijozlar",       'callback_data': 'menu_mycustomers'},
+                ],
+                [
                     {'text': "❓ Yordam",         'callback_data': 'menu_help'},
                 ],
             ]}
@@ -1136,6 +1321,10 @@ def seller_handle_cb(cb):
         buyer_id = o['user_id']
         p        = products.get(pid, {})
         orders[code]['status'] = 'confirmed'
+        # CRM yangilash
+        seller_id = p.get('seller_id')
+        if seller_id:
+            update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''))
         save_data()
 
         if o.get('type') == 'group':
@@ -2189,13 +2378,75 @@ def buyer_webhook():
     data = request.json
     if 'callback_query' in data:
         buyer_handle_cb(data['callback_query'])
+    elif 'pre_checkout_query' in data:
+        handle_pre_checkout(data['pre_checkout_query'])
     elif 'message' in data:
         msg = data['message']
-        if msg.get('chat', {}).get('type', '') in ['group', 'supergroup']:
+        if 'successful_payment' in msg:
+            handle_successful_payment(msg)
+        elif msg.get('chat', {}).get('type', '') in ['group', 'supergroup']:
             moderate_chat(msg)
         else:
             buyer_handle_msg(msg)
     return 'ok'
+
+def handle_pre_checkout(query):
+    """Telegram to'lovni tasdiqlashdan oldin chaqiradi — biz OK deymiz"""
+    code = query.get('invoice_payload', '')
+    uid  = query['from']['id']
+    # Buyurtma mavjudligini tekshirish
+    if code in orders and orders[code]['status'] == 'pending':
+        answer_pre_checkout(query['id'], ok=True)
+    else:
+        answer_pre_checkout(query['id'], ok=False, error="Buyurtma topilmadi yoki muddati o'tgan")
+
+def handle_successful_payment(msg):
+    """To'lov muvaffaqiyatli — buyurtmani tasdiqlash"""
+    uid     = msg['from']['id']
+    payment = msg['successful_payment']
+    code    = payment['invoice_payload']
+    amount  = payment['total_amount'] // 100  # tiyindan so'mga
+
+    if code not in orders:
+        send_buyer(uid, "❌ Buyurtma topilmadi, iltimos support bilan bog'laning.")
+        return
+
+    # Buyurtma statusini yangilash
+    orders[code]['status']       = 'confirming'
+    orders[code]['payment_method'] = 'click'
+    orders[code]['telegram_payment_charge_id'] = payment.get('telegram_payment_charge_id', '')
+    save_data()
+
+    p   = products.get(orders[code]['product_id'], {})
+    sid = p.get('seller_id')
+
+    # Sotuvchiga xabar
+    if sid:
+        o = orders[code]
+        variant_text = f"\n🎨 Variant: {o.get('variant','')}" if o.get('variant') else ''
+        send_seller(sid,
+            f"💳 <b>TO'LOV TASDIQLANDI!</b>\n\n"
+            f"📦 {p.get('name','')}{variant_text}\n"
+            f"👤 {o['user_name']} (ID: {uid})\n"
+            f"💰 {fmt(amount)} so'm\n"
+            f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n"
+            f"💳 Click orqali to'landi ✅\n"
+            f"🆔 #{code}",
+            {'inline_keyboard': [[
+                {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                {'text': '❌ Rad',        'callback_data': f'seller_rj_{code}'},
+            ]]}
+        )
+
+    # Xaridorga tasdiq
+    auto_check(code, orders[code], p)
+    send_buyer(uid,
+        f"✅ <b>To'lov qabul qilindi!</b>\n\n"
+        f"📦 {p.get('name','')}\n"
+        f"💰 {fmt(amount)} so'm\n"
+        f"🆔 #{code}\n\n"
+        f"⏳ Sotuvchi tasdiqlashi kutilmoqda..."
+    )
 
 def delivery_notice(p):
     dtype = p.get('delivery_type', 'pickup')
@@ -2408,22 +2659,38 @@ def buyer_handle_cb(cb):
             'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
         }
         save_data()
-        answer_cb(cbid, "To'lov ma'lumotlari yuborildi!")
-        send_buyer(uid,
-            f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📦 {p['name']}\n💰 {fmt(p['group_price'])} so'm\n\n"
-            f"💳 <b>Payme:</b>\n"
-            f"📱 <code>{PAYME_NUMBER}</code>\n"
-            f"💵 <code>{fmt(p['group_price'])}</code>\n"
-            f"📝 Izoh: <code>{code}</code>\n\n"
-            f"⚠️ Izohga <b>{code}</b> yozing!\n"
-            f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
-            {'inline_keyboard': [
-                [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-                [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
-            ]}
-        )
+        answer_cb(cbid, "To'lov sahifasi ochilmoqda...")
+        # Click invoice yuborish
+        if CLICK_TOKEN:
+            photo = p.get('photos', [None])[0]
+            photo_url = None
+            if photo and CDN_BASE_URL:
+                photo_url = f"{CDN_BASE_URL}/products/{photo}.jpg"
+            send_invoice(
+                uid,
+                title=p['name'],
+                description=f"Guruh xarid • {p.get('shop_name','Sotuvchi')} • #{code}",
+                payload=code,
+                amount=p['group_price'],
+                photo_url=photo_url
+            )
+        else:
+            # Fallback: qo'lda Payme
+            send_buyer(uid,
+                f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"📦 {p['name']}\n💰 {fmt(p['group_price'])} so'm\n\n"
+                f"💳 <b>Payme:</b>\n"
+                f"📱 <code>{PAYME_NUMBER}</code>\n"
+                f"💵 <code>{fmt(p['group_price'])}</code>\n"
+                f"📝 Izoh: <code>{code}</code>\n\n"
+                f"⚠️ Izohga <b>{code}</b> yozing!\n"
+                f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+                {'inline_keyboard': [
+                    [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                    [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+                ]}
+            )
         return
 
     if d.startswith('paid_'):
