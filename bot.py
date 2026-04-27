@@ -411,18 +411,33 @@ def post_caption(p, pid):
     orig      = p['original_price']
     solo      = p.get('solo_price', 0)
     group     = p['group_price']
-    solo_disc = round((orig - solo) / orig * 100) if solo else 0
-    grp_disc  = round((orig - group) / orig * 100)
-    status    = '🔥' if count < min_g else '✅'
+    solo_disc = round((orig - solo) / orig * 100) if solo and orig else 0
+    grp_disc  = round((orig - group) / orig * 100) if orig else 0
+    status    = '\U0001f525' if count < min_g else '\u2705'
+    sale_type = p.get('sale_type', 'both')
 
     lines = [f"<b>{p['name']}</b>\n"]
-    lines.append(f"💰 Asl narx: <s>{fmt(orig)} so'm</s>")
-    if solo:
-        lines.append(f"👤 Yakka:  <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
-    lines.append(f"👥 Guruh:  <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
-    lines.append(f"Guruh: {count}/{min_g} {status}")
-    lines.append(f"⏳ Kerak: {max(0, min_g - count)} kishi")
-    lines.append(f"🕐 {p.get('deadline','')}")
+
+    if sale_type == 'solo':
+        if orig and orig != solo:
+            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
+        lines.append(f"\U0001f6d2 <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
+    elif sale_type == 'group':
+        if orig and orig != group:
+            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
+        lines.append(f"\U0001f465 Guruh narxi: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
+        lines.append(f"\U0001f465 Guruh: {count}/{min_g} {status}")
+        lines.append(f"\u23f3 Kerak: {max(0, min_g - count)} kishi")
+    else:
+        if orig:
+            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
+        if solo:
+            lines.append(f"\U0001f464 Yakka: <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
+        lines.append(f"\U0001f465 Guruh: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
+        lines.append(f"\U0001f465 Guruh: {count}/{min_g} {status}")
+        lines.append(f"\u23f3 Kerak: {max(0, min_g - count)} kishi")
+
+    lines.append(f"\U0001f550 {p.get('deadline','')}")
     if p.get('description'):
         lines.append(f"\n📝 {p['description']}")
     if p.get('variants'):
