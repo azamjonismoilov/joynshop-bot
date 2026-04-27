@@ -3827,29 +3827,63 @@ def api_checkout():
     }
     save_data()
 
-    # Xaridorga Telegram bot orqali to'lov ma'lumotlari
-    variant_line = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
+    variant_line  = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
     delivery_text = "🚚 Yetkazib berish" if delivery == 'deliver' else "🏪 Olib ketish"
     address_line  = f"\n📍 Manzil: {address}" if address else ''
+    sale_type     = p.get('sale_type', 'both')
 
-    send_buyer(uid,
-        f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {'Yakka' if otype=='solo' else 'Guruh'} buyurtma</b>\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"📦 {p['name']}{variant_line}\n"
-        f"💰 {fmt(amount)} so'm\n"
-        f"🚚 {delivery_text}{address_line}\n\n"
-        f"💳 <b>Payme orqali to'lang:</b>\n"
-        f"📱 <code>{PAYME_NUMBER}</code>\n"
-        f"💵 <code>{fmt(amount)}</code>\n"
-        f"📝 Izoh: <code>{code}</code>\n\n"
-        f"⚠️ Izohga <b>{code}</b> yozing!\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"🔒 Joynshop kafolati ostida",
-        {'inline_keyboard': [
-            [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-            [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}],
-        ]}
-    )
+    # Click invoice yuborish
+    if CLICK_TOKEN:
+        price_lbl = "Yakka narx" if otype == 'solo' else "Guruh narxi"
+        # description: yakka bo'lsa minimal, guruh bo'lsa guruh ma'lumoti
+        if sale_type == 'solo' or otype == 'solo':
+            desc = (p.get('description') or p['name'])[:255]
+        else:
+            count   = len(groups.get(pid, []))
+            min_g   = p['min_group']
+            desc    = f"👥 Guruh: {count}/{min_g} • Kerak: {max(0, min_g-count)} kishi"
+            if p.get('description'):
+                desc += f"\n{p['description'][:100]}"
+        desc = (desc + f"\n🏪 {p.get('shop_name','')} | {p.get('contact','')}")[:255]
+
+        photo_url = p.get('photo_url') or None
+        inv_data  = {
+            'chat_id':           uid,
+            'title':             strip_html(p['name'])[:32],
+            'description':       desc,
+            'payload':           code,
+            'provider_token':    CLICK_TOKEN,
+            'currency':          'UZS',
+            'prices':            json.dumps([{'label': price_lbl, 'amount': amount * 100}]),
+            'need_name':         True,
+            'need_phone_number': True,
+            'need_shipping_address': False,
+            'is_flexible':       False,
+        }
+        if photo_url:
+            inv_data['photo_url']  = photo_url
+            inv_data['photo_size'] = 800
+        requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data)
+    else:
+        # Fallback: qo'lda Payme
+        send_buyer(uid,
+            f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {'Yakka' if otype=='solo' else 'Guruh'} buyurtma</b>\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📦 {p['name']}{variant_line}\n"
+            f"💰 {fmt(amount)} so'm\n"
+            f"🚚 {delivery_text}{address_line}\n\n"
+            f"💳 <b>Payme orqali to'lang:</b>\n"
+            f"📱 <code>{PAYME_NUMBER}</code>\n"
+            f"💵 <code>{fmt(amount)}</code>\n"
+            f"📝 Izoh: <code>{code}</code>\n\n"
+            f"⚠️ Izohga <b>{code}</b> yozing!\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"🔒 Joynshop kafolati ostida",
+            {'inline_keyboard': [
+                [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}],
+            ]}
+        )
 
     # Sotuvchiga xabar
     sid = p.get('seller_id')
