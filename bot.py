@@ -1698,12 +1698,31 @@ def publish_product(uid, cid, s):
         }).json()
         if result.get('ok') and result.get('result'):
             first_msg = result['result'][0]
-            requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
-                'chat_id': channel, 'text': caption,
-                'parse_mode': 'HTML', 'reply_markup': kb,
-            })
             products[pid]['channel_message_id'] = first_msg.get('message_id')
             products[pid]['channel_chat_id']    = channel
+            # Invoice ni alohida yuborish
+            if CLICK_TOKEN:
+                p_data = products[pid]
+                sale_t = s.get('sale_type', 'both')
+                price_amt = p_data.get('solo_price') if sale_t == 'solo' else p_data['group_price']
+                price_lbl = "Yakka narx" if sale_t == 'solo' else "Guruh narxi"
+                inv_data = {
+                    'chat_id': channel,
+                    'title': strip_html(p_data['name'])[:32],
+                    'description': invoice_description(p_data, pid),
+                    'payload': f"channel_{pid}",
+                    'provider_token': CLICK_TOKEN,
+                    'currency': 'UZS',
+                    'prices': json.dumps([{'label': price_lbl, 'amount': price_amt * 100}]),
+                    'need_name': True, 'need_phone_number': True,
+                    'need_shipping_address': False, 'is_flexible': False,
+                }
+                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendInvoice', json=inv_data)
+            else:
+                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                    'chat_id': channel, 'text': caption,
+                    'parse_mode': 'HTML', 'reply_markup': kb,
+                })
     else:
         if CLICK_TOKEN:
             # Click invoice kanalga yuborish — SELLER_TOKEN bilan (seller bot kanal admin)
@@ -1730,10 +1749,10 @@ def publish_product(uid, cid, s):
                 'need_shipping_address': False,
                 'is_flexible':      False,
             }
-            if photo_url:
+            # Rasm: faqat to'liq URL bo'lsa (S3/CDN) qo'shamiz
+            if photo_url and photo_url.startswith('http'):
                 inv_data['photo_url']  = photo_url
                 inv_data['photo_size'] = 800
-            # Seller bot kanal admin — seller token ishlatamiz
             result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendInvoice', json=inv_data).json()
             logging.info(f"sendInvoice result: {result}")
         else:
