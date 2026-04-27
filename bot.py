@@ -1660,12 +1660,35 @@ def publish_product(uid, cid, s):
             products[pid]['channel_message_id'] = first_msg.get('message_id')
             products[pid]['channel_chat_id']    = channel
     else:
-        result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-            'chat_id': channel, 'photo': first_photo,
-            'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
-        }).json()
+        if CLICK_TOKEN:
+            # Click invoice kanalga yuborish
+            photo_url = products[pid].get('photo_url') or None
+            inv_data = {
+                'chat_id':         channel,
+                'title':           products[pid]['name'][:32],
+                'description':     (products[pid].get('description') or products[pid]['name'])[:255],
+                'payload':         f"channel_{pid}",
+                'provider_token':  CLICK_TOKEN,
+                'currency':        'UZS',
+                'prices':          json.dumps([{'label': 'Guruh narxi', 'amount': products[pid]['group_price'] * 100}]),
+                'need_name':       True,
+                'need_phone_number': True,
+                'need_shipping_address': False,
+                'is_flexible':     False,
+                'protect_content': False,
+            }
+            if photo_url:
+                inv_data['photo_url']  = photo_url
+                inv_data['photo_size'] = 512
+            result = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data).json()
+        else:
+            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+                'chat_id': channel, 'photo': first_photo,
+                'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
+            }).json()
         if result.get('ok'):
-            products[pid]['channel_message_id'] = result['result']['message_id']
+            msg_result = result['result']
+            products[pid]['channel_message_id'] = msg_result.get('message_id')
             products[pid]['channel_chat_id']    = channel
 
     del seller_state[uid]
@@ -2392,10 +2415,16 @@ def buyer_webhook():
 
 def handle_pre_checkout(query):
     """Telegram to'lovni tasdiqlashdan oldin chaqiradi — biz OK deymiz"""
-    code = query.get('invoice_payload', '')
-    uid  = query['from']['id']
-    # Buyurtma mavjudligini tekshirish
-    if code in orders and orders[code]['status'] == 'pending':
+    payload = query.get('invoice_payload', '')
+    uid     = query['from']['id']
+    # Channel invoice: channel_PID formatida
+    if payload.startswith('channel_'):
+        pid = payload[8:]
+        if pid in products and products[pid].get('status') == 'active':
+            answer_pre_checkout(query['id'], ok=True)
+        else:
+            answer_pre_checkout(query['id'], ok=False, error="Mahsulot topilmadi yoki yopilgan")
+    elif payload in orders and orders[payload]['status'] == 'pending':
         answer_pre_checkout(query['id'], ok=True)
     else:
         answer_pre_checkout(query['id'], ok=False, error="Buyurtma topilmadi yoki muddati o'tgan")
@@ -2403,24 +2432,69 @@ def handle_pre_checkout(query):
 def handle_successful_payment(msg):
     """To'lov muvaffaqiyatli — buyurtmani tasdiqlash"""
     uid     = msg['from']['id']
+    uname   = msg['from'].get('first_name', 'Foydalanuvchi')
     payment = msg['successful_payment']
-    code    = payment['invoice_payload']
-    amount  = payment['total_amount'] // 100  # tiyindan so'mga
+    payload = payment['invoice_payload']
+    amount  = payment['total_amount'] // 100
 
-    if code not in orders:
-        send_buyer(uid, "❌ Buyurtma topilmadi, iltimos support bilan bog'laning.")
+    # Kanal invoice: channel_PID
+    if payload.startswith('channel_'):
+        pid = payload[8:]
+        p   = products.get(pid, {})
+        if not p:
+            send_buyer(uid, "❌ Mahsulot topilmadi.")
+            return
+        # Yangi buyurtma yaratish
+        code = gen_code()
+        orders[code] = {
+            'product_id': pid, 'user_id': uid,
+            'user_name':  uname, 'amount': amount,
+            'type': 'group', 'status': 'confirming',
+            'variant': '', 'payment_method': 'click',
+            'telegram_payment_charge_id': payment.get('telegram_payment_charge_id',''),
+            'created': datetime.now().strftime('%d.%m.%Y %H:%M')
+        }
+        # Guruhga qo'shish
+        if pid not in groups: groups[pid] = []
+        if uid not in groups[pid]: groups[pid].append(uid)
+        sid = p.get('seller_id')
+        update_customer(sid, uid, uname, amount, p.get('name',''))
+        save_data()
+        # Sotuvchiga xabar
+        if sid:
+            send_seller(sid,
+                f"💳 <b>KANAL TO'LOV!</b>\n\n"
+                f"📦 {p.get('name','')}\n"
+                f"👤 {uname} (ID: {uid})\n"
+                f"💰 {fmt(amount)} so'm\n"
+                f"👥 Guruh: {len(groups[pid])}/{p.get('min_group',3)}\n"
+                f"💳 Click ✅ • 🆔 #{code}",
+                {'inline_keyboard': [[
+                    {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                    {'text': '❌ Rad',        'callback_data': f'seller_rj_{code}'},
+                ]]}
+            )
+        send_buyer(uid,
+            f"✅ <b>To'lov qabul qilindi!</b>\n\n"
+            f"📦 {p.get('name','')}\n"
+            f"💰 {fmt(amount)} so'm\n"
+            f"👥 Guruh: {len(groups[pid])}/{p.get('min_group',3)}\n"
+            f"🆔 #{code}\n\n"
+            f"⏳ Sotuvchi tasdiqlashi kutilmoqda..."
+        )
         return
 
-    # Buyurtma statusini yangilash
+    # Bot orqali buyurtma
+    code = payload
+    if code not in orders:
+        send_buyer(uid, "❌ Buyurtma topilmadi.")
+        return
     orders[code]['status']       = 'confirming'
     orders[code]['payment_method'] = 'click'
-    orders[code]['telegram_payment_charge_id'] = payment.get('telegram_payment_charge_id', '')
+    orders[code]['telegram_payment_charge_id'] = payment.get('telegram_payment_charge_id','')
     save_data()
-
     p   = products.get(orders[code]['product_id'], {})
     sid = p.get('seller_id')
-
-    # Sotuvchiga xabar
     if sid:
         o = orders[code]
         variant_text = f"\n🎨 Variant: {o.get('variant','')}" if o.get('variant') else ''
@@ -2429,16 +2503,12 @@ def handle_successful_payment(msg):
             f"📦 {p.get('name','')}{variant_text}\n"
             f"👤 {o['user_name']} (ID: {uid})\n"
             f"💰 {fmt(amount)} so'm\n"
-            f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n"
-            f"💳 Click orqali to'landi ✅\n"
-            f"🆔 #{code}",
+            f"💳 Click ✅ • 🆔 #{code}",
             {'inline_keyboard': [[
                 {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
                 {'text': '❌ Rad',        'callback_data': f'seller_rj_{code}'},
             ]]}
         )
-
-    # Xaridorga tasdiq
     auto_check(code, orders[code], p)
     send_buyer(uid,
         f"✅ <b>To'lov qabul qilindi!</b>\n\n"
@@ -2930,21 +3000,28 @@ def buyer_handle_msg(msg):
                     'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
                 }
                 save_data()
-                send_buyer(cid,
-                    f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Yakka buyurtma</b>\n"
-                    f"━━━━━━━━━━━━━━━\n"
-                    f"📦 {p['name']}\n💰 {fmt(p['solo_price'])} so'm\n\n"
-                    f"💳 <b>Payme:</b>\n"
-                    f"📱 <code>{PAYME_NUMBER}</code>\n"
-                    f"💵 <code>{fmt(p['solo_price'])}</code>\n"
-                    f"📝 Izoh: <code>{code}</code>\n\n"
-                    f"⚠️ Izohga <b>{code}</b> yozing!\n"
-                    f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
-                    {'inline_keyboard': [
-                        [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-                        [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
-                    ]}
-                )
+                if CLICK_TOKEN:
+                    photo = p.get('photos', [None])[0]
+                    photo_url = f"{CDN_BASE_URL}/products/{photo}.jpg" if photo and CDN_BASE_URL else None
+                    send_invoice(cid, title=p['name'],
+                        description=f"{p.get('shop_name','Sotuvchi')} • Yakka • #{code}",
+                        payload=code, amount=p['solo_price'], photo_url=photo_url)
+                else:
+                    send_buyer(cid,
+                        f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Yakka buyurtma</b>\n"
+                        f"━━━━━━━━━━━━━━━\n"
+                        f"📦 {p['name']}\n💰 {fmt(p['solo_price'])} so'm\n\n"
+                        f"💳 <b>Payme:</b>\n"
+                        f"📱 <code>{PAYME_NUMBER}</code>\n"
+                        f"💵 <code>{fmt(p['solo_price'])}</code>\n"
+                        f"📝 Izoh: <code>{code}</code>\n\n"
+                        f"⚠️ Izohga <b>{code}</b> yozing!\n"
+                        f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+                        {'inline_keyboard': [
+                            [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                            [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+                        ]}
+                    )
                 return
 
             # action == 'join'
@@ -2970,21 +3047,28 @@ def buyer_handle_msg(msg):
                 'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
             }
             save_data()
-            send_buyer(cid,
-                f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
-                f"━━━━━━━━━━━━━━━\n"
-                f"📦 {p['name']}\n💰 {fmt(p['group_price'])} so'm\n\n"
-                f"💳 <b>Payme:</b>\n"
-                f"📱 <code>{PAYME_NUMBER}</code>\n"
-                f"💵 <code>{fmt(p['group_price'])}</code>\n"
-                f"📝 Izoh: <code>{code}</code>\n\n"
-                f"⚠️ Izohga <b>{code}</b> yozing!\n"
-                f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
-                {'inline_keyboard': [
-                    [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-                    [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
-                ]}
-            )
+            if CLICK_TOKEN:
+                photo = p.get('photos', [None])[0]
+                photo_url = f"{CDN_BASE_URL}/products/{photo}.jpg" if photo and CDN_BASE_URL else None
+                send_invoice(cid, title=p['name'],
+                    description=f"{p.get('shop_name','Sotuvchi')} • Guruh • #{code}",
+                    payload=code, amount=p['group_price'], photo_url=photo_url)
+            else:
+                send_buyer(cid,
+                    f"🛒 <b>{p.get('shop_name','Sotuvchi')} — Guruh buyurtma</b>\n"
+                    f"━━━━━━━━━━━━━━━\n"
+                    f"📦 {p['name']}\n💰 {fmt(p['group_price'])} so'm\n\n"
+                    f"💳 <b>Payme:</b>\n"
+                    f"📱 <code>{PAYME_NUMBER}</code>\n"
+                    f"💵 <code>{fmt(p['group_price'])}</code>\n"
+                    f"📝 Izoh: <code>{code}</code>\n\n"
+                    f"⚠️ Izohga <b>{code}</b> yozing!\n"
+                    f"━━━━━━━━━━━━━━━\n🔒 Joynshop kafolati ostida",
+                    {'inline_keyboard': [
+                        [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
+                        [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}]
+                    ]}
+                )
             return
 
     # Manzil kutilayotgan bo'lsa
