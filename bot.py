@@ -101,6 +101,10 @@ def upload_photo_async(file_id, bot_token, state_ref):
 DASHBOARD_PASSWORD = os.environ.get('DASHBOARD_PASSWORD', 'joynshop2026')
 BUYER_BOT_USERNAME = os.environ.get('BUYER_BOT_USERNAME', 'joynshop_bot')
 APP_URL            = os.environ.get('APP_URL', '')
+# Public Flask backend URL — used when a link must hit the bot's routes
+# (e.g. /live/<id>) and APP_URL points to a static frontend (Vercel) that
+# doesn't proxy that path. Falls back to APP_URL when not set.
+BACKEND_URL        = os.environ.get('BACKEND_URL', APP_URL)
 
 def setup_bot_ui():
     miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
@@ -1515,7 +1519,7 @@ def seller_handle_cb(cb):
                     f"⏰ {s['duration_hours']} soat ichida tugaydi!\n\n"
                     f"🎬 Tomosha qiling va guruhga qo'shiling 👇"
                 )
-                live_url = f"{(APP_URL or '').rstrip('/')}/live/{live_id}"
+                live_url = f"{(BACKEND_URL or '').rstrip('/')}/live/{live_id}"
                 kb_live = {'inline_keyboard': [[
                     {'text': "▶️ LIVE TOMOSHA QILISH", 'url': live_url}
                 ]]}
