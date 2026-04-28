@@ -465,21 +465,23 @@ def post_caption(p, pid):
     return "\n".join(lines)
 
 def join_kb(pid, count, min_g, has_solo=False, sale_type='both'):
-    """Kanal post tugmalari — Mini App ga yo'naltiradi (Telegram ichida qoladi)"""
+    """Kanal post tugmalari — Mini App to'g'ridan-to'g'ri ochiladi.
+    Format: t.me/BOT/app?startapp=PARAM — bot xabarisiz Mini App darhol ochiladi.
+    """
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    miniapp_base = f'{APP_URL}/miniapp' if APP_URL else f'https://t.me/{BUYER_BOT_USERNAME}'
-    # web_app: Mini App Telegram ichida ochiladi, sayt browserda emas
+    # Mini App direct link — Telegram ichida darhol ochiladi
+    base = f'https://t.me/{BUYER_BOT_USERNAME}/app'
     if sale_type in ('solo', 'both') and has_solo:
         kb.append([{'text': "🛒 Sotib olish (yakka)",
-                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_solo'}])
+                    'url': f'{base}?startapp=buy_{pid}_solo'}])
     if sale_type in ('group', 'both'):
         kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})",
-                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_group'}])
+                    'url': f'{base}?startapp=buy_{pid}_group'}])
     if not kb:
         kb.append([{'text': "🛍 Xarid qilish",
-                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_group'}])
+                    'url': f'{base}?startapp=buy_{pid}_group'}])
     return kb_inline(kb)
 
 def kb_inline(rows):
