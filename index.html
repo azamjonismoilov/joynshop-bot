@@ -902,22 +902,21 @@ function cardHtml(p){
   }
   return `<div class="prod-card" onclick="openDetail('${p.id}')">
     <div class="prod-img">${imgHtml}
-      <div class="prod-badge-disc">-${p.grp_disc}%</div>
-      ${p.count>0?`<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>`:''}
-      ${almost?`<div class="prod-badge-hot"><i class="ri-flashlight-fill"></i> ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new"><i class="ri-sparkling-fill"></i> Yangi</div>`:''}
-      ${p.grp_disc>=40?`<div class="wow-badge">WOW</div>`:''}
+      ${(()=>{const sT=p.sale_type||'both';const dsc=sT==='solo'?p.solo_disc:p.grp_disc;return dsc>0?`<div class="prod-badge-disc">-${dsc}%</div>`:'';})()}
+      ${(p.sale_type||'both')!=='solo'&&p.count>0?`<div class="prod-badge-group"><i class="ri-group-line"></i> ${p.count}/${p.min_group}</div>`:''}
+      ${(p.sale_type||'both')!=='solo'&&almost?`<div class="prod-badge-hot"><i class="ri-flashlight-fill"></i> ${needed} o'rin</div>`:isNew?`<div class="prod-badge-new"><i class="ri-sparkling-fill"></i> Yangi</div>`:''}
+      ${p.grp_disc>=40&&(p.sale_type||'both')!=='solo'?`<div class="wow-badge">WOW</div>`:''}
       <button class="wish-btn ${wished?'active':''}" onclick="event.stopPropagation();toggleWish('${p.id}',this)" title="Wishlistga qo'shish"><i class="ri-heart-${wished?'fill':'line'}"></i></button>
     </div>
     <div class="prod-body">
       <a class="prod-shop" href="#" onclick="event.stopPropagation();openShop('${p.shop_name.replace(/'/g,"\\'")}')"><span class="prod-shop-dot"></span>${p.shop_name}</a>
       <div class="prod-name">${p.name}</div>
-      <div class="prod-orig">${fmtFull(p.original_price)} so'm</div>
-      <div class="prod-prices"><span class="prod-price-group">${fmt(p.group_price)} so'm</span><span class="prod-disc-badge">-${p.grp_disc}%</span></div>
-      <div class="prod-group-info">
+      ${(()=>{const sT=p.sale_type||'both';const price=sT==='solo'?p.solo_price:p.group_price;const dsc=sT==='solo'?p.solo_disc:p.grp_disc;const showOrig=dsc>0&&p.original_price>price;return `${showOrig?`<div class="prod-orig">${fmtFull(p.original_price)} so'm</div>`:''}<div class="prod-prices"><span class="prod-price-group">${fmt(price)} so'm</span>${dsc>0?`<span class="prod-disc-badge">-${dsc}%</span>`:''}</div>`;})()}
+      ${(p.sale_type||'both')!=='solo'?`<div class="prod-group-info">
         <div class="prod-group-label"><span>Guruh: ${p.count}/${p.min_group}</span><strong>${needed>0?needed+' kishi kerak':"To'ldi!"}</strong></div>
         <div class="prod-track"><div class="prod-fill" style="width:${pct}%"></div></div>
         ${timerHtml}
-      </div>
+      </div>`:''}
       <div class="prod-cta"><button class="btn-join-full" onclick="event.stopPropagation();openDetail('${p.id}')"><i class="ri-shopping-bag-3-line"></i> Xarid qilish</button></div>
     </div>
   </div>`;
@@ -1004,8 +1003,18 @@ function openDetail(pid){
   document.getElementById('detailShop').textContent=p.shop_name;
   document.getElementById('detailShop').onclick=function(){closeDetail();openShop(p.shop_name);};
   document.getElementById('detailName').textContent=p.name;
-  document.getElementById('detailOrig').textContent='Asl narx: '+fmtFull(p.original_price)+' so\'m';
-  document.getElementById('detailPrices').innerHTML=`<div class="detail-price-card best"><div class="dpc-label">Guruhli narx</div><div class="dpc-val">${fmt(p.group_price)} so'm</div><div class="dpc-disc">↓ ${p.grp_disc}% chegirma</div></div>${soloAvail?`<div class="detail-price-card"><div class="dpc-label">Yakkalik narxi</div><div class="dpc-val">${fmt(p.solo_price)} so'm</div><div class="dpc-disc">↓ ${p.solo_disc||0}% chegirma</div></div>`:''}`;
+  document.getElementById('detailOrig').textContent=(p.sale_type==='solo'?'':'Asl narx: '+fmtFull(p.original_price)+' so\'m');
+  const sType=p.sale_type||'both';
+  let pricesHtml='';
+  if(sType==='solo'){
+    pricesHtml=`<div class="detail-price-card best" style="grid-column:1/-1"><div class="dpc-label">Mahsulot narxi</div><div class="dpc-val">${fmt(p.solo_price)} so'm</div></div>`;
+  } else if(sType==='group'){
+    pricesHtml=`<div class="detail-price-card best"><div class="dpc-label">Guruhli narx</div><div class="dpc-val">${fmt(p.group_price)} so'm</div>${p.grp_disc>0?`<div class="dpc-disc">↓ ${p.grp_disc}% chegirma</div>`:''}</div>`;
+  } else {
+    pricesHtml=`<div class="detail-price-card best"><div class="dpc-label">Guruhli narx</div><div class="dpc-val">${fmt(p.group_price)} so'm</div>${p.grp_disc>0?`<div class="dpc-disc">↓ ${p.grp_disc}% chegirma</div>`:''}</div>${soloAvail?`<div class="detail-price-card"><div class="dpc-label">Yakkalik narxi</div><div class="dpc-val">${fmt(p.solo_price)} so'm</div>${p.solo_disc>0?`<div class="dpc-disc">↓ ${p.solo_disc||0}% chegirma</div>`:''}</div>`:''}`;
+  }
+  document.getElementById('detailPrices').innerHTML=pricesHtml;
+  document.getElementById('detailGroup').style.display=p.sale_type==='solo'?'none':'';
   document.getElementById('detailGroup').innerHTML=`<div class="detail-group-row"><span>Guruh holati</span><span class="orange">${p.count}/${p.min_group} kishi</span></div><div class="prod-track" style="margin-bottom:8px"><div class="prod-fill" style="width:${pct}%"></div></div><div style="font-size:13px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div>`;
   if(p.deadline){
     try{
@@ -1024,7 +1033,16 @@ function openDetail(pid){
   const socEl=document.getElementById('detailSocial');
   const icons={'instagram':'ri-instagram-line','telegram':'ri-telegram-line','youtube':'ri-youtube-line','website':'ri-global-line','tiktok':'ri-tiktok-line'};
   if(p.social&&Object.keys(p.social).length){socEl.innerHTML=Object.entries(p.social).map(([k,v])=>{const ic=icons[k.toLowerCase()]||'ri-link';const href=k.toLowerCase()==='website'?(v.startsWith('http')?v:'https://'+v):`https://${k.toLowerCase()}.com/${v.replace('@','')}`;return `<a class="social-link" href="${href}" target="_blank"><i class="${ic}"></i> ${v}</a>`;}).join('');socEl.style.display='flex';}else socEl.style.display='none';
-  document.getElementById('detailBtns').innerHTML=`<a class="detail-btn-primary" href="https://t.me/${BUYER_BOT}?start=join_${p.id}" target="_blank"><i class="ri-group-line"></i> Guruhli xarid — ${fmt(p.group_price)} so'm</a>${soloAvail?`<a class="detail-btn-secondary" href="https://t.me/${BUYER_BOT}?start=solo_${p.id}" target="_blank"><i class="ri-shopping-cart-line"></i> Yakkalik xarid — ${fmt(p.solo_price)} so'm</a>`:''}`;
+  const saleType=p.sale_type||'both';
+  let btnsHtml='';
+  if(saleType==='solo'){
+    btnsHtml=`<a class="detail-btn-primary" href="/pay/${p.id}?type=solo"><i class="ri-shopping-bag-3-line"></i> Sotib olish — ${fmt(p.solo_price)} so'm</a>`;
+  } else if(saleType==='group'){
+    btnsHtml=`<a class="detail-btn-primary" href="/pay/${p.id}?type=group"><i class="ri-group-line"></i> Guruhga qo'shilish — ${fmt(p.group_price)} so'm</a>`;
+  } else {
+    btnsHtml=`<a class="detail-btn-primary" href="/pay/${p.id}?type=group"><i class="ri-group-line"></i> Guruhli xarid — ${fmt(p.group_price)} so'm</a>${soloAvail?`<a class="detail-btn-secondary" href="/pay/${p.id}?type=solo"><i class="ri-shopping-cart-line"></i> Yakkalik xarid — ${fmt(p.solo_price)} so'm</a>`:''}`;
+  }
+  document.getElementById('detailBtns').innerHTML=btnsHtml;
   const wished=wishlist.includes(p.id);
   document.getElementById('wishBtnDetail').innerHTML=wished?'<i class="ri-heart-fill" style="color:var(--r500)"></i> Saqlandi':'<i class="ri-heart-line"></i> Saqlash';
   const related=allProducts.filter(x=>x.id!==p.id&&x.shop_name===p.shop_name).slice(0,4);
