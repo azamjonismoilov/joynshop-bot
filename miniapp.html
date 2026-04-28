@@ -810,13 +810,63 @@ async function submitCheckout(){
   try{
     const res=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:co.product.id,user_id:user.id,user_name:[user.first_name,user.last_name].filter(Boolean).join(' '),type:co.type,variant:co.variant,delivery:co.delivery,address:address})});
     const d=await res.json();
-    if(d.ok){document.getElementById('co-success-code').textContent='Buyurtma kodi: #'+d.code;coShowStep('success');loadProducts();}
+    if(d.ok){
+      // Agar invoice_link bor bo'lsa — Telegram native to'lov modal ochiladi
+      if(d.invoice_link && tg && tg.openInvoice){
+        tg.openInvoice(d.invoice_link, (status) => {
+          if(status === 'paid'){
+            document.getElementById('co-success-code').textContent='Buyurtma kodi: #'+d.code;
+            coShowStep('success');
+            loadProducts();
+          } else if(status === 'cancelled'){
+            showToast("To'lov bekor qilindi");
+            btn.textContent='Buyurtma berish';btn.disabled=false;
+          } else if(status === 'failed'){
+            showToast("To'lov amalga oshmadi");
+            btn.textContent='Buyurtma berish';btn.disabled=false;
+          } else {
+            // pending — kutilmoqda
+            document.getElementById('co-success-code').textContent='Buyurtma kodi: #'+d.code;
+            coShowStep('success');
+            loadProducts();
+          }
+        });
+      } else {
+        // Fallback: oddiy success
+        document.getElementById('co-success-code').textContent='Buyurtma kodi: #'+d.code;
+        coShowStep('success');
+        loadProducts();
+      }
+    }
     else{showToast('Xato: '+(d.error||'Xato yuz berdi'));btn.textContent='Buyurtma berish';btn.disabled=false;}
   }catch(e){showToast('Serverga ulanib bo\'lmadi');btn.textContent='Buyurtma berish';btn.disabled=false;}
 }
 function closeCheckout(e,force){if(force||!e||e.target===document.getElementById('checkoutOverlay')){document.getElementById('checkoutOverlay').classList.remove('open');document.body.style.overflow='';}}
 
-loadProducts();
+// Deep link: ?pid=XXX&action=buy&type=solo|group — kanal postidan kelgan
+async function handleDeepLink(){
+  const params = new URLSearchParams(window.location.search);
+  const pid    = params.get('pid');
+  const action = params.get('action');
+  const btype  = params.get('type') || 'group';
+  if(!pid || action !== 'buy') return false;
+  // Mahsulotlar yuklanguncha kutish
+  let tries = 0;
+  while(allProducts.length === 0 && tries < 20){
+    await new Promise(r => setTimeout(r, 200));
+    tries++;
+  }
+  // Detail sahifa ochiladi va keyin to'g'ridan-to'g'ri checkout
+  setTimeout(() => {
+    openProduct(pid);
+    setTimeout(() => {
+      openCheckout(pid, btype);
+    }, 300);
+  }, 100);
+  return true;
+}
+
+loadProducts().then(() => handleDeepLink());
 
 async function loadStats(){
   try{
