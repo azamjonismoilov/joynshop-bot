@@ -3472,8 +3472,10 @@ def api_product(pid):
         'id':            pid,
         'name':          p['name'],
         'description':   p.get('description', ''),
-        'photos':        p.get('photos', []),
+        'photos':        p.get('photo_ids', []) or ([p.get('photo_id')] if p.get('photo_id') else []),
         'photo_url':     p.get('photo_url', ''),
+        'photo_urls':    p.get('photo_urls', []),
+        'category':      p.get('category', ''),
         'original_price': p['original_price'],
         'solo_price':    p.get('solo_price', 0),
         'group_price':   p['group_price'],
@@ -3575,6 +3577,8 @@ def api_products():
             'name':           p.get('name',''),
             'shop_name':      p.get('shop_name',''),
             'description':    p.get('description',''),
+            'category':       p.get('category',''),
+            'sale_type':      p.get('sale_type','both'),
             'original_price': orig,
             'solo_price':     solo,
             'group_price':    grp,
@@ -3592,6 +3596,7 @@ def api_products():
             'photo_urls':     p.get('photo_urls', []),
             'seller_channel': p.get('seller_channel',''),
             'solo_available': p.get('solo_available', True),
+            'variants':       p.get('variants', []),
         })
     result.sort(key=lambda x: x['count'], reverse=True)
     return jsonify(result)
