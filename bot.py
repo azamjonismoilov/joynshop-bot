@@ -465,23 +465,21 @@ def post_caption(p, pid):
     return "\n".join(lines)
 
 def join_kb(pid, count, min_g, has_solo=False, sale_type='both'):
-    """Kanal post tugmalari — Mini App to'g'ridan-to'g'ri ochiladi.
-    Format: t.me/BOT/app?startapp=PARAM — bot xabarisiz Mini App darhol ochiladi.
-    """
+    """Kanal post tugmalari — Joynshop sayt to'lov sahifasiga yo'naltiradi."""
     if count >= min_g:
-        return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
+        return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': APP_URL or f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    # Mini App direct link — Telegram ichida darhol ochiladi
-    base = f'https://t.me/{BUYER_BOT_USERNAME}/app'
+    # Sayt to'lov sahifasi — joynshop.uz/pay/PID?type=solo|group
+    base = (APP_URL or '').rstrip('/') + '/pay'
     if sale_type in ('solo', 'both') and has_solo:
         kb.append([{'text': "🛒 Sotib olish (yakka)",
-                    'url': f'{base}?startapp=buy_{pid}_solo'}])
+                    'url': f'{base}/{pid}?type=solo'}])
     if sale_type in ('group', 'both'):
         kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})",
-                    'url': f'{base}?startapp=buy_{pid}_group'}])
+                    'url': f'{base}/{pid}?type=group'}])
     if not kb:
         kb.append([{'text': "🛍 Xarid qilish",
-                    'url': f'{base}?startapp=buy_{pid}_group'}])
+                    'url': f'{base}/{pid}?type=group'}])
     return kb_inline(kb)
 
 def kb_inline(rows):
@@ -1722,66 +1720,16 @@ def publish_product(uid, cid, s):
             first_msg = result['result'][0]
             products[pid]['channel_message_id'] = first_msg.get('message_id')
             products[pid]['channel_chat_id']    = channel
-            # Invoice ni alohida yuborish
-            if CLICK_TOKEN:
-                p_data = products[pid]
-                sale_t = s.get('sale_type', 'both')
-                price_amt = p_data.get('solo_price') if sale_t == 'solo' else p_data['group_price']
-                price_lbl = "Yakka narx" if sale_t == 'solo' else "Guruh narxi"
-                inv_data = {
-                    'chat_id': channel,
-                    'title': strip_html(p_data['name'])[:32],
-                    'description': invoice_description(p_data, pid),
-                    'payload': f"channel_{pid}",
-                    'provider_token': CLICK_TOKEN,
-                    'currency': 'UZS',
-                    'prices': json.dumps([{'label': price_lbl, 'amount': price_amt * 100}]),
-                    'need_name': True, 'need_phone_number': True,
-                    'need_shipping_address': False, 'is_flexible': False,
-                }
-                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendInvoice', json=inv_data)
-            else:
-                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
-                    'chat_id': channel, 'text': caption,
-                    'parse_mode': 'HTML', 'reply_markup': kb,
-                })
+            # Caption + tugmalar alohida xabar (media group da reply_markup ishlamaydi)
+            requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                'chat_id': channel, 'text': caption,
+                'parse_mode': 'HTML', 'reply_markup': kb,
+            })
     else:
-        if CLICK_TOKEN:
-            # Click invoice kanalga yuborish — SELLER_TOKEN bilan (seller bot kanal admin)
-            p_data   = products[pid]
-            photo_url = p_data.get('photo_url') or None
-            sale_t    = s.get('sale_type', 'both')
-            # Narx: yakka bo'lsa solo_price, aks holda group_price
-            if sale_t == 'solo':
-                price_amt = p_data.get('solo_price') or p_data['group_price']
-                price_lbl = "Yakka narx"
-            else:
-                price_amt = p_data['group_price']
-                price_lbl = "Guruh narxi"
-            inv_data  = {
-                'chat_id':          channel,
-                'title':            strip_html(p_data['name'])[:32],
-                'description':      invoice_description(p_data, pid),
-                'payload':          f"channel_{pid}",
-                'provider_token':   CLICK_TOKEN,
-                'currency':         'UZS',
-                'prices':           json.dumps([{'label': price_lbl, 'amount': price_amt * 100}]),
-                'need_name':        True,
-                'need_phone_number': True,
-                'need_shipping_address': False,
-                'is_flexible':      False,
-            }
-            # Rasm: faqat to'liq URL bo'lsa (S3/CDN) qo'shamiz
-            if photo_url and photo_url.startswith('http'):
-                inv_data['photo_url']  = photo_url
-                inv_data['photo_size'] = 800
-            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendInvoice', json=inv_data).json()
-            logging.info(f"sendInvoice result: {result}")
-        else:
-            result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
-                'chat_id': channel, 'photo': first_photo,
-                'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
-            }).json()
+        result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+            'chat_id': channel, 'photo': first_photo,
+            'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
+        }).json()
         if result.get('ok'):
             msg_result = result['result']
             products[pid]['channel_message_id'] = msg_result.get('message_id')
@@ -3500,6 +3448,45 @@ def miniapp():
     html = open('miniapp.html').read()
     return Response(html, mimetype='text/html')
 
+@app.route('/pay/<pid>', methods=['GET'])
+def pay_page(pid):
+    """To'lov sahifasi — kanal postidan kelgan xaridorlar uchun"""
+    from flask import Response
+    try:
+        html = open('pay.html').read()
+        return Response(html, mimetype='text/html')
+    except FileNotFoundError:
+        return "<h1>Pay page</h1><p>pay.html fayli topilmadi</p>", 404
+
+@app.route('/api/product/<pid>', methods=['GET'])
+def api_product(pid):
+    """Bitta mahsulot ma'lumoti — pay sahifasi uchun"""
+    p = products.get(pid)
+    if not p:
+        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
+    if p.get('status') == 'closed':
+        return jsonify({'ok': False, 'error': 'Mahsulot yopilgan'}), 400
+    count = len(groups.get(pid, []))
+    return jsonify({
+        'ok':            True,
+        'id':            pid,
+        'name':          p['name'],
+        'description':   p.get('description', ''),
+        'photos':        p.get('photos', []),
+        'photo_url':     p.get('photo_url', ''),
+        'original_price': p['original_price'],
+        'solo_price':    p.get('solo_price', 0),
+        'group_price':   p['group_price'],
+        'min_group':     p['min_group'],
+        'count':         count,
+        'sale_type':     p.get('sale_type', 'both'),
+        'variants':      p.get('variants', []),
+        'shop_name':     p.get('shop_name', ''),
+        'contact':       p.get('contact', ''),
+        'address':       p.get('address', ''),
+        'deadline':      p.get('deadline', ''),
+    })
+
 @app.route('/manifest.json', methods=['GET'])
 def manifest():
     from flask import Response
@@ -3837,6 +3824,87 @@ def api_categories():
         if name in cat_counts:
             result.append({'name': name, 'icon': icon, 'count': cat_counts[name]})
     return jsonify(result)
+
+
+@app.route('/api/web_checkout', methods=['POST'])
+def api_web_checkout():
+    """Sayt to'lov sahifasidan kelgan buyurtma — kanal postidan kelgan xaridorlar"""
+    data = request.json or {}
+    pid       = data.get('product_id', '')
+    otype     = data.get('type', 'group')
+    user_name = data.get('user_name', '').strip()
+    user_phone = data.get('user_phone', '').strip()
+    variant   = data.get('variant', '')
+    delivery  = data.get('delivery', 'pickup')
+    address   = data.get('address', '')
+
+    # Validatsiya
+    if not pid:
+        return jsonify({'ok': False, 'error': 'product_id kerak'}), 400
+    if not user_name or not user_phone:
+        return jsonify({'ok': False, 'error': "Ism va telefon kiritilishi shart"}), 400
+
+    p = products.get(pid)
+    if not p:
+        return jsonify({'ok': False, 'error': 'Mahsulot topilmadi'}), 404
+    if p.get('status') == 'closed':
+        return jsonify({'ok': False, 'error': 'Mahsulot yopilgan'}), 400
+
+    # Narx
+    if otype == 'solo':
+        if not p.get('solo_price'):
+            return jsonify({'ok': False, 'error': 'Yakka sotish mavjud emas'}), 400
+        amount = p['solo_price']
+    else:
+        amount = p['group_price']
+
+    # Buyurtma yaratish (web_user_id — Telegram ID yo'q, telefon orqali)
+    code = gen_code()
+    orders[code] = {
+        'product_id':  pid,
+        'user_id':     0,  # web user, Telegram ID yo'q
+        'user_name':   user_name,
+        'user_phone':  user_phone,
+        'amount':      amount,
+        'type':        otype,
+        'variant':     variant,
+        'delivery':    delivery,
+        'address':     address,
+        'status':      'pending',
+        'created':     datetime.now().strftime('%d.%m.%Y %H:%M'),
+        'source':      'web',
+    }
+    save_data()
+
+    # Sotuvchiga xabar
+    sid = p.get('seller_id')
+    if sid:
+        variant_line  = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
+        delivery_text = "🚚 Yetkazib berish" if delivery == 'deliver' else "🏪 Olib ketish"
+        address_line  = f"\n📍 Manzil: {address}" if address else ''
+        send_seller(sid,
+            f"🔔 <b>YANGI BUYURTMA (Sayt)</b>\n\n"
+            f"📦 {p.get('name','')}{variant_line}\n"
+            f"👤 {user_name}\n"
+            f"📞 <code>{user_phone}</code>\n"
+            f"💰 {fmt(amount)} so'm\n"
+            f"🛒 {'Yakka' if otype=='solo' else 'Guruh'}\n"
+            f"🚚 {delivery_text}{address_line}\n"
+            f"🆔 #{code}",
+            {'inline_keyboard': [[
+                {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'},
+            ]]}
+        )
+
+    # Hozircha checkout_url yo'q (Click rasmiy ulanmagan)
+    # Kelajakda: checkout_url = create_click_invoice(amount, code, ...)
+    return jsonify({
+        'ok':           True,
+        'code':         code,
+        'amount':       amount,
+        'checkout_url': None  # kelajakda Click checkout URL
+    })
 
 
 @app.route('/api/checkout', methods=['POST'])
