@@ -421,7 +421,7 @@ def post_caption(p, pid):
     if sale_type == 'solo':
         if orig and orig != solo:
             lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
-        lines.append(f"\U0001f6d2 <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
+        lines.append(f"\U0001f6d2 <b>{fmt(solo)} so'm</b>")
     elif sale_type == 'group':
         if orig and orig != group:
             lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
@@ -437,7 +437,8 @@ def post_caption(p, pid):
         lines.append(f"\U0001f465 Guruh: {count}/{min_g} {status}")
         lines.append(f"\u23f3 Kerak: {max(0, min_g - count)} kishi")
 
-    lines.append(f"\U0001f550 {p.get('deadline','')}")
+    if sale_type != 'solo':
+        lines.append(f"\U0001f550 {p.get('deadline','')}")
     if p.get('description'):
         lines.append(f"\n📝 {p['description']}")
     if p.get('variants'):
@@ -710,10 +711,11 @@ PROD_ALLOWED_CBS = {
     'prod_photo_done', 'prod_skip_desc', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
     'prod_confirm_publish', 'prod_continue', 'prod_restart',
     'prod_deadline_24', 'prod_deadline_48', 'prod_deadline_72', 'prod_deadline_168',
+    'prod_stock_unlimited',
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
-    'back_menu', 'noop', 'menu_mycustomers',
+    'back_menu', 'noop', 'menu_mycustomers', 'menu_inventory', 'menu_export',
 }
 
 PROD_BLOCKED_TEXTS = {
@@ -728,7 +730,7 @@ PROD_BLOCKED_TEXTS = {
 def is_prod_in_progress(uid):
     s = seller_state.get(uid)
     if not s: return False
-    prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group',
+    prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group','prod_stock',
                   'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
     return s.get('step') in prod_steps
 
@@ -1042,8 +1044,47 @@ def seller_handle_cb(cb):
                 ]}
             )
             return
-        seller_state[uid] = {'step': 'name'}
-        send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+        # Sotuvchining do'konlarini tekshirish
+        shops = seller_shops.get(uid, [])
+        if not shops:
+            send_seller(uid, "❌ Avval do'kon yarating.\n\n/start yozing.")
+            return
+        if len(shops) == 1:
+            # Bitta do'kon — to'g'ridan-to'g'ri
+            seller_state[uid] = {'step': 'prod_name', 'shop_idx': 0}
+            send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+        else:
+            # Bir nechta do'kon — tanlash
+            kb = []
+            for i, sh in enumerate(shops):
+                shop_name = sh.get('name', f"Do'kon #{i+1}")
+                ch        = sh.get('channel', '')
+                label     = f"🏪 {shop_name}" + (f" ({ch})" if ch else "")
+                kb.append([{'text': label, 'callback_data': f'prod_shop_{i}'}])
+            kb.append([{'text': "❌ Bekor", 'callback_data': 'back_menu'}])
+            send_seller(uid,
+                "🏪 <b>Qaysi do'konga mahsulot qo'shasiz?</b>\n\n"
+                f"Sizda {len(shops)} ta do'kon bor:",
+                {'inline_keyboard': kb}
+            )
+        return
+
+    if d.startswith('prod_shop_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        try:
+            idx = int(d.split('_')[2])
+        except:
+            return
+        shops = seller_shops.get(uid, [])
+        if idx < 0 or idx >= len(shops):
+            send_seller(uid, "❌ Noto'g'ri do'kon.")
+            return
+        seller_state[uid] = {'step': 'prod_name', 'shop_idx': idx}
+        shop_name = shops[idx].get('name', '')
+        send_seller(uid,
+            f"📦 <b>Yangi mahsulot — {shop_name}</b>\n\n"
+            f"1️⃣ Mahsulot nomini yozing:"
+        )
         return
 
     if d == 'prod_continue':
@@ -1058,6 +1099,23 @@ def seller_handle_cb(cb):
         }
         msg = step_msgs.get(step, "Davom eting:")
         send_seller(uid, f"✅ Davom etmoqdasiz\n\n{msg}")
+        return
+
+    if d == 'prod_stock_unlimited':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'prod_stock':
+            return
+        s['stock'] = 9999  # cheksiz
+        s['step'] = 'prod_desc'
+        s['description'] = ''
+        s['variants'] = []
+        send_seller(uid,
+            "✅ Qoldiq: ♾ Cheksiz\n\n"
+            "<b>6/7</b> Mahsulot tavsifi (ixtiyoriy):\n"
+            "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+            {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
+        )
         return
 
     if d == 'prod_skip_desc':
@@ -1098,19 +1156,22 @@ def seller_handle_cb(cb):
         )
         return
 
-    if d == 'menu_mycustomers' or d.startswith('crm_page_') or d.startswith('crm_view_') or d.startswith('crm_tag_'):
+    if d == 'menu_mycustomers' or d.startswith('crm_'):
         answer_cb(cbid, token=SELLER_TOKEN)
         sid = str(uid)
         my_customers = customers.get(sid, {})
 
-        # Sahifalash
-        per_page = 5
+        # Filter va sahifa
+        per_page    = 5
+        page        = 1
+        cur_filter  = 'all'
         if d.startswith('crm_page_'):
-            page = int(d.split('_')[2])
-        else:
-            page = 1
+            try: page = int(d.split('_')[2])
+            except: page = 1
+        elif d.startswith('crm_filter_'):
+            cur_filter = d[11:]
 
-        # Mijoz kartasini ko'rish
+        # ─── MIJOZ KARTASINI KO'RISH ───
         if d.startswith('crm_view_'):
             cuid = d[9:]
             cust = my_customers.get(cuid, {})
@@ -1119,8 +1180,20 @@ def seller_handle_cb(cb):
             orders_text = ""
             for o in reversed(cust.get('orders', [])[-5:]):
                 orders_text += f"  \u2022 {o['product']} \u2014 {fmt(o['amount'])} so'm ({o['date']})\n"
-            avg = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
-            tags = ', '.join(cust.get('tags', [])) or '—'
+            avg  = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
+            tags = ', '.join(cust.get('tags', [])) or '\u2014'
+            note = cust.get('note', '')
+            # Faollik holati
+            from datetime import datetime as _dt, timedelta
+            try:
+                last_dt = _dt.strptime(cust.get('last_order','01.01.2020'), '%d.%m.%Y')
+                days_ago = (_dt.now() - last_dt).days
+                if days_ago < 7:    activity = "🟢 Faol"
+                elif days_ago < 30: activity = "🟡 O'rtacha"
+                else:               activity = "🔴 Yo'qotilgan"
+            except:
+                activity = "—"
+
             send_seller(uid,
                 "👤 <b>" + cust['name'] + "</b>\n"
                 "━━━━━━━━━━━━━━━\n"
@@ -1130,36 +1203,79 @@ def seller_handle_cb(cb):
                 "📈 O'rtacha check: " + fmt(avg) + " so'm\n"
                 "📅 Birinchi xarid: " + cust.get('first_order','—') + "\n"
                 "📅 Oxirgi xarid: " + cust.get('last_order','—') + "\n"
-                "🏷 Teglar: " + tags + "\n\n"
-                "🛍 <b>So'nggi xaridlar:</b>\n" + (orders_text or "  Hali yo'q"),
+                "⚡ Holati: " + activity + "\n"
+                "🏷 Teglar: " + tags + "\n"
+                + (f"📝 <b>Izoh:</b> {note}\n" if note else "") +
+                "\n🛍 <b>So'nggi xaridlar:</b>\n" + (orders_text or "  Hali yo'q"),
                 {'inline_keyboard': [
-                    [{'text': "⭐ VIP belgilash",   'callback_data': 'crm_tag_'+cuid+'_vip'},
-                     {'text': "🔴 Muammoli",         'callback_data': 'crm_tag_'+cuid+'_problem'}],
-                    [{'text': "⬅️ Orqaga",           'callback_data': 'menu_mycustomers'}],
+                    [{'text': "⭐ VIP",       'callback_data': 'crm_tag_'+cuid+'_vip'},
+                     {'text': "🔴 Muammoli", 'callback_data': 'crm_tag_'+cuid+'_problem'},
+                     {'text': "💎 Doimiy",   'callback_data': 'crm_tag_'+cuid+'_loyal'}],
+                    [{'text': "💬 Xabar yuborish", 'callback_data': 'crm_msg_'+cuid}],
+                    [{'text': "📝 Izoh qo'shish",  'callback_data': 'crm_note_'+cuid}],
+                    [{'text': "⬅️ Orqaga", 'callback_data': 'menu_mycustomers'}],
                 ]},
                 token=SELLER_TOKEN
             )
             return
 
-        # Teg qo'yish
+        # ─── TEG QO'YISH ───
         if d.startswith('crm_tag_'):
             parts = d.split('_')
             cuid, tag = parts[2], parts[3]
             if cuid in my_customers:
                 tags = my_customers[cuid].get('tags', [])
                 if tag in tags:
-                    tags.remove(tag)
-                    msg = f"🏷 Teg olib tashlandi: {tag}"
+                    tags.remove(tag); msg = f"🏷 Teg olib tashlandi: {tag}"
                 else:
-                    tags.append(tag)
-                    msg = f"✅ Teg qo'shildi: {tag}"
+                    tags.append(tag); msg = f"✅ Teg qo'shildi: {tag}"
                 my_customers[cuid]['tags'] = tags
                 customers[sid] = my_customers
                 save_data()
                 send_seller(uid, msg, token=SELLER_TOKEN)
             return
 
-        # Ro'yxat ko'rsatish
+        # ─── XABAR YUBORISH ───
+        if d.startswith('crm_msg_'):
+            cuid = d[8:]
+            cust = my_customers.get(cuid, {})
+            if not cust:
+                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+            seller_state[uid] = {'step': 'crm_send_msg', 'target_uid': cust.get('user_id'), 'target_name': cust['name']}
+            send_seller(uid,
+                f"💬 <b>{cust['name']}</b> ga xabar yuborish\n\n"
+                f"Xabar matnini yozing (yoki /cancel):",
+                token=SELLER_TOKEN
+            )
+            return
+
+        # ─── IZOH QO'SHISH ───
+        if d.startswith('crm_note_'):
+            cuid = d[9:]
+            cust = my_customers.get(cuid, {})
+            if not cust:
+                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+            seller_state[uid] = {'step': 'crm_add_note', 'target_cuid': cuid, 'target_name': cust['name']}
+            current_note = cust.get('note', '')
+            send_seller(uid,
+                f"📝 <b>{cust['name']}</b> uchun izoh\n\n"
+                + (f"Joriy izoh: <i>{current_note}</i>\n\n" if current_note else "") +
+                f"Yangi izoh yozing (yoki /cancel):",
+                token=SELLER_TOKEN
+            )
+            return
+
+        # ─── QIDIRUV ───
+        if d == 'crm_search':
+            seller_state[uid] = {'step': 'crm_search_query'}
+            send_seller(uid,
+                "🔍 <b>Mijoz qidirish</b>\n\n"
+                "Ism yoki telefon raqamini yozing:",
+                token=SELLER_TOKEN
+            )
+            return
+
+        # ─── RO'YXAT (filter bilan) ───
         if not my_customers:
             send_seller(uid,
                 "👥 <b>Mijozlar bazasi</b>\n\nHali mijoz yo'q.\n"
@@ -1169,46 +1285,278 @@ def seller_handle_cb(cb):
             )
             return
 
-        # Saralash — eng ko'p xarid qilganlar birinchi
-        sorted_custs = sorted(my_customers.items(), key=lambda x: x[1]['total_spent'], reverse=True)
-        total = len(sorted_custs)
-        start = (page - 1) * per_page
-        page_custs = sorted_custs[start:start + per_page]
+        # Filter qo'llash
+        from datetime import datetime as _dt
+        def days_since_last(c):
+            try:
+                last_dt = _dt.strptime(c.get('last_order','01.01.2020'), '%d.%m.%Y')
+                return (_dt.now() - last_dt).days
+            except: return 999
 
-        # Umumiy statistika
+        all_items = list(my_customers.items())
+        if cur_filter == 'vip':
+            filtered = [(k,v) for k,v in all_items if 'vip' in v.get('tags', [])]
+        elif cur_filter == 'active':
+            filtered = [(k,v) for k,v in all_items if days_since_last(v) < 7]
+        elif cur_filter == 'lost':
+            filtered = [(k,v) for k,v in all_items if days_since_last(v) >= 30]
+        elif cur_filter == 'new':
+            filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) == 1]
+        elif cur_filter == 'repeat':
+            filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) > 1]
+        else:
+            filtered = all_items
+
+        # Saralash
+        filtered.sort(key=lambda x: x[1]['total_spent'], reverse=True)
+        total = len(filtered)
+        start = (page - 1) * per_page
+        page_custs = filtered[start:start + per_page]
+
+        # Umumiy stat
         total_revenue = sum(v['total_spent'] for v in my_customers.values())
         repeat = sum(1 for v in my_customers.values() if v['total_orders'] > 1)
+        vip    = sum(1 for v in my_customers.values() if 'vip' in v.get('tags', []))
 
+        filter_labels = {
+            'all':    'Hammasi', 'vip': 'VIP', 'active': 'Faol',
+            'lost':   "Yo'qotilgan", 'new': 'Yangi', 'repeat': 'Qaytib kelgan'
+        }
         text = (
-            "👥 <b>Mijozlar bazasi</b> — " + str(total) + " ta\n"
+            "👥 <b>Mijozlar bazasi</b>\n"
             "━━━━━━━━━━━━━━━\n"
-            "💰 Jami daromad: " + fmt(total_revenue) + " so'm\n"
-            "🔄 Qayta xaridorlar: " + str(repeat) + " ta\n\n"
+            f"📊 Jami: {len(my_customers)} ta • VIP: {vip} • Qaytib kelgan: {repeat}\n"
+            f"💰 Jami daromad: {fmt(total_revenue)} so'm\n"
+            f"🔍 Filter: <b>{filter_labels.get(cur_filter, 'Hammasi')}</b> ({total} ta)\n\n"
         )
 
+        if not page_custs:
+            text += "Bu filterda mijoz topilmadi.\n"
+        else:
+            for i, (cuid, cust) in enumerate(page_custs, start=start+1):
+                medal = ['🥇','🥈','🥉'][i-1] if i <= 3 else str(i) + "."
+                badges = ""
+                if 'vip' in cust.get('tags', []):     badges += " ⭐"
+                if 'problem' in cust.get('tags', []): badges += " 🔴"
+                if 'loyal' in cust.get('tags', []):   badges += " 💎"
+                d_ago = days_since_last(cust)
+                act_icon = "🟢" if d_ago < 7 else "🟡" if d_ago < 30 else "🔴"
+                text += (
+                    f"{medal} <b>{cust['name']}{badges}</b>\n"
+                    f"   🛒 {cust['total_orders']} ta • 💰 {fmt(cust['total_spent'])} so'm\n"
+                    f"   {act_icon} Oxirgi: {cust.get('last_order','—')}\n\n"
+                )
+
+        # Klaviatura
         kb_rows = []
-        for i, (cuid, cust) in enumerate(page_custs, start=start+1):
-            medal = ['🥇','🥈','🥉'][i-1] if i <= 3 else str(i) + "."
-            vip = " ⭐" if 'vip' in cust.get('tags', []) else ""
-            text += (
-                medal + " <b>" + cust['name'] + vip + "</b>\n"
-                "   🛒 " + str(cust['total_orders']) + " ta • 💰 " + fmt(cust['total_spent']) + " so'm\n"
-                "   📅 Oxirgi: " + cust.get('last_order','—') + "\n\n"
-            )
+        # Filter qatori
+        kb_rows.append([
+            {'text': ('✅ ' if cur_filter=='all' else '') + 'Hammasi',  'callback_data': 'crm_filter_all'},
+            {'text': ('✅ ' if cur_filter=='vip' else '⭐ ') + 'VIP',    'callback_data': 'crm_filter_vip'},
+            {'text': ('✅ ' if cur_filter=='active' else '🟢 ') + 'Faol','callback_data': 'crm_filter_active'},
+        ])
+        kb_rows.append([
+            {'text': ('✅ ' if cur_filter=='lost' else '🔴 ') + "Yo'qotilgan", 'callback_data': 'crm_filter_lost'},
+            {'text': ('✅ ' if cur_filter=='new' else '🆕 ') + 'Yangi',         'callback_data': 'crm_filter_new'},
+            {'text': ('✅ ' if cur_filter=='repeat' else '🔄 ') + 'Qaytma',     'callback_data': 'crm_filter_repeat'},
+        ])
+        # Qidiruv
+        kb_rows.append([{'text': "🔍 Qidirish", 'callback_data': 'crm_search'}])
+        # Mijozlar
+        for cuid, cust in page_custs:
             kb_rows.append([{'text': "👤 " + cust['name'], 'callback_data': 'crm_view_' + cuid}])
-
-
-        # Navigatsiya
+        # Pagination
         nav = []
         if page > 1:
             nav.append({'text': "◀️", 'callback_data': f'crm_page_{page-1}'})
         if start + per_page < total:
             nav.append({'text': "▶️", 'callback_data': f'crm_page_{page+1}'})
-        if nav:
-            kb_rows.append(nav)
+        if nav: kb_rows.append(nav)
         kb_rows.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
 
         send_seller(uid, text, {'inline_keyboard': kb_rows}, token=SELLER_TOKEN)
+        return
+
+    if d == 'menu_export' or d.startswith('export_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+
+        # Tanlash menyusi
+        if d == 'menu_export':
+            send_seller(uid,
+                "📑 <b>Eksport — Excel</b>\n\n"
+                "Nimani yuklab olasiz?",
+                {'inline_keyboard': [
+                    [{'text': "🛒 Buyurtmalar",     'callback_data': 'export_orders'}],
+                    [{'text': "👥 Mijozlar",        'callback_data': 'export_customers'}],
+                    [{'text': "📦 Mahsulotlar",     'callback_data': 'export_products'}],
+                    [{'text': "💰 Moliyaviy",       'callback_data': 'export_finance'}],
+                    [{'text': "⬅️ Menyu",           'callback_data': 'back_menu'}],
+                ]},
+                token=SELLER_TOKEN
+            )
+            return
+
+        # Excel yaratish
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment
+            import io
+            wb = Workbook()
+            ws = wb.active
+            header_fill = PatternFill(start_color="FF6A1A", end_color="FF6A1A", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF", size=11)
+            center      = Alignment(horizontal="center", vertical="center")
+
+            export_type = d[7:]  # orders / customers / products / finance
+            my_pids = set(seller_products.get(uid, []))
+            sid = str(uid)
+            filename = f"joynshop_{export_type}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+
+            if export_type == 'orders':
+                ws.title = "Buyurtmalar"
+                headers = ["№", "Kod", "Sana", "Mahsulot", "Mijoz", "Telefon", "Summa", "Tur", "Status", "Manzil"]
+                ws.append(headers)
+                for i, (code, o) in enumerate([(c,o) for c,o in orders.items() if o.get('product_id') in my_pids], 1):
+                    p = products.get(o.get('product_id',''), {})
+                    ws.append([
+                        i, code, o.get('created',''), p.get('name',''),
+                        o.get('user_name',''), o.get('user_phone',''),
+                        o.get('amount',0),
+                        'Yakka' if o.get('type')=='solo' else 'Guruh',
+                        o.get('status',''),
+                        o.get('address','')
+                    ])
+
+            elif export_type == 'customers':
+                ws.title = "Mijozlar"
+                headers = ["№", "Ism", "Telegram ID", "Buyurtmalar", "Jami", "O'rtacha", "Birinchi", "Oxirgi", "Teglar", "Izoh"]
+                ws.append(headers)
+                my_custs = customers.get(sid, {})
+                sorted_c = sorted(my_custs.items(), key=lambda x: x[1].get('total_spent',0), reverse=True)
+                for i, (cuid, c) in enumerate(sorted_c, 1):
+                    avg = c['total_spent']//c['total_orders'] if c.get('total_orders') else 0
+                    ws.append([
+                        i, c.get('name',''), c.get('user_id',''),
+                        c.get('total_orders',0), c.get('total_spent',0), avg,
+                        c.get('first_order',''), c.get('last_order',''),
+                        ', '.join(c.get('tags',[])), c.get('note','')
+                    ])
+
+            elif export_type == 'products':
+                ws.title = "Mahsulotlar"
+                headers = ["№", "ID", "Nom", "Kategoriya", "Asl narx", "Guruh narx", "Yakka narx", "Min guruh", "Qoldiq", "Sotildi", "Status"]
+                ws.append(headers)
+                my_prods = [(pid, p) for pid, p in products.items() if pid in my_pids]
+                for i, (pid, p) in enumerate(my_prods, 1):
+                    sold = p.get('stock_initial', 0) - p.get('stock', 0) if p.get('stock', 9999) < 9999 else len(groups.get(pid, []))
+                    ws.append([
+                        i, pid, p.get('name',''), p.get('category',''),
+                        p.get('original_price',0), p.get('group_price',0), p.get('solo_price',0),
+                        p.get('min_group',0),
+                        p.get('stock','♾') if p.get('stock', 9999) < 9999 else '♾',
+                        sold,
+                        p.get('status','active')
+                    ])
+
+            elif export_type == 'finance':
+                ws.title = "Moliya"
+                headers = ["Sana", "Buyurtmalar soni", "Jami summa", "Komissiya (5%)", "Toza daromad"]
+                ws.append(headers)
+                # Kunlar bo'yicha
+                from collections import defaultdict
+                by_day = defaultdict(lambda: {'count': 0, 'sum': 0})
+                for code, o in orders.items():
+                    if o.get('product_id') in my_pids and o.get('status') == 'confirmed':
+                        date = o.get('created', '').split(' ')[0]
+                        by_day[date]['count'] += 1
+                        by_day[date]['sum']   += o.get('amount', 0)
+                for date in sorted(by_day.keys(), reverse=True):
+                    s = by_day[date]['sum']
+                    comm = int(s * COMMISSION_RATE)
+                    ws.append([date, by_day[date]['count'], s, comm, s - comm])
+
+            # Header style
+            for col in range(1, len(headers) + 1):
+                cell = ws.cell(row=1, column=col)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = center
+            # Auto-width
+            for col_cells in ws.columns:
+                max_len = max((len(str(c.value)) for c in col_cells if c.value), default=10)
+                ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
+
+            # Faylni saqlash va yuborish
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            files = {'document': (filename, buf.getvalue(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+            data  = {'chat_id': uid, 'caption': f"📑 {export_type.capitalize()} eksporti tayyor"}
+            requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendDocument', data=data, files=files, timeout=30)
+        except Exception as e:
+            logging.error(f"Export error: {e}")
+            send_seller(uid, f"❌ Eksport xatosi: {e}", token=SELLER_TOKEN)
+        return
+
+    if d == 'menu_inventory':
+        answer_cb(cbid, token=SELLER_TOKEN)
+        my_pids = seller_products.get(uid, [])
+        my_products = [(pid, products[pid]) for pid in my_pids if pid in products]
+        # Stocki bor mahsulotlar
+        with_stock = [(pid, p) for pid, p in my_products if p.get('stock', 9999) < 9999]
+
+        if not with_stock:
+            send_seller(uid,
+                "📦 <b>Inventar</b>\n\n"
+                "Hozircha qoldig'i belgilangan mahsulot yo'q.\n"
+                "Yangi mahsulot qo'shganda <b>qoldiq miqdor</b>ni kiriting.",
+                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]},
+                token=SELLER_TOKEN
+            )
+            return
+
+        # Saralash: stock kam birinchi
+        with_stock.sort(key=lambda x: x[1].get('stock', 0))
+        critical = [x for x in with_stock if x[1].get('stock', 0) == 0]
+        low      = [x for x in with_stock if 0 < x[1].get('stock', 0) <= 5]
+        normal   = [x for x in with_stock if x[1].get('stock', 0) > 5]
+
+        text = "📦 <b>Inventar</b>\n━━━━━━━━━━━━━━━\n\n"
+
+        if critical:
+            text += f"🔴 <b>Tugagan ({len(critical)}):</b>\n"
+            for pid, p in critical[:5]:
+                text += f"  • {p.get('name','—')} — <b>0 ta</b>\n"
+            text += "\n"
+
+        if low:
+            text += f"🟡 <b>Kam qolgan ({len(low)}):</b>\n"
+            for pid, p in low[:10]:
+                stock = p.get('stock', 0)
+                text += f"  • {p.get('name','—')} — <b>{stock} ta</b>\n"
+            text += "\n"
+
+        if normal:
+            text += f"🟢 <b>Yetarli ({len(normal)}):</b>\n"
+            for pid, p in normal[:10]:
+                stock = p.get('stock', 0)
+                text += f"  • {p.get('name','—')} — {stock} ta\n"
+
+        # Sotilgan miqdorni hisoblash
+        total_sold = sum(p.get('stock_initial', 0) - p.get('stock', 0) for _, p in with_stock if p.get('stock', 0) < p.get('stock_initial', 0))
+
+        text += f"\n━━━━━━━━━━━━━━━\n"
+        text += f"📊 Jami sotildi: {total_sold} ta"
+
+        kb = []
+        for pid, p in with_stock[:10]:
+            stock = p.get('stock', 0)
+            icon  = "🔴" if stock == 0 else "🟡" if stock <= 5 else "🟢"
+            kb.append([{'text': f"{icon} {p.get('name','—')[:25]} ({stock} ta)",
+                        'callback_data': f'edit_prod_{pid}'}])
+        kb.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
+
+        send_seller(uid, text, {'inline_keyboard': kb}, token=SELLER_TOKEN)
         return
 
     if d == 'menu_myorders':
@@ -1281,6 +1629,10 @@ def seller_handle_cb(cb):
                 [
                     {'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'},
                     {'text': "👥 Mijozlar",       'callback_data': 'menu_mycustomers'},
+                ],
+                [
+                    {'text': "📦 Inventar",       'callback_data': 'menu_inventory'},
+                    {'text': "📑 Eksport",        'callback_data': 'menu_export'},
                 ],
                 [
                     {'text': "❓ Yordam",         'callback_data': 'menu_help'},
@@ -1390,6 +1742,34 @@ def seller_handle_cb(cb):
         seller_id = p.get('seller_id')
         if seller_id:
             update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''))
+
+        # ─── INVENTAR: stock kamaytirish ───
+        if pid in products and products[pid].get('stock', 9999) < 9999:
+            products[pid]['stock'] = max(0, products[pid].get('stock', 0) - 1)
+            current_stock = products[pid]['stock']
+            stock_init    = products[pid].get('stock_initial', current_stock)
+            # Stock 0 — mahsulotni yopish
+            if current_stock == 0:
+                products[pid]['status'] = 'closed'
+                if seller_id:
+                    send_seller(seller_id,
+                        f"🔴 <b>QOLDIQ TUGADI!</b>\n\n"
+                        f"📦 {p.get('name','')}\n"
+                        f"Mahsulot avtomatik yopildi.\n\n"
+                        f"Qoldiq qo'shish uchun mahsulotni tahrirlang.",
+                        {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
+                    )
+            # Stock 5 yoki kam — ogohlantirish (faqat 5,4,3,2,1 da bir marta)
+            elif current_stock <= 5 and stock_init > 5:
+                if seller_id:
+                    send_seller(seller_id,
+                        f"⚠️ <b>QOLDIQ KAM!</b>\n\n"
+                        f"📦 {p.get('name','')}\n"
+                        f"📊 Qoldiq: {current_stock} ta\n\n"
+                        f"Tez orada qo'shimcha qo'shing.",
+                        {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
+                    )
+
         save_data()
 
         if o.get('type') == 'group':
@@ -1588,6 +1968,8 @@ def show_prod_confirm(cid, s, shop):
     sale_labels = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
     sale_line   = f"\n{sale_labels.get(s.get('sale_type','both'), '')}"
     min_group_line = f"\n👥 Min guruh: {s['min_group']} kishi" if s.get('sale_type') != 'solo' else ''
+    stock          = s.get('stock', 9999)
+    stock_line     = f"\n📦 Qoldiq: {'♾ Cheksiz' if stock >= 9999 else str(stock) + ' ta'}"
     # Deadline
     hours = int(s.get('deadline_hours', 48))
     deadline_labels = {24: '24 soat', 48: '2 kun', 72: '3 kun', 168: '1 hafta'}
@@ -1601,7 +1983,7 @@ def show_prod_confirm(cid, s, shop):
         f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}"
         f"{cat_line}{sale_line}\n"
         f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
-        f"{min_group_line}\n📢 {shop.get('channel','—')}"
+        f"{min_group_line}{stock_line}\n📢 {shop.get('channel','—')}"
         f"{deadline_line}"
         f"{desc_line}{solo_line}{variants_line}",
         {'inline_keyboard': [
@@ -1677,6 +2059,8 @@ def publish_product(uid, cid, s):
         'group_price':    s['group_price'],
         'solo_price':     s.get('solo_price', 0),
         'min_group':      s['min_group'],
+        'stock':          s.get('stock', 9999),
+        'stock_initial':  s.get('stock', 9999),
         'photo_id':       first_photo,
         'photo_ids':      photo_ids,
         'photo_url':      first_url,
@@ -2016,6 +2400,74 @@ def seller_handle_msg(msg):
         s    = seller_state[uid]
         step = s.get('step')
 
+        # ─── CRM: Mijozga xabar yuborish ───
+        if step == 'crm_send_msg':
+            if text == '/cancel':
+                del seller_state[uid]
+                send_seller(cid, "❌ Bekor qilindi.")
+                return
+            target_uid = s.get('target_uid')
+            target_name = s.get('target_name')
+            del seller_state[uid]
+            shop_name = (seller_shops.get(uid) or [{}])[0].get('name', '')
+            try:
+                send_buyer(target_uid,
+                    f"💬 <b>{shop_name}</b> dan xabar:\n\n{text}\n\n"
+                    f"<i>Joynshop orqali yuborildi</i>"
+                )
+                send_seller(cid, f"✅ Xabar <b>{target_name}</b> ga yuborildi.")
+            except Exception as e:
+                send_seller(cid, f"❌ Xabar yuborilmadi: {e}")
+            return
+
+        # ─── CRM: Mijozga izoh qo'shish ───
+        if step == 'crm_add_note':
+            if text == '/cancel':
+                del seller_state[uid]
+                send_seller(cid, "❌ Bekor qilindi.")
+                return
+            sid = str(uid)
+            cuid = s.get('target_cuid')
+            target_name = s.get('target_name')
+            del seller_state[uid]
+            if sid in customers and cuid in customers[sid]:
+                customers[sid][cuid]['note'] = text[:300]
+                save_data()
+                send_seller(cid, f"✅ Izoh <b>{target_name}</b> uchun saqlandi.",
+                    {'inline_keyboard': [[{'text': "👤 Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}]]}
+                )
+            else:
+                send_seller(cid, "❌ Mijoz topilmadi.")
+            return
+
+        # ─── CRM: Qidiruv ───
+        if step == 'crm_search_query':
+            del seller_state[uid]
+            sid = str(uid)
+            my_customers = customers.get(sid, {})
+            q = text.lower().strip()
+            if not q:
+                send_seller(cid, "❌ Qidiruv so'rovi bo'sh.")
+                return
+            results = []
+            for cuid, c in my_customers.items():
+                if q in c.get('name','').lower() or q in str(c.get('user_id','')).lower():
+                    results.append((cuid, c))
+            if not results:
+                send_seller(cid, f"🔍 \"{text}\" bo'yicha hech narsa topilmadi.",
+                    {'inline_keyboard': [[{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}]]}
+                )
+                return
+            kb = []
+            txt = f"🔍 <b>Qidiruv natijasi: {len(results)} ta</b>\n\n"
+            for cuid, c in results[:15]:
+                badges = " ⭐" if 'vip' in c.get('tags', []) else ""
+                txt += f"• <b>{c['name']}{badges}</b> — {fmt(c['total_spent'])} so'm\n"
+                kb.append([{'text': "👤 " + c['name'], 'callback_data': 'crm_view_' + cuid}])
+            kb.append([{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}])
+            send_seller(cid, txt, {'inline_keyboard': kb})
+            return
+
         if step == 'add_mod_user':
             username = text if text.startswith('@') else f'@{text}'
             channel  = s.get('mod_channel')
@@ -2261,10 +2713,28 @@ def seller_handle_msg(msg):
             try:
                 mg = int(text)
                 if mg < 2 or mg > 10: send_seller(cid, "❌ 2 dan 10 gacha!"); return
-                s['min_group'] = mg; s['step'] = 'prod_desc'; s['description'] = ''; s['variants'] = []
+                s['min_group'] = mg; s['step'] = 'prod_stock'
                 send_seller(cid,
                     f"✅ Minimal guruh: {mg} kishi\n\n"
-                    "<b>5/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+                    "<b>5/7</b> 📦 <b>Qoldiq miqdor</b> (sizda nechta bor?):\n"
+                    "<i>Masalan: 20</i>\n\n"
+                    "Qoldiq tugaganda mahsulot avtomatik yopiladi.",
+                    {'inline_keyboard': [[{'text': "♾ Cheksiz", 'callback_data': 'prod_stock_unlimited'}]]}
+                )
+            except: send_seller(cid, "❌ Raqam kiriting!")
+
+        elif step == 'prod_stock':
+            try:
+                stock = int(text)
+                if stock < 1 or stock > 10000:
+                    send_seller(cid, "❌ 1 dan 10000 gacha kiriting!"); return
+                s['stock'] = stock
+                s['step'] = 'prod_desc'
+                s['description'] = ''
+                s['variants'] = []
+                send_seller(cid,
+                    f"✅ Qoldiq: {stock} ta\n\n"
+                    "<b>6/7</b> Mahsulot tavsifi (ixtiyoriy):\n"
                     "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
                     {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
                 )
@@ -3481,6 +3951,7 @@ def api_product(pid):
         'group_price':   p['group_price'],
         'min_group':     p['min_group'],
         'count':         count,
+        'stock':         p.get('stock', 9999),
         'sale_type':     p.get('sale_type', 'both'),
         'variants':      p.get('variants', []),
         'shop_name':     p.get('shop_name', ''),
@@ -3597,6 +4068,7 @@ def api_products():
             'seller_channel': p.get('seller_channel',''),
             'solo_available': p.get('solo_available', True),
             'variants':       p.get('variants', []),
+            'stock':          p.get('stock', 9999),
         })
     result.sort(key=lambda x: x['count'], reverse=True)
     return jsonify(result)
