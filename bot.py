@@ -1835,15 +1835,16 @@ def seller_handle_cb(cb):
     if d == 'menu_help':
         answer_cb(cbid)
         send_seller(uid,
-            "ℹ️ <b>Sotuvchi yordam</b>\n\n"
-            "/addproduct    — Mahsulot qo'shish\n"
-            "/myproducts    — Mahsulotlarim\n"
-            "/mystats       — Statistika\n"
-            "/myorders      — Buyurtmalar\n"
-            "/mychannels    — Kanallarim\n"
-            "/addmoderator  — Moderator qo'shish\n"
-            "/boost [ID]    — Qayta e'lon\n"
-            "/delete [ID]   — O'chirish\n\n"
+"ℹ️ <b>Sotuvchi yordam</b>\n\n"
+            "/start         — 🏠 Bosh sahifa\n"
+            "/addproduct    — ➕ Mahsulot qo'shish\n"
+            "/myproducts    — 📦 Mahsulotlarim\n"
+            "/myorders      — 📋 Buyurtmalar\n"
+            "/mystats       — 📊 Statistika\n"
+            "/golive        — 🔴 Live boshlash\n"
+            "/mylive        — 📺 Live dashboard\n"
+            "/mychannels    — 📢 Kanallarim\n"
+            "/help          — ℹ️ Yordam\n\n"
             "💬 Yordam: @joynshop_support",
             {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
         )
@@ -2528,14 +2529,15 @@ def seller_handle_msg(msg):
     if text == '/help':
         send_seller(cid,
             "ℹ️ <b>Sotuvchi yordam</b>\n\n"
-            "/addproduct  — Mahsulot qo'shish\n"
-            "/myproducts  — Mahsulotlarim\n"
-            "/mystats     — Statistika\n"
-            "/myorders    — Buyurtmalar\n"
+            "/start       — 🏠 Bosh sahifa\n"
+            "/addproduct  — ➕ Mahsulot qo'shish\n"
+            "/myproducts  — 📦 Mahsulotlarim\n"
+            "/myorders    — 📋 Buyurtmalar\n"
+            "/mystats     — 📊 Statistika\n"
             "/golive      — 🔴 Live boshlash\n"
-            "/mylive      — Live dashboard\n"
-            "/boost [ID]  — Qayta e'lon\n"
-            "/delete [ID] — O'chirish\n\n"
+            "/mylive      — 📺 Live dashboard\n"
+            "/mychannels  — 📢 Kanallarim\n"
+            "/help        — ℹ️ Yordam\n\n"
             "💬 Yordam: @joynshop_support"
         )
         return
