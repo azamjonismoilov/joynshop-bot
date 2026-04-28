@@ -135,8 +135,9 @@ def setup_bot_ui():
                 {'command': 'myproducts', 'description': '📦 Mahsulotlarim'},
                 {'command': 'myorders',   'description': '📋 Buyurtmalar'},
                 {'command': 'mystats',    'description': '📊 Statistika'},
-                {'command': 'golive',     'description': '🔴 Live boshlash'},
-                {'command': 'mylive',     'description': '📺 Live dashboard'},
+                # LIVE FROZEN: traction olganidan keyin uncomment qilinadi
+                # {'command': 'golive',     'description': '🔴 Live boshlash'},
+                # {'command': 'mylive',     'description': '📺 Live dashboard'},
                 {'command': 'mychannels', 'description': '📢 Kanallarim'},
                 {'command': 'help',       'description': 'ℹ️ Yordam'},
             ]

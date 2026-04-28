@@ -426,7 +426,9 @@ body{font-family:'Inter',sans-serif;background:var(--n50);color:var(--n900);min-
 
 <div class="bottom-nav">
   <button class="nav-item active" id="nav-home" onclick="setPage('home')"><div class="nav-icon"><i class="ri-home-5-fill"></i></div><div class="nav-label">Bosh sahifa</div></button>
+  <!-- LIVE FROZEN: traction olganidan keyin qaytarish — quyidagi qatorni uncomment qilish kifoya
   <button class="nav-item" id="nav-live" onclick="setPage('live')"><div class="nav-icon" style="position:relative"><i class="ri-live-fill" style="color:#EF4444"></i><span id="liveBadge" style="display:none;position:absolute;top:-2px;right:-6px;background:#EF4444;color:#fff;font-size:9px;padding:1px 4px;border-radius:6px;font-weight:700">LIVE</span></div><div class="nav-label">Live</div></button>
+  -->
   <button class="nav-item" id="nav-saqlangan" onclick="setPage('saqlangan')"><div class="nav-icon"><i class="ri-heart-3-fill"></i></div><div class="nav-label">Saqlangan</div></button>
   <button class="nav-item" id="nav-orders" onclick="setPage('orders')"><div class="nav-icon"><i class="ri-file-list-3-fill"></i></div><div class="nav-label">Buyurtmalar</div></button>
   <button class="nav-item" id="nav-profile" onclick="setPage('profile')"><div class="nav-icon"><i class="ri-user-fill"></i></div><div class="nav-label">Profil</div></button>
@@ -949,8 +951,9 @@ async function handleDeepLink(){
 }
 
 loadProducts().then(() => handleDeepLink());
-checkLiveBadge();
-setInterval(checkLiveBadge, 30000);
+// LIVE FROZEN: badge polling o'chirilgan — qaytarish uchun quyidagi 2 qatorni uncomment qiling
+// checkLiveBadge();
+// setInterval(checkLiveBadge, 30000);
 
 async function loadStats(){
   try{
