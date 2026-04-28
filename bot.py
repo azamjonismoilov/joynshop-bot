@@ -159,13 +159,16 @@ referral_map            = {}
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
-    import urllib.parse
+    import urllib.parse, ssl
     r = urllib.parse.urlparse(DATABASE_URL)
+    ssl_ctx = ssl.create_default_context()
+    ssl_ctx.check_hostname = False
+    ssl_ctx.verify_mode = ssl.CERT_NONE
     return pg8000.connect(
         host=r.hostname, port=r.port or 5432,
         database=r.path.lstrip('/'),
         user=r.username, password=r.password,
-        ssl_context=True
+        ssl_context=ssl_ctx
     )
 
 def init_db():
