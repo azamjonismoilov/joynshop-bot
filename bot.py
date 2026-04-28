@@ -4682,7 +4682,7 @@ def setup_menu_route():
         r=requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/setChatMenuButton',
             json={'menu_button':{'type':'commands'}}).json()
         results['seller_menu']=r
-    results['miniapp_url']=miniapp_url; results['APP_URL']=APP_URL
+    results['miniapp_url']=miniapp_url; results['APP_URL']=APP_URL; results['BACKEND_URL']=BACKEND_URL
     return jsonify({'ok':True,'results':results})
 
 @app.route('/dashboard', methods=['GET'])
