@@ -186,36 +186,40 @@ def save_data():
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL")
         return
-    try:
-        data = {
-            'products':               products,
-            'groups':                 groups,
-            'orders':                 orders,
-            'wishlists':              wishlists,
-            'buyer_profiles':         buyer_profiles,
-            'refund_requests':        refund_requests,
-            'seller_products':        {str(k): v for k, v in seller_products.items()},
-            'seller_shops':           {str(k): v for k, v in seller_shops.items()},
-            'verified_channels':      verified_channels,
-            'pending_moderator_codes':pending_moderator_codes,
-            'referrals':              referrals,
-            'referral_map':           {str(k): v for k, v in referral_map.items()},
-            'customers':              {str(k): v for k, v in customers.items()},
-            'lives':                  {str(k): v for k, v in lives.items()},
-        }
-        payload = json.dumps(data, ensure_ascii=False, default=str)
-        conn    = get_db()
-        cur     = conn.cursor()
-        cur.execute(
-            "INSERT INTO joynshop_data (key, value) VALUES ('main', %s) "
-            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-            (payload,)
-        )
-        conn.commit()
-        cur.close(); conn.close()
-        logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
-    except Exception as e:
-        logging.error(f"save_data error: {e}", exc_info=True)
+    for attempt in range(3):
+        try:
+            data = {
+                'products':               products,
+                'groups':                 groups,
+                'orders':                 orders,
+                'wishlists':              wishlists,
+                'buyer_profiles':         buyer_profiles,
+                'refund_requests':        refund_requests,
+                'seller_products':        {str(k): v for k, v in seller_products.items()},
+                'seller_shops':           {str(k): v for k, v in seller_shops.items()},
+                'verified_channels':      verified_channels,
+                'pending_moderator_codes':pending_moderator_codes,
+                'referrals':              referrals,
+                'referral_map':           {str(k): v for k, v in referral_map.items()},
+                'customers':              {str(k): v for k, v in customers.items()},
+                'lives':                  {str(k): v for k, v in lives.items()},
+            }
+            payload = json.dumps(data, ensure_ascii=False, default=str)
+            conn    = get_db()
+            cur     = conn.cursor()
+            cur.execute(
+                "INSERT INTO joynshop_data (key, value) VALUES ('main', %s) "
+                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+                (payload,)
+            )
+            conn.commit()
+            cur.close(); conn.close()
+            logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
+            return
+        except Exception as e:
+            logging.error(f"save_data error (attempt {attempt+1}): {e}")
+            if attempt == 2:
+                logging.error("save_data failed 3 times!", exc_info=True)
 
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
@@ -254,8 +258,10 @@ def load_data():
         raw_lv = data.get('lives', {})
         lives = {k: v for k, v in raw_lv.items()}
         logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
+        print(f"[JOYNSHOP] Data loaded: {len(products)} products, {len(seller_shops)} shops, {len(orders)} orders")
     except Exception as e:
         logging.error(f"load_data error: {e}", exc_info=True)
+        print(f"[JOYNSHOP] load_data ERROR: {e}")
 
 # ─── CLICK PAYMENT HELPERS ──────────────────────────────────────────
 def send_invoice(cid, title, description, payload, amount, photo_url=None):
