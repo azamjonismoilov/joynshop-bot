@@ -349,7 +349,7 @@ def send_or_edit_seller(cid, text, kb=None, state=None):
         r = edit_message(cid, mid, text, kb)
         if r and r.get('ok'):
             return r
-    r = send(cid, text, kb, token=SELLER_TOKEN)
+    r = send(cid, text, kb)
     if r and state is not None:
         result = r.get('result', {})
         if result.get('message_id'):
@@ -799,10 +799,10 @@ def seller_handle_cb(cb):
     d    = cb['data']
 
     if d == 'noop':
-        answer_cb(cbid, token=SELLER_TOKEN); return
+        answer_cb(cbid); return
 
     if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_') and not d.startswith('crm_') and not d.startswith('live_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         send_seller(uid, get_prod_progress_text(uid),
             {'inline_keyboard': [
                 [{'text': "▶️ Davom etish", 'callback_data': 'prod_continue'}],
@@ -812,17 +812,17 @@ def seller_handle_cb(cb):
         return
 
     if d == 'add_new_shop':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state[uid] = {'step': 'ob_shop_name', 'adding_shop': True}
         send_seller(uid, "🏪 <b>Yangi do'kon</b>\n\n<b>1/4</b> Do'kon nomini yozing:")
         return
 
     if d.startswith('ob_delivery_'):
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        if not s: answer_cb(cbid); return
         delivery_map = {'ob_delivery_deliver': 'deliver', 'ob_delivery_pickup': 'pickup', 'ob_delivery_both': 'both'}
         s['ob_delivery'] = delivery_map.get(d, 'pickup')
-        s['step'] = 'ob_channel'; answer_cb(cbid, token=SELLER_TOKEN)
+        s['step'] = 'ob_channel'; answer_cb(cbid)
         send_or_edit_seller(uid,
             "📢 Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
             "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!",
@@ -831,14 +831,14 @@ def seller_handle_cb(cb):
 
     if d in ('ob_skip_phone2', 'ob_keep_phone'):
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        if not s: answer_cb(cbid); return
         if d == 'ob_keep_phone':
             idx = s.get('edit_shop_idx', 0)
             shops = seller_shops.get(uid, [])
             s['ob_phone'] = shops[idx].get('phone', '') if idx < len(shops) else s.get('ob_phone', '')
         else:
             s['ob_phone2'] = ''
-        s['step'] = 'ob_address'; answer_cb(cbid, token=SELLER_TOKEN)
+        s['step'] = 'ob_address'; answer_cb(cbid)
         send_or_edit_seller(uid,
             "📍 Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor, 3-mavze</i>",
             {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]},
@@ -847,8 +847,8 @@ def seller_handle_cb(cb):
 
     if d == 'ob_skip_address':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['ob_address'] = ''; s['step'] = 'ob_social'; answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        s['ob_address'] = ''; s['step'] = 'ob_social'; answer_cb(cbid)
         send_or_edit_seller(uid,
             "🌐 Ijtimoiy tarmoqlar (ixtiyoriy):\n"
             "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz</code>",
@@ -858,8 +858,8 @@ def seller_handle_cb(cb):
 
     if d == 'ob_skip_social':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['ob_social'] = {}; s['step'] = 'ob_delivery'; answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        s['ob_social'] = {}; s['step'] = 'ob_delivery'; answer_cb(cbid)
         send_or_edit_seller(uid,
             "🚚 Yetkazib berish turini tanlang:",
             {'inline_keyboard': [
@@ -873,8 +873,8 @@ def seller_handle_cb(cb):
     if d.startswith('edit_shop_'):
         idx = int(d.split('_')[2])
         shops = seller_shops.get(uid, [])
-        if idx >= len(shops): answer_cb(cbid, token=SELLER_TOKEN); return
-        shop = shops[idx]; answer_cb(cbid, token=SELLER_TOKEN)
+        if idx >= len(shops): answer_cb(cbid); return
+        shop = shops[idx]; answer_cb(cbid)
         social_text = '\n'.join(f"🔗 {k}: {v}" for k, v in shop.get('social', {}).items())
         send_seller(uid,
             f"✏️ <b>Do'kon tahrirlash</b>\n\n"
@@ -893,7 +893,7 @@ def seller_handle_cb(cb):
 
     if d.startswith('edit_shop_full_'):
         idx = int(d.split('_')[3])
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state[uid] = {'step': 'ob_shop_name', 'edit_shop_idx': idx}
         shops = seller_shops.get(uid, [])
         shop = shops[idx] if idx < len(shops) else {}
@@ -903,7 +903,7 @@ def seller_handle_cb(cb):
 
     if d.startswith('edit_shop_phone_'):
         idx = int(d.split('_')[3])
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state[uid] = {'step': 'edit_phone_direct', 'edit_shop_idx': idx,
                              'ob_shop_name': seller_shops[uid][idx]['name'],
                              'ob_delivery':  seller_shops[uid][idx].get('delivery','pickup'),
@@ -915,7 +915,7 @@ def seller_handle_cb(cb):
 
     if d.startswith('edit_shop_address_'):
         idx = int(d.split('_')[3])
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state[uid] = {'step': 'edit_address_direct', 'edit_shop_idx': idx,
                              'ob_shop_name': seller_shops[uid][idx]['name'],
                              'ob_phone':     seller_shops[uid][idx].get('phone',''),
@@ -928,7 +928,7 @@ def seller_handle_cb(cb):
 
     if d.startswith('edit_shop_social_'):
         idx = int(d.split('_')[3])
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state[uid] = {'step': 'edit_social_direct', 'edit_shop_idx': idx,
                              'ob_shop_name': seller_shops[uid][idx]['name'],
                              'ob_phone':     seller_shops[uid][idx].get('phone',''),
@@ -945,8 +945,8 @@ def seller_handle_cb(cb):
     if d.startswith('sel_shop_'):
         idx = int(d.split('_')[2])
         shops = seller_shops.get(uid, [])
-        if idx >= len(shops): answer_cb(cbid, '❌', token=SELLER_TOKEN); return
-        shop = shops[idx]; answer_cb(cbid, token=SELLER_TOKEN)
+        if idx >= len(shops): answer_cb(cbid, '❌'); return
+        shop = shops[idx]; answer_cb(cbid)
         seller_state[uid] = {
             'step': 'prod_name', 'shop_idx': idx,
             'shop_name':      shop['name'],
@@ -960,7 +960,7 @@ def seller_handle_cb(cb):
         return
 
     if d.startswith('cat_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s: return
         cat = d[4:]
@@ -977,7 +977,7 @@ def seller_handle_cb(cb):
         return
 
     if d in ('sale_type_group', 'sale_type_solo', 'sale_type_both'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s: return
         s['sale_type'] = d.replace('sale_type_', '')
@@ -992,8 +992,8 @@ def seller_handle_cb(cb):
     if d == 'prod_photo_done':
         s = seller_state.get(uid)
         if not s or not s.get('photo_ids'):
-            answer_cb(cbid, '❌ Rasm yo\'q', token=SELLER_TOKEN); return
-        s['step'] = 'prod_price'; answer_cb(cbid, token=SELLER_TOKEN)
+            answer_cb(cbid, '❌ Rasm yo\'q'); return
+        s['step'] = 'prod_price'; answer_cb(cbid)
         sale_type = s.get('sale_type', 'both')
         if sale_type == 'solo':
             price_hint = "<b>4/5</b> Yakka sotuv narxini kiriting (so'm):\n<code>850000</code>"
@@ -1004,42 +1004,42 @@ def seller_handle_cb(cb):
 
     if d == 'prod_confirm_publish':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        answer_cb(cbid)
         publish_product(uid, uid, s); return
 
     if d == 'prod_add_desc':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['step'] = 'prod_edit_desc'; answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        s['step'] = 'prod_edit_desc'; answer_cb(cbid)
         send_seller(uid, "Tavsif yozing (max 300 belgi):"); return
 
     if d == 'prod_add_solo':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['step'] = 'prod_edit_solo'; answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        s['step'] = 'prod_edit_solo'; answer_cb(cbid)
         send_seller(uid, "Yakka sotuv narxini yozing (so'm):"); return
 
     if d.startswith('prod_deadline_'):
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
+        if not s: answer_cb(cbid); return
         hours_map = {'prod_deadline_24': 24, 'prod_deadline_48': 48,
                      'prod_deadline_72': 72, 'prod_deadline_168': 168}
         h = hours_map.get(d, 48)
         s['deadline_hours'] = h
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         shop = seller_shops.get(uid, [{}])[s.get('shop_idx', 0)]
         show_prod_confirm(uid, s, shop)
         return
 
     if d == 'prod_add_variants':
         s = seller_state.get(uid)
-        if not s: answer_cb(cbid, token=SELLER_TOKEN); return
-        s['step'] = 'prod_edit_variants'; answer_cb(cbid, token=SELLER_TOKEN)
+        if not s: answer_cb(cbid); return
+        s['step'] = 'prod_edit_variants'; answer_cb(cbid)
         send_seller(uid, "Variantlarni vergul bilan yozing:\n<i>38, 39, 40 yoki Qizil, Ko'k</i>"); return
 
     if d in ('start_addproduct', 'menu_addproduct'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         if is_prod_in_progress(uid):
             send_seller(uid, get_prod_progress_text(uid),
                 {'inline_keyboard': [
@@ -1074,7 +1074,7 @@ def seller_handle_cb(cb):
         return
 
     if d.startswith('prod_shop_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         try:
             idx = int(d.split('_')[2])
         except:
@@ -1092,7 +1092,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'prod_continue':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid, {})
         step = s.get('step','')
         step_msgs = {
@@ -1106,7 +1106,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'prod_stock_unlimited':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s or s.get('step') != 'prod_stock':
             return
@@ -1123,7 +1123,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'prod_skip_desc':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s: return
         s['description'] = ''; s['step'] = 'prod_confirm'
@@ -1132,7 +1132,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'prod_restart':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         seller_state.pop(uid, None)
         send_seller(uid, "🗑 Bekor qilindi. Yangi mahsulot boshlang:",
             {'inline_keyboard': [[{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
@@ -1140,7 +1140,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_mystats':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         my = seller_products.get(uid, [])
         if not my:
             send_seller(uid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
@@ -1161,7 +1161,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_mycustomers' or d.startswith('crm_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         sid = str(uid)
         my_customers = customers.get(sid, {})
 
@@ -1180,7 +1180,7 @@ def seller_handle_cb(cb):
             cuid = d[9:]
             cust = my_customers.get(cuid, {})
             if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+                send_seller(uid, "❌ Mijoz topilmadi."); return
             orders_text = ""
             for o in reversed(cust.get('orders', [])[-5:]):
                 orders_text += f"  \u2022 {o['product']} \u2014 {fmt(o['amount'])} so'm ({o['date']})\n"
@@ -1218,8 +1218,7 @@ def seller_handle_cb(cb):
                     [{'text': "💬 Xabar yuborish", 'callback_data': 'crm_msg_'+cuid}],
                     [{'text': "📝 Izoh qo'shish",  'callback_data': 'crm_note_'+cuid}],
                     [{'text': "⬅️ Orqaga", 'callback_data': 'menu_mycustomers'}],
-                ]},
-                token=SELLER_TOKEN
+                ]}
             )
             return
 
@@ -1236,7 +1235,7 @@ def seller_handle_cb(cb):
                 my_customers[cuid]['tags'] = tags
                 customers[sid] = my_customers
                 save_data()
-                send_seller(uid, msg, token=SELLER_TOKEN)
+                send_seller(uid, msg)
             return
 
         # ─── XABAR YUBORISH ───
@@ -1244,12 +1243,11 @@ def seller_handle_cb(cb):
             cuid = d[8:]
             cust = my_customers.get(cuid, {})
             if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+                send_seller(uid, "❌ Mijoz topilmadi."); return
             seller_state[uid] = {'step': 'crm_send_msg', 'target_uid': cust.get('user_id'), 'target_name': cust['name']}
             send_seller(uid,
                 f"💬 <b>{cust['name']}</b> ga xabar yuborish\n\n"
-                f"Xabar matnini yozing (yoki /cancel):",
-                token=SELLER_TOKEN
+                f"Xabar matnini yozing (yoki /cancel):"
             )
             return
 
@@ -1258,14 +1256,13 @@ def seller_handle_cb(cb):
             cuid = d[9:]
             cust = my_customers.get(cuid, {})
             if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi.", token=SELLER_TOKEN); return
+                send_seller(uid, "❌ Mijoz topilmadi."); return
             seller_state[uid] = {'step': 'crm_add_note', 'target_cuid': cuid, 'target_name': cust['name']}
             current_note = cust.get('note', '')
             send_seller(uid,
                 f"📝 <b>{cust['name']}</b> uchun izoh\n\n"
                 + (f"Joriy izoh: <i>{current_note}</i>\n\n" if current_note else "") +
-                f"Yangi izoh yozing (yoki /cancel):",
-                token=SELLER_TOKEN
+                f"Yangi izoh yozing (yoki /cancel):"
             )
             return
 
@@ -1274,8 +1271,7 @@ def seller_handle_cb(cb):
             seller_state[uid] = {'step': 'crm_search_query'}
             send_seller(uid,
                 "🔍 <b>Mijoz qidirish</b>\n\n"
-                "Ism yoki telefon raqamini yozing:",
-                token=SELLER_TOKEN
+                "Ism yoki telefon raqamini yozing:"
             )
             return
 
@@ -1284,8 +1280,7 @@ def seller_handle_cb(cb):
             send_seller(uid,
                 "👥 <b>Mijozlar bazasi</b>\n\nHali mijoz yo'q.\n"
                 "Buyurtmalar tasdiqlanganidan keyin mijozlar bu yerda ko'rinadi.",
-                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]},
-                token=SELLER_TOKEN
+                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]}
             )
             return
 
@@ -1378,21 +1373,21 @@ def seller_handle_cb(cb):
         if nav: kb_rows.append(nav)
         kb_rows.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
 
-        send_seller(uid, text, {'inline_keyboard': kb_rows}, token=SELLER_TOKEN)
+        send_seller(uid, text, {'inline_keyboard': kb_rows})
         return
 
     # ─── LIVE COMMERCE ───────────────────────────────────────────
     if d == 'live_cancel':
-        answer_cb(cbid, "Bekor qilindi", token=SELLER_TOKEN)
+        answer_cb(cbid, "Bekor qilindi")
         if uid in seller_state and seller_state[uid].get('step','').startswith('live_'):
             del seller_state[uid]
         return
 
     if d.startswith('live_pick_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         pid = d[10:]
         if pid not in products:
-            send_seller(uid, "❌ Mahsulot topilmadi.", token=SELLER_TOKEN)
+            send_seller(uid, "❌ Mahsulot topilmadi.")
             return
         seller_state[uid] = {
             'step': 'live_video',
@@ -1405,13 +1400,12 @@ def seller_handle_cb(cb):
             f"⏱ Davomiyligi: 15 soniyadan 5 daqiqagacha\n"
             f"📐 Vertikal video tavsiya etiladi (9:16)\n\n"
             f"<i>Videoni shu chatga yuboring...</i>",
-            {'inline_keyboard': [[{'text': "❌ Bekor", 'callback_data': 'live_cancel'}]]},
-            token=SELLER_TOKEN
+            {'inline_keyboard': [[{'text': "❌ Bekor", 'callback_data': 'live_cancel'}]]}
         )
         return
 
     if d.startswith('live_dur_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s or s.get('step') != 'live_duration':
             return
@@ -1433,13 +1427,12 @@ def seller_handle_cb(cb):
                  {'text': "15%", 'callback_data': 'live_disc_15'},
                  {'text': "20%", 'callback_data': 'live_disc_20'}],
                 [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
-            ]},
-            token=SELLER_TOKEN
+            ]}
         )
         return
 
     if d.startswith('live_disc_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         s = seller_state.get(uid)
         if not s or s.get('step') != 'live_discount':
             return
@@ -1464,13 +1457,12 @@ def seller_handle_cb(cb):
             {'inline_keyboard': [
                 [{'text': "🚀 LIVE BOSHLASH", 'callback_data': 'live_start'}],
                 [{'text': "❌ Bekor",         'callback_data': 'live_cancel'}],
-            ]},
-            token=SELLER_TOKEN
+            ]}
         )
         return
 
     if d == 'live_start':
-        answer_cb(cbid, "🔴 Live boshlanmoqda...", token=SELLER_TOKEN)
+        answer_cb(cbid, "🔴 Live boshlanmoqda...")
         s = seller_state.get(uid)
         if not s or s.get('step') != 'live_confirm':
             return
@@ -1546,17 +1538,16 @@ def seller_handle_cb(cb):
             f"Real-time dashboard:",
             {'inline_keyboard': [[
                 {'text': "📊 Dashboard", 'callback_data': f'live_dash_{live_id}'},
-            ]]},
-            token=SELLER_TOKEN
+            ]]}
         )
         return
 
     if d.startswith('live_dash_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         live_id = d[10:]
         lv = lives.get(live_id)
         if not lv:
-            send_seller(uid, "❌ Live topilmadi.", token=SELLER_TOKEN)
+            send_seller(uid, "❌ Live topilmadi.")
             return
         p = products.get(lv.get('product_id',''), {})
         from datetime import datetime as _dt
@@ -1590,13 +1581,12 @@ def seller_handle_cb(cb):
                 [{'text': "🔄 Yangilash",  'callback_data': f'live_dash_{live_id}'}],
                 [{'text': "🛑 Tugatish",   'callback_data': f'live_end_{live_id}'}],
                 [{'text': "⬅️ Menyu",      'callback_data': 'back_menu'}],
-            ]},
-            token=SELLER_TOKEN
+            ]}
         )
         return
 
     if d.startswith('live_end_'):
-        answer_cb(cbid, "Live tugatildi", token=SELLER_TOKEN)
+        answer_cb(cbid, "Live tugatildi")
         live_id = d[9:]
         lv = lives.get(live_id)
         if not lv or lv.get('seller_id') != uid:
@@ -1608,14 +1598,13 @@ def seller_handle_cb(cb):
             f"🛑 <b>Live tugatildi</b>\n\n"
             f"📦 {p.get('name','')}\n"
             f"👀 Ko'rdi: {lv.get('viewer_count', 0)}\n"
-            f"👥 Qo'shildi: {len(lv.get('joiners', []))}",
-            token=SELLER_TOKEN
+            f"👥 Qo'shildi: {len(lv.get('joiners', []))}"
         )
         return
     # ─── /LIVE COMMERCE ──────────────────────────────────────────
 
     if d == 'menu_export' or d.startswith('export_'):
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
 
         # Tanlash menyusi
         if d == 'menu_export':
@@ -1628,8 +1617,7 @@ def seller_handle_cb(cb):
                     [{'text': "📦 Mahsulotlar",     'callback_data': 'export_products'}],
                     [{'text': "💰 Moliyaviy",       'callback_data': 'export_finance'}],
                     [{'text': "⬅️ Menyu",           'callback_data': 'back_menu'}],
-                ]},
-                token=SELLER_TOKEN
+                ]}
             )
             return
 
@@ -1732,11 +1720,11 @@ def seller_handle_cb(cb):
             requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendDocument', data=data, files=files, timeout=30)
         except Exception as e:
             logging.error(f"Export error: {e}")
-            send_seller(uid, f"❌ Eksport xatosi: {e}", token=SELLER_TOKEN)
+            send_seller(uid, f"❌ Eksport xatosi: {e}")
         return
 
     if d == 'menu_inventory':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         my_pids = seller_products.get(uid, [])
         my_products = [(pid, products[pid]) for pid in my_pids if pid in products]
         # Stocki bor mahsulotlar
@@ -1747,8 +1735,7 @@ def seller_handle_cb(cb):
                 "📦 <b>Inventar</b>\n\n"
                 "Hozircha qoldig'i belgilangan mahsulot yo'q.\n"
                 "Yangi mahsulot qo'shganda <b>qoldiq miqdor</b>ni kiriting.",
-                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]},
-                token=SELLER_TOKEN
+                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]}
             )
             return
 
@@ -1793,11 +1780,11 @@ def seller_handle_cb(cb):
                         'callback_data': f'edit_prod_{pid}'}])
         kb.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
 
-        send_seller(uid, text, {'inline_keyboard': kb}, token=SELLER_TOKEN)
+        send_seller(uid, text, {'inline_keyboard': kb})
         return
 
     if d == 'menu_myorders':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         my_pids = seller_products.get(uid, [])
         pending = {k:v for k,v in orders.items() if v.get('product_id') in my_pids and v['status']=='confirming'}
         if not pending:
@@ -1819,7 +1806,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_myproducts':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         my = seller_products.get(uid, [])
         if not my:
             send_seller(uid, "📦 Mahsulot yo'q.",
@@ -1837,7 +1824,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_help':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         send_seller(uid,
             "ℹ️ <b>Sotuvchi yordam</b>\n\n"
             "/addproduct    — Mahsulot qo'shish\n"
@@ -1854,7 +1841,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'back_menu':
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         send_seller(uid,
             "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\nGuruh savdosi orqali ko'proq soting!",
             {'inline_keyboard': [
@@ -1881,8 +1868,8 @@ def seller_handle_cb(cb):
     if d.startswith('boost_') and not d.startswith('boost_confirm_'):
         pid = d[6:]
         p = products.get(pid)
-        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
+        if not p: answer_cb(cbid, '❌ Topilmadi!'); return
+        answer_cb(cbid)
         send_seller(uid,
             f"📢 <b>{p['name']}</b> ni qayta e'lon qilmoqchimisiz?\n\n"
             f"🆔 <code>{pid}</code>",
@@ -1896,10 +1883,10 @@ def seller_handle_cb(cb):
     if d.startswith('delete_prod_'):
         pid = d[12:]
         p = products.get(pid)
-        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+        if not p: answer_cb(cbid, '❌ Topilmadi!'); return
         if p.get('seller_id') != uid and uid != ADMIN_ID:
-            answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
+            answer_cb(cbid, "❌ Ruxsat yo'q!"); return
+        answer_cb(cbid)
         send_seller(uid,
             f"🗑 <b>{p['name']}</b> ni o'chirishni tasdiqlaysizmi?",
             {'inline_keyboard': [[
@@ -1912,22 +1899,22 @@ def seller_handle_cb(cb):
     if d.startswith('delete_confirm_'):
         pid = d[15:]
         p = products.get(pid)
-        if not p: answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+        if not p: answer_cb(cbid, '❌ Topilmadi!'); return
         if p.get('seller_id') != uid and uid != ADMIN_ID:
-            answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
+            answer_cb(cbid, "❌ Ruxsat yo'q!"); return
         p['status'] = 'closed'
         save_data()
-        answer_cb(cbid, "✅ O'chirildi!", token=SELLER_TOKEN)
+        answer_cb(cbid, "✅ O'chirildi!")
         send_seller(uid, f"🗑 <b>{p['name']}</b> o'chirildi.")
         return
 
     if d.startswith('boost_confirm_'):
         pid = d[14:]
         if pid not in products:
-            answer_cb(cbid, '❌ Topilmadi!', token=SELLER_TOKEN); return
+            answer_cb(cbid, '❌ Topilmadi!'); return
         p = products[pid]
         if p.get('seller_id') != uid and uid != ADMIN_ID:
-            answer_cb(cbid, "❌ Ruxsat yo'q!", token=SELLER_TOKEN); return
+            answer_cb(cbid, "❌ Ruxsat yo'q!"); return
         count    = len(groups.get(pid, []))
         channel  = p.get('seller_channel')
         caption  = post_caption(p, pid)
@@ -1948,10 +1935,10 @@ def seller_handle_cb(cb):
                 })
                 products[pid]['channel_message_id'] = result['result'][0].get('message_id')
                 products[pid]['channel_chat_id']    = channel
-                answer_cb(cbid, "✅ Qayta e'lon qilindi!", token=SELLER_TOKEN)
+                answer_cb(cbid, "✅ Qayta e'lon qilindi!")
                 send_seller(uid, f"📢 <b>{p['name']}</b> qayta e'lon qilindi!")
             else:
-                answer_cb(cbid, '❌ Xato!', token=SELLER_TOKEN)
+                answer_cb(cbid, '❌ Xato!')
         else:
             result = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
                 'chat_id': channel, 'photo': photo_ids[0] if photo_ids else p.get('photo_id'),
@@ -1960,16 +1947,16 @@ def seller_handle_cb(cb):
             if result.get('ok'):
                 products[pid]['channel_message_id'] = result['result']['message_id']
                 products[pid]['channel_chat_id']    = channel
-                answer_cb(cbid, "✅ Qayta e'lon qilindi!", token=SELLER_TOKEN)
+                answer_cb(cbid, "✅ Qayta e'lon qilindi!")
                 send_seller(uid, f"📢 <b>{p['name']}</b> qayta e'lon qilindi!")
             else:
-                answer_cb(cbid, "❌ Xato! Bot kanalga admin sifatida qo'shilganmi?", token=SELLER_TOKEN)
+                answer_cb(cbid, "❌ Xato! Bot kanalga admin sifatida qo'shilganmi?")
         return
 
     if d.startswith('seller_ac_'):
         code     = d[10:]
         if code not in orders:
-            answer_cb(cbid, '❌', token=SELLER_TOKEN); return
+            answer_cb(cbid, '❌'); return
         o        = orders[code]
         pid      = o['product_id']
         buyer_id = o['user_id']
@@ -2015,7 +2002,7 @@ def seller_handle_cb(cb):
             count = len(groups[pid])
             min_g = p.get('min_group', 3)
             save_data()
-            answer_cb(cbid, f'✅ {count}/{min_g}', token=SELLER_TOKEN)
+            answer_cb(cbid, f'✅ {count}/{min_g}')
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
             send_buyer(buyer_id, build_check(code, o))
             dtype = p.get('delivery_type', 'pickup')
@@ -2039,7 +2026,7 @@ def seller_handle_cb(cb):
             if count >= min_g:
                 notify_group_filled(pid)
         else:
-            answer_cb(cbid, '✅ Tasdiqlandi!', token=SELLER_TOKEN)
+            answer_cb(cbid, '✅ Tasdiqlandi!')
             update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), False)
             send_buyer(buyer_id, build_check(code, o))
             dtype = p.get('delivery_type', 'pickup')
@@ -2067,7 +2054,7 @@ def seller_handle_cb(cb):
             send_buyer(orders[code]['user_id'],
                 f"❌ <b>To'lov tasdiqlanmadi</b>\n\n#{code}\n\nIzohda kodni tekshiring."
             )
-        answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
+        answer_cb(cbid, '❌ Rad'); return
 
     if d.startswith('seller_approve_refund_'):
         code = d[21:]
@@ -2079,7 +2066,7 @@ def seller_handle_cb(cb):
                 f"✅ <b>Qaytarish tasdiqlandi!</b>\n\n#{code}\n"
                 f"💰 {fmt(o.get('amount',0))} so'm 24 soat ichida qaytariladi.\nPayme: {PAYME_NUMBER}"
             )
-        answer_cb(cbid, '✅ Tasdiqlandi', token=SELLER_TOKEN); return
+        answer_cb(cbid, '✅ Tasdiqlandi'); return
 
     if d.startswith('seller_deny_refund_'):
         code = d[19:]
@@ -2089,13 +2076,13 @@ def seller_handle_cb(cb):
             send_buyer(refund_requests[code]['user_id'],
                 f"❌ <b>Qaytarish rad etildi</b>\n\n#{code}\nSotuvchi bilan bog'laning."
             )
-        answer_cb(cbid, '❌ Rad', token=SELLER_TOKEN); return
+        answer_cb(cbid, '❌ Rad'); return
 
     if d in ('variants_yes', 'variants_no'):
         s = seller_state.get(uid)
         if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
+            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+        answer_cb(cbid)
         if d == 'variants_yes':
             s['step'] = 'variants_input'
             send_seller(uid,
@@ -2113,11 +2100,11 @@ def seller_handle_cb(cb):
     if d.startswith('delivery_'):
         s = seller_state.get(uid)
         if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
         dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
         s['delivery_type'] = dtype
         s['step'] = 'seller_channel'
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         send_seller(uid,
             f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
             "9️⃣ Kanalingiz username ini yozing:\n"
@@ -2128,7 +2115,7 @@ def seller_handle_cb(cb):
 
     if d.startswith('addmod_ch_'):
         channel = d[10:]
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         if verified_channels.get(channel, {}).get('owner_id') != uid:
             send_seller(uid, "❌ Bu kanal egasi emassiz!"); return
         seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': channel}
@@ -2143,8 +2130,8 @@ def seller_handle_cb(cb):
     if d == 'confirm_product':
         s = seller_state.get(uid)
         if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
-        answer_cb(cbid, token=SELLER_TOKEN)
+            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+        answer_cb(cbid)
         publish_product(uid, uid, s)
         return
 
@@ -2162,12 +2149,12 @@ def seller_handle_cb(cb):
     if d in edit_map:
         s = seller_state.get(uid)
         if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!', token=SELLER_TOKEN); return
+            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
         field, prompt = edit_map[d]
         s['step']       = 'editing'
         s['edit_field'] = field
         seller_state[uid] = s
-        answer_cb(cbid, token=SELLER_TOKEN)
+        answer_cb(cbid)
         send_seller(uid, prompt)
         return
 
@@ -3536,7 +3523,7 @@ def buyer_handle_cb(cb):
 
         variants = p.get('variants', [])
         if variants:
-            answer_cb(cbid, token=BUYER_TOKEN)
+            answer_cb(cbid)
             btns = [[{'text': v, 'callback_data': f'variant_{pid}_{v}'}] for v in variants]
             send_buyer(uid,
                 f"📦 <b>{p['name']}</b>\n\nVariantni tanlang:",
