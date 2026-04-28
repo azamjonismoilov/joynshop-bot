@@ -465,16 +465,21 @@ def post_caption(p, pid):
     return "\n".join(lines)
 
 def join_kb(pid, count, min_g, has_solo=False, sale_type='both'):
+    """Kanal post tugmalari — Mini App ga yo'naltiradi (Telegram ichida qoladi)"""
     if count >= min_g:
         return {'inline_keyboard': [[{'text': "✅ Guruh to'ldi!", 'url': f'https://t.me/{BUYER_BOT_USERNAME}'}]]}
     kb = []
-    # sale_type: 'solo' = faqat yakka, 'group' = faqat guruh, 'both' = ikkalasi
+    miniapp_base = f'{APP_URL}/miniapp' if APP_URL else f'https://t.me/{BUYER_BOT_USERNAME}'
+    # web_app: Mini App Telegram ichida ochiladi, sayt browserda emas
     if sale_type in ('solo', 'both') and has_solo:
-        kb.append([{'text': "🛒 Sotib olish (yakka)", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=solo_{pid}'}])
+        kb.append([{'text': "🛒 Sotib olish (yakka)",
+                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_solo'}])
     if sale_type in ('group', 'both'):
-        kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
+        kb.append([{'text': f"👥 Guruhga qo'shilish ({count}/{min_g})",
+                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_group'}])
     if not kb:
-        kb.append([{'text': "🛍 Xarid qilish", 'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=join_{pid}'}])
+        kb.append([{'text': "🛍 Xarid qilish",
+                    'url': f'https://t.me/{BUYER_BOT_USERNAME}?start=buy_{pid}_group'}])
     return kb_inline(kb)
 
 def kb_inline(rows):
@@ -3015,6 +3020,30 @@ def buyer_handle_msg(msg):
     if text.startswith('/start ') or text.startswith('/start\n'):
         param = text.split(None, 1)[1].strip() if len(text.split(None, 1)) > 1 else ''
 
+        # buy_PID_TYPE — kanaldan kelgan, to'g'ri Mini App ga yo'naltirish
+        if param.startswith('buy_'):
+            parts = param.split('_')
+            if len(parts) >= 2:
+                pid = parts[1]
+                buy_type = parts[2] if len(parts) > 2 else 'group'
+                p = products.get(pid)
+                if not p:
+                    send_buyer(cid, "❌ Mahsulot topilmadi yoki yopilgan.")
+                    return
+                miniapp_url = f'{APP_URL}/miniapp?pid={pid}&action=buy&type={buy_type}' if APP_URL else None
+                if miniapp_url:
+                    # Faqat bitta xabar — Mini App ochish tugmasi bilan
+                    send_buyer(cid,
+                        f"🛒 <b>{p['name']}</b>\n\n"
+                        f"Xarid qilish uchun pastdagi tugmani bosing:",
+                        {'inline_keyboard': [[
+                            {'text': "🛍 Xarid qilish", 'web_app': {'url': miniapp_url}}
+                        ]]}
+                    )
+                else:
+                    send_buyer(cid, "⚠️ Sayt vaqtinchalik ishlamayapti, keyinroq urinib ko'ring.")
+                return
+
         if param.startswith('ref_'):
             try:
                 referrer_uid = int(param[4:])
@@ -3866,7 +3895,8 @@ def api_checkout():
     address_line  = f"\n📍 Manzil: {address}" if address else ''
     sale_type     = p.get('sale_type', 'both')
 
-    # Click invoice yuborish
+    # Click invoice link yaratish (Mini App ichida ochish uchun)
+    invoice_link = None
     if CLICK_TOKEN:
         price_lbl = "Yakka narx" if otype == 'solo' else "Guruh narxi"
         # description: yakka bo'lsa minimal, guruh bo'lsa guruh ma'lumoti
@@ -3882,7 +3912,6 @@ def api_checkout():
 
         photo_url = p.get('photo_url') or None
         inv_data  = {
-            'chat_id':           uid,
             'title':             strip_html(p['name'])[:32],
             'description':       desc,
             'payload':           code,
@@ -3894,10 +3923,21 @@ def api_checkout():
             'need_shipping_address': False,
             'is_flexible':       False,
         }
-        if photo_url:
+        if photo_url and photo_url.startswith('http'):
             inv_data['photo_url']  = photo_url
             inv_data['photo_size'] = 800
-        requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data)
+        # createInvoiceLink — URL qaytaradi (Mini App tg.openInvoice uchun)
+        try:
+            r = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/createInvoiceLink', json=inv_data, timeout=10).json()
+            if r.get('ok'):
+                invoice_link = r['result']
+            else:
+                logging.warning(f"createInvoiceLink failed: {r}")
+                # Fallback: oddiy sendInvoice
+                inv_data['chat_id'] = uid
+                requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data, timeout=10)
+        except Exception as e:
+            logging.error(f"createInvoiceLink error: {e}")
     else:
         # Fallback: qo'lda Payme
         send_buyer(uid,
@@ -3936,7 +3976,7 @@ def api_checkout():
             ]]}
         )
 
-    return jsonify({'ok': True, 'code': code, 'amount': amount})
+    return jsonify({'ok': True, 'code': code, 'amount': amount, 'invoice_link': invoice_link})
 
 
 if __name__ == '__main__':
