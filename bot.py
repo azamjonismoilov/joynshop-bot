@@ -4323,8 +4323,13 @@ def api_live(live_id):
             if r.get('ok'):
                 file_path = r['result']['file_path']
                 video_url = f'https://api.telegram.org/file/bot{SELLER_TOKEN}/{file_path}'
+                logging.info(f"getFile ok for live={live_id} file_id={file_id} -> {file_path}")
+            else:
+                logging.error(f"getFile failed for live={live_id} file_id={file_id}: {r}")
         except Exception as e:
-            logging.error(f"Video URL fetch error: {e}")
+            logging.error(f"Video URL fetch exception for live={live_id} file_id={file_id}: {e}", exc_info=True)
+    else:
+        logging.warning(f"Live {live_id} has no video_file_id (lv keys={list(lv.keys())})")
     return jsonify({
         'ok':           True,
         'id':           live_id,
