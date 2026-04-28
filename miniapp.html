@@ -843,13 +843,25 @@ async function submitCheckout(){
 }
 function closeCheckout(e,force){if(force||!e||e.target===document.getElementById('checkoutOverlay')){document.getElementById('checkoutOverlay').classList.remove('open');document.body.style.overflow='';}}
 
-// Deep link: ?pid=XXX&action=buy&type=solo|group — kanal postidan kelgan
+// Deep link: startapp=buy_PID_TYPE — kanal postidan to'g'ridan-to'g'ri kelgan
 async function handleDeepLink(){
-  const params = new URLSearchParams(window.location.search);
-  const pid    = params.get('pid');
-  const action = params.get('action');
-  const btype  = params.get('type') || 'group';
-  if(!pid || action !== 'buy') return false;
+  // Telegram Mini App: start_param dan, yoki URL dan o'qish
+  let startParam = '';
+  if(tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param){
+    startParam = tg.initDataUnsafe.start_param;
+  } else {
+    const params = new URLSearchParams(window.location.search);
+    startParam = params.get('tgWebAppStartParam') || params.get('startapp') || '';
+    // Eski format ham qo'llanadi: ?pid=X&action=buy&type=Y
+    if(!startParam && params.get('action') === 'buy' && params.get('pid')){
+      startParam = `buy_${params.get('pid')}_${params.get('type') || 'group'}`;
+    }
+  }
+  if(!startParam || !startParam.startsWith('buy_')) return false;
+  const parts = startParam.split('_');
+  const pid   = parts[1];
+  const btype = parts[2] || 'group';
+  if(!pid) return false;
   // Mahsulotlar yuklanguncha kutish
   let tries = 0;
   while(allProducts.length === 0 && tries < 20){
