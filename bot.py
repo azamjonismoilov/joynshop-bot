@@ -146,6 +146,7 @@ buyer_profiles  = {}
 refund_requests = {}
 seller_state    = {}
 customers       = {}  # {seller_id: {user_id: {...}}}
+lives           = {}  # {live_id: {...}} - Live Commerce streams
 _photo_url_cache = {}
 seller_shops    = {}
 seller_products = {}
@@ -200,6 +201,7 @@ def save_data():
             'referrals':              referrals,
             'referral_map':           {str(k): v for k, v in referral_map.items()},
             'customers':              {str(k): v for k, v in customers.items()},
+            'lives':                  {str(k): v for k, v in lives.items()},
         }
         payload = json.dumps(data, ensure_ascii=False, default=str)
         conn    = get_db()
@@ -218,7 +220,7 @@ def save_data():
 def load_data():
     global products, groups, orders, wishlists, buyer_profiles
     global refund_requests, seller_products, verified_channels
-    global pending_moderator_codes, referrals, referral_map, seller_shops, customers
+    global pending_moderator_codes, referrals, referral_map, seller_shops, customers, lives
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
@@ -249,6 +251,8 @@ def load_data():
         seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
         raw_cu = data.get('customers', {})
         customers = {int(k) if str(k).isdigit() else k: v for k, v in raw_cu.items()}
+        raw_lv = data.get('lives', {})
+        lives = {k: v for k, v in raw_lv.items()}
         logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
     except Exception as e:
         logging.error(f"load_data error: {e}", exc_info=True)
@@ -715,7 +719,7 @@ PROD_ALLOWED_CBS = {
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
-    'back_menu', 'noop', 'menu_mycustomers', 'menu_inventory', 'menu_export',
+    'back_menu', 'noop', 'menu_mycustomers', 'menu_inventory', 'menu_export', 'live_cancel', 'live_start',
 }
 
 PROD_BLOCKED_TEXTS = {
@@ -797,7 +801,7 @@ def seller_handle_cb(cb):
     if d == 'noop':
         answer_cb(cbid, token=SELLER_TOKEN); return
 
-    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_') and not d.startswith('crm_'):
+    if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_') and not d.startswith('crm_') and not d.startswith('live_'):
         answer_cb(cbid, token=SELLER_TOKEN)
         send_seller(uid, get_prod_progress_text(uid),
             {'inline_keyboard': [
@@ -1376,6 +1380,239 @@ def seller_handle_cb(cb):
 
         send_seller(uid, text, {'inline_keyboard': kb_rows}, token=SELLER_TOKEN)
         return
+
+    # ─── LIVE COMMERCE ───────────────────────────────────────────
+    if d == 'live_cancel':
+        answer_cb(cbid, "Bekor qilindi", token=SELLER_TOKEN)
+        if uid in seller_state and seller_state[uid].get('step','').startswith('live_'):
+            del seller_state[uid]
+        return
+
+    if d.startswith('live_pick_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        pid = d[10:]
+        if pid not in products:
+            send_seller(uid, "❌ Mahsulot topilmadi.", token=SELLER_TOKEN)
+            return
+        seller_state[uid] = {
+            'step': 'live_video',
+            'product_id': pid,
+        }
+        p = products[pid]
+        send_seller(uid,
+            f"📦 <b>{p.get('name','')}</b>\n\n"
+            f"🎥 <b>Live videoni yuboring</b>\n\n"
+            f"⏱ Davomiyligi: 15 soniyadan 5 daqiqagacha\n"
+            f"📐 Vertikal video tavsiya etiladi (9:16)\n\n"
+            f"<i>Videoni shu chatga yuboring...</i>",
+            {'inline_keyboard': [[{'text': "❌ Bekor", 'callback_data': 'live_cancel'}]]},
+            token=SELLER_TOKEN
+        )
+        return
+
+    if d.startswith('live_dur_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'live_duration':
+            return
+        try:
+            hours = int(d.split('_')[2])
+        except:
+            return
+        s['duration_hours'] = hours
+        s['step'] = 'live_discount'
+        labels = {1: '1 soat', 3: '3 soat', 24: '24 soat'}
+        send_seller(uid,
+            f"⏰ Davomiyligi: {labels.get(hours, str(hours)+' soat')}\n\n"
+            f"💸 <b>Qo'shimcha chegirma %?</b>\n\n"
+            f"<i>Oddiy guruh narxi ustiga qo'shimcha chegirma.\n"
+            f"Misol: oddiy 30%, live qo'shimcha 10% = jami 40% tejash</i>",
+            {'inline_keyboard': [
+                [{'text': "5%",  'callback_data': 'live_disc_5'},
+                 {'text': "10%", 'callback_data': 'live_disc_10'},
+                 {'text': "15%", 'callback_data': 'live_disc_15'},
+                 {'text': "20%", 'callback_data': 'live_disc_20'}],
+                [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
+            ]},
+            token=SELLER_TOKEN
+        )
+        return
+
+    if d.startswith('live_disc_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'live_discount':
+            return
+        try:
+            pct = int(d.split('_')[2])
+        except:
+            return
+        s['discount_pct'] = pct
+        s['step'] = 'live_confirm'
+        # Tasdiq xabari
+        p = products.get(s['product_id'], {})
+        group_price = p.get('group_price', 0)
+        live_price  = int(group_price * (100 - pct) / 100)
+        s['live_price'] = live_price
+        send_seller(uid,
+            f"📋 <b>LIVE tasdiqlash</b>\n\n"
+            f"📦 {p.get('name','')}\n"
+            f"💰 Oddiy guruh: {fmt(group_price)} so'm\n"
+            f"🔴 Live narx: <b>{fmt(live_price)} so'm</b> (-{pct}% qo'shimcha)\n"
+            f"⏰ Davomiyligi: {s['duration_hours']} soat\n\n"
+            f"Live boshlangach kanaliga avtomatik post yuboramiz.",
+            {'inline_keyboard': [
+                [{'text': "🚀 LIVE BOSHLASH", 'callback_data': 'live_start'}],
+                [{'text': "❌ Bekor",         'callback_data': 'live_cancel'}],
+            ]},
+            token=SELLER_TOKEN
+        )
+        return
+
+    if d == 'live_start':
+        answer_cb(cbid, "🔴 Live boshlanmoqda...", token=SELLER_TOKEN)
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'live_confirm':
+            return
+        # Live yaratish
+        from datetime import datetime as _dt, timedelta
+        live_id = 'live_' + secrets.token_hex(4)
+        now = _dt.now()
+        ends = now + timedelta(hours=s['duration_hours'])
+        live_data = {
+            'id':             live_id,
+            'product_id':     s['product_id'],
+            'seller_id':      uid,
+            'video_file_id':  s.get('video_file_id', ''),
+            'video_duration': s.get('video_duration', 0),
+            'duration_hours': s['duration_hours'],
+            'discount_pct':   s['discount_pct'],
+            'live_price':     s['live_price'],
+            'status':         'live',
+            'started_at':     now.strftime('%Y-%m-%d %H:%M'),
+            'ends_at':        ends.strftime('%Y-%m-%d %H:%M'),
+            'viewers':        [],
+            'joiners':        [],
+            'viewer_count':   0,
+            'questions':      [],
+            'channel_msg_id': None,
+        }
+        lives[live_id] = live_data
+        del seller_state[uid]
+        save_data()
+
+        # Sotuvchi kanaliga post yuborish
+        p = products.get(s['product_id'], {})
+        channel = p.get('seller_channel', '')
+        if channel:
+            try:
+                video_id = live_data['video_file_id']
+                caption = (
+                    f"🔴 <b>LIVE — {p.get('name','')}</b>\n\n"
+                    f"💰 Oddiy: {fmt(p.get('group_price',0))} so'm\n"
+                    f"🔥 LIVE narx: <b>{fmt(s['live_price'])} so'm</b>\n"
+                    f"⏰ {s['duration_hours']} soat ichida tugaydi!\n\n"
+                    f"🎬 Tomosha qiling va guruhga qo'shiling 👇"
+                )
+                live_url = f"{(APP_URL or '').rstrip('/')}/live/{live_id}"
+                kb_live = {'inline_keyboard': [[
+                    {'text': "▶️ LIVE TOMOSHA QILISH", 'url': live_url}
+                ]]}
+                if video_id:
+                    r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendVideo', json={
+                        'chat_id':    channel,
+                        'video':      video_id,
+                        'caption':    caption,
+                        'parse_mode': 'HTML',
+                        'reply_markup': kb_live,
+                    }).json()
+                else:
+                    r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                        'chat_id':    channel,
+                        'text':       caption,
+                        'parse_mode': 'HTML',
+                        'reply_markup': kb_live,
+                    }).json()
+                if r.get('ok'):
+                    lives[live_id]['channel_msg_id'] = r['result'].get('message_id')
+                    save_data()
+            except Exception as e:
+                logging.error(f"Live channel post error: {e}")
+
+        send_seller(uid,
+            f"🔴 <b>LIVE BOSHLANDI!</b>\n\n"
+            f"📦 {p.get('name','')}\n"
+            f"⏰ Tugaydi: {ends.strftime('%H:%M')}\n\n"
+            f"Real-time dashboard:",
+            {'inline_keyboard': [[
+                {'text': "📊 Dashboard", 'callback_data': f'live_dash_{live_id}'},
+            ]]},
+            token=SELLER_TOKEN
+        )
+        return
+
+    if d.startswith('live_dash_'):
+        answer_cb(cbid, token=SELLER_TOKEN)
+        live_id = d[10:]
+        lv = lives.get(live_id)
+        if not lv:
+            send_seller(uid, "❌ Live topilmadi.", token=SELLER_TOKEN)
+            return
+        p = products.get(lv.get('product_id',''), {})
+        from datetime import datetime as _dt
+        try:
+            ends = _dt.strptime(lv['ends_at'], '%Y-%m-%d %H:%M')
+            remaining = ends - _dt.now()
+            if remaining.total_seconds() > 0:
+                h = int(remaining.total_seconds() // 3600)
+                m = int((remaining.total_seconds() % 3600) // 60)
+                time_str = f"{h} soat {m} daqiqa qoldi"
+            else:
+                time_str = "TUGADI"
+                lv['status'] = 'ended'
+                save_data()
+        except:
+            time_str = "—"
+
+        joiners = lv.get('joiners', [])
+        joined_amount = sum(orders.get(j.get('order_code',''), {}).get('amount', 0)
+                            for j in joiners if isinstance(j, dict))
+        send_seller(uid,
+            f"📊 <b>LIVE Dashboard</b>\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📦 {p.get('name','')}\n"
+            f"⏰ {time_str}\n\n"
+            f"👀 Ko'rdi: <b>{lv.get('viewer_count', 0)}</b>\n"
+            f"👥 Qo'shildi: <b>{len(joiners)}</b>\n"
+            f"💰 Sotuv: {fmt(joined_amount)} so'm\n"
+            f"🔴 Status: {lv.get('status','—').upper()}",
+            {'inline_keyboard': [
+                [{'text': "🔄 Yangilash",  'callback_data': f'live_dash_{live_id}'}],
+                [{'text': "🛑 Tugatish",   'callback_data': f'live_end_{live_id}'}],
+                [{'text': "⬅️ Menyu",      'callback_data': 'back_menu'}],
+            ]},
+            token=SELLER_TOKEN
+        )
+        return
+
+    if d.startswith('live_end_'):
+        answer_cb(cbid, "Live tugatildi", token=SELLER_TOKEN)
+        live_id = d[9:]
+        lv = lives.get(live_id)
+        if not lv or lv.get('seller_id') != uid:
+            return
+        lv['status'] = 'ended'
+        save_data()
+        p = products.get(lv.get('product_id',''), {})
+        send_seller(uid,
+            f"🛑 <b>Live tugatildi</b>\n\n"
+            f"📦 {p.get('name','')}\n"
+            f"👀 Ko'rdi: {lv.get('viewer_count', 0)}\n"
+            f"👥 Qo'shildi: {len(lv.get('joiners', []))}",
+            token=SELLER_TOKEN
+        )
+        return
+    # ─── /LIVE COMMERCE ──────────────────────────────────────────
 
     if d == 'menu_export' or d.startswith('export_'):
         answer_cb(cbid, token=SELLER_TOKEN)
@@ -2299,10 +2536,58 @@ def seller_handle_msg(msg):
             "/myproducts  — Mahsulotlarim\n"
             "/mystats     — Statistika\n"
             "/myorders    — Buyurtmalar\n"
+            "/golive      — 🔴 Live boshlash\n"
+            "/mylive      — Live dashboard\n"
             "/boost [ID]  — Qayta e'lon\n"
             "/delete [ID] — O'chirish\n\n"
             "💬 Yordam: @joynshop_support"
         )
+        return
+
+    if text == '/golive' or text == "🔴 Live":
+        my_pids = seller_products.get(uid, [])
+        active_prods = [(pid, products[pid]) for pid in my_pids
+                        if pid in products and products[pid].get('status') == 'active']
+        if not active_prods:
+            send_seller(cid,
+                "❌ Avval faol mahsulot qo'shing.\n\n/addproduct yozing."
+            )
+            return
+        # Tanlov klaviaturasi
+        kb = []
+        for pid, p in active_prods[:10]:
+            kb.append([{'text': f"📦 {p.get('name','')[:30]}",
+                        'callback_data': f'live_pick_{pid}'}])
+        kb.append([{'text': "❌ Bekor", 'callback_data': 'live_cancel'}])
+        send_seller(cid,
+            "🔴 <b>LIVE boshlash</b>\n\n"
+            "Qaysi mahsulot uchun Live qilasiz?",
+            {'inline_keyboard': kb}
+        )
+        return
+
+    if text == '/mylive':
+        # Sotuvchining faol live'larini ko'rsatish
+        my_lives = [(lid, lv) for lid, lv in lives.items()
+                    if lv.get('seller_id') == uid and lv.get('status') == 'live']
+        if not my_lives:
+            send_seller(cid,
+                "🔴 <b>Live Dashboard</b>\n\n"
+                "Hozir faol live yo'q.\n"
+                "Yangi boshlash uchun /golive yozing."
+            )
+            return
+        text_msg = "🔴 <b>Faol Liveler</b>\n━━━━━━━━━━━━━━━\n\n"
+        kb = []
+        for lid, lv in my_lives:
+            p = products.get(lv.get('product_id',''), {})
+            text_msg += (
+                f"📦 {p.get('name','—')}\n"
+                f"👀 {lv.get('viewer_count',0)} ko'rdi\n"
+                f"👥 {len(lv.get('joiners',[]))} qo'shildi\n\n"
+            )
+            kb.append([{'text': f"📊 {p.get('name','')[:25]}", 'callback_data': f'live_dash_{lid}'}])
+        send_seller(cid, text_msg, {'inline_keyboard': kb})
         return
 
     if text == '/addproduct' or text == "➕ Mahsulot qo'shish":
@@ -2399,6 +2684,31 @@ def seller_handle_msg(msg):
     if uid in seller_state:
         s    = seller_state[uid]
         step = s.get('step')
+
+        # ─── LIVE: video qabul qilish ───
+        if step == 'live_video':
+            video = msg.get('video') or msg.get('document')
+            if not video:
+                send_seller(cid, "❌ Iltimos, video yuboring (matn emas).")
+                return
+            duration = video.get('duration', 0)
+            if duration < 5 or duration > 300:
+                send_seller(cid, "❌ Video 5 soniyadan 5 daqiqagacha bo'lishi kerak.")
+                return
+            s['video_file_id']  = video['file_id']
+            s['video_duration'] = duration
+            s['step'] = 'live_duration'
+            send_seller(cid,
+                f"✅ Video qabul qilindi ({duration} soniya)\n\n"
+                f"⏰ <b>Live davomiyligi?</b>",
+                {'inline_keyboard': [
+                    [{'text': "1 soat",  'callback_data': 'live_dur_1'},
+                     {'text': "3 soat",  'callback_data': 'live_dur_3'},
+                     {'text': "24 soat", 'callback_data': 'live_dur_24'}],
+                    [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
+                ]}
+            )
+            return
 
         # ─── CRM: Mijozga xabar yuborish ───
         if step == 'crm_send_msg':
@@ -3927,6 +4237,162 @@ def pay_page(pid):
         return Response(html, mimetype='text/html')
     except FileNotFoundError:
         return "<h1>Pay page</h1><p>pay.html fayli topilmadi</p>", 404
+
+@app.route('/live/<live_id>', methods=['GET'])
+def live_page(live_id):
+    """Live tomosha qilish sahifasi"""
+    from flask import Response
+    try:
+        html = open('live.html').read()
+        return Response(html, mimetype='text/html')
+    except FileNotFoundError:
+        return "<h1>Live page</h1><p>live.html fayli topilmadi</p>", 404
+
+@app.route('/api/lives', methods=['GET'])
+def api_lives():
+    """Faol live'lar ro'yxati"""
+    from datetime import datetime as _dt
+    now = _dt.now()
+    result = []
+    for lid, lv in lives.items():
+        if lv.get('status') != 'live':
+            continue
+        # Vaqt tugaganmi?
+        try:
+            ends = _dt.strptime(lv['ends_at'], '%Y-%m-%d %H:%M')
+            if ends < now:
+                lv['status'] = 'ended'
+                continue
+            seconds_left = int((ends - now).total_seconds())
+        except:
+            seconds_left = 0
+        p = products.get(lv.get('product_id',''), {})
+        if not p:
+            continue
+        result.append({
+            'id':            lid,
+            'product_id':    lv['product_id'],
+            'product_name':  p.get('name',''),
+            'shop_name':     p.get('shop_name',''),
+            'video_file_id': lv.get('video_file_id',''),
+            'group_price':   p.get('group_price', 0),
+            'live_price':    lv.get('live_price', 0),
+            'discount_pct':  lv.get('discount_pct', 0),
+            'viewer_count':  lv.get('viewer_count', 0),
+            'joiner_count':  len(lv.get('joiners', [])),
+            'min_group':     p.get('min_group', 0),
+            'count':         len(groups.get(lv.get('product_id',''), [])),
+            'seconds_left':  seconds_left,
+            'photo_id':      p.get('photo_id', ''),
+            'photo_url':     p.get('photo_url', ''),
+        })
+    save_data()
+    result.sort(key=lambda x: x['viewer_count'], reverse=True)
+    return jsonify(result)
+
+@app.route('/api/live/<live_id>', methods=['GET'])
+def api_live(live_id):
+    """Bitta live ma'lumoti — live.html sahifasi uchun"""
+    from datetime import datetime as _dt
+    lv = lives.get(live_id)
+    if not lv:
+        return jsonify({'ok': False, 'error': 'Live topilmadi'}), 404
+    p = products.get(lv.get('product_id',''), {})
+    try:
+        ends = _dt.strptime(lv['ends_at'], '%Y-%m-%d %H:%M')
+        seconds_left = max(0, int((ends - _dt.now()).total_seconds()))
+        if seconds_left == 0 and lv.get('status') == 'live':
+            lv['status'] = 'ended'
+            save_data()
+    except:
+        seconds_left = 0
+    # Video URL — Telegram file_id orqali
+    video_url = None
+    file_id   = lv.get('video_file_id', '')
+    if file_id:
+        try:
+            r = requests.get(
+                f'https://api.telegram.org/bot{SELLER_TOKEN}/getFile',
+                params={'file_id': file_id}, timeout=5
+            ).json()
+            if r.get('ok'):
+                file_path = r['result']['file_path']
+                video_url = f'https://api.telegram.org/file/bot{SELLER_TOKEN}/{file_path}'
+        except Exception as e:
+            logging.error(f"Video URL fetch error: {e}")
+    return jsonify({
+        'ok':           True,
+        'id':           live_id,
+        'status':       lv.get('status', 'live'),
+        'product_id':   lv.get('product_id', ''),
+        'product_name': p.get('name', ''),
+        'shop_name':    p.get('shop_name', ''),
+        'description':  p.get('description', ''),
+        'video_url':    video_url,
+        'group_price':  p.get('group_price', 0),
+        'live_price':   lv.get('live_price', 0),
+        'original_price': p.get('original_price', 0),
+        'discount_pct': lv.get('discount_pct', 0),
+        'viewer_count': lv.get('viewer_count', 0),
+        'joiner_count': len(lv.get('joiners', [])),
+        'min_group':    p.get('min_group', 0),
+        'count':        len(groups.get(lv.get('product_id',''), [])),
+        'seconds_left': seconds_left,
+        'photo_id':     p.get('photo_id', ''),
+        'photo_url':    p.get('photo_url', ''),
+        'contact':      p.get('contact', ''),
+        'questions':    lv.get('questions', [])[-20:],
+    })
+
+@app.route('/api/live/<live_id>/view', methods=['POST'])
+def api_live_view(live_id):
+    """Live ko'rganni qayd qilish"""
+    lv = lives.get(live_id)
+    if not lv:
+        return jsonify({'ok': False}), 404
+    data = request.json or {}
+    user_id = data.get('user_id', 0)
+    viewers = lv.setdefault('viewers', [])
+    if user_id and user_id not in viewers:
+        viewers.append(user_id)
+        lv['viewer_count'] = len(viewers)
+        save_data()
+        # Sotuvchiga real-time update (har 5-chi ko'ruvchida)
+        if len(viewers) % 5 == 0:
+            seller_id = lv.get('seller_id')
+            if seller_id:
+                p = products.get(lv['product_id'], {})
+                send_seller(seller_id,
+                    f"🔥 <b>{p.get('name','')}</b> — Live\n"
+                    f"👀 {len(viewers)} kishi tomosha qilyapti!"
+                )
+    return jsonify({'ok': True, 'viewer_count': lv['viewer_count']})
+
+@app.route('/api/live/<live_id>/question', methods=['POST'])
+def api_live_question(live_id):
+    """Live ga savol yuborish"""
+    lv = lives.get(live_id)
+    if not lv:
+        return jsonify({'ok': False}), 404
+    data = request.json or {}
+    q = {
+        'user_name': data.get('user_name', 'Mehmon')[:30],
+        'text':      data.get('text', '')[:200],
+        'time':      datetime.now().strftime('%H:%M'),
+    }
+    if not q['text']:
+        return jsonify({'ok': False}), 400
+    lv.setdefault('questions', []).append(q)
+    save_data()
+    # Sotuvchiga xabar
+    seller_id = lv.get('seller_id')
+    if seller_id:
+        p = products.get(lv['product_id'], {})
+        send_seller(seller_id,
+            f"💬 <b>Live savol</b> — {p.get('name','')}\n\n"
+            f"<b>{q['user_name']}:</b> {q['text']}"
+        )
+    return jsonify({'ok': True})
 
 @app.route('/api/product/<pid>', methods=['GET'])
 def api_product(pid):
