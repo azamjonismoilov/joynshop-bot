@@ -1471,13 +1471,13 @@ def seller_handle_cb(cb):
         return
 
     if d == 'live_start':
-        answer_cb(cbid, "🔴 Live boshlanmoqda...")
+        answer_cb(cbid, "🔴 Live boshlanmoqda...", token=SELLER_TOKEN)
         s = seller_state.get(uid)
         if not s or s.get('step') != 'live_confirm':
             return
         # Live yaratish
         from datetime import datetime as _dt, timedelta
-        live_id = 'live_' + secrets.token_hex(4)
+        live_id = 'live_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
         now = _dt.now()
         ends = now + timedelta(hours=s['duration_hours'])
         live_data = {
@@ -2687,11 +2687,12 @@ def seller_handle_msg(msg):
             if not video:
                 send_seller(cid, "❌ Iltimos, video yuboring (matn emas).")
                 return
-            duration = video.get('duration', 0)
-            if duration < 5 or duration > 300:
-                send_seller(cid, "❌ Video 5 soniyadan 5 daqiqagacha bo'lishi kerak.")
+            duration = video.get('duration', 30)  # document da duration bo'lmasligi mumkin
+            file_id  = video.get('file_id', '')
+            if not file_id:
+                send_seller(cid, "❌ Video fayl topilmadi, qayta yuboring.")
                 return
-            s['video_file_id']  = video['file_id']
+            s['video_file_id']  = file_id
             s['video_duration'] = duration
             s['step'] = 'live_duration'
             send_seller(cid,
