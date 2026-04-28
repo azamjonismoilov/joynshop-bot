@@ -530,14 +530,19 @@ function renderProducts(){
     const pct=Math.min(100,Math.round(p.count/p.min_group*100));
     const needed=p.min_group-p.count;
     const img=p.photo_id?`<img src="/api/photo/${p.photo_id}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="placeholder" style="display:none">📦</div>`:`<div class="placeholder">📦</div>`;
+    const sType=p.sale_type||'both';
+    const cardPrice=sType==='solo'?p.solo_price:p.group_price;
+    const cardDisc=sType==='solo'?p.solo_disc:p.grp_disc;
+    const showGroup=sType!=='solo';
+    const payUrl=sType==='solo'?`/pay/${p.id}?type=solo`:`/pay/${p.id}?type=group`;
     return `<div class="product-card" onclick="openProduct('${p.id}')">
-      <div class="product-img">${img}<div class="discount-badge">-${p.grp_disc}%</div>${p.count>0?`<div class="group-badge">👥 ${p.count}/${p.min_group}</div>`:''}</div>
+      <div class="product-img">${img}${cardDisc>0?`<div class="discount-badge">-${cardDisc}%</div>`:''}${showGroup&&p.count>0?`<div class="group-badge">👥 ${p.count}/${p.min_group}</div>`:''}</div>
       <div class="product-info">
         <div class="product-name">${p.name}</div>
-        <div class="price-group">${fmt(p.group_price)} so'm</div>
-        <div class="price-orig">${fmt(p.original_price)} so'm</div>
-        <div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-text">${needed>0?'<span class="highlight">'+needed+' kishi</span> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div></div>
-        <a class="btn-buy" href="${p.join_url}"><i class="ri-group-line"></i> Qo'shilish</a>
+        <div class="price-group">${fmt(cardPrice)} so'm</div>
+        ${cardDisc>0?`<div class="price-orig">${fmt(p.original_price)} so'm</div>`:''}
+        ${showGroup?`<div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-text">${needed>0?'<span class="highlight">'+needed+' kishi</span> kerak':'<i class="ri-checkbox-circle-fill" style="color:var(--g500)"></i> Guruh to\'ldi!'}</div></div>`:''}
+        <a class="btn-buy" href="${payUrl}" target="_blank" onclick="event.stopPropagation()"><i class="ri-shopping-bag-3-line"></i> Xarid qilish</a>
       </div>
     </div>`;
   }).join('');
@@ -555,18 +560,37 @@ function openProduct(pid){
   document.getElementById('modalDesc').textContent=p.description;
   document.getElementById('modalContact').innerHTML='<i class="ri-phone-line"></i> Aloqa: <strong>'+p.contact+'</strong>';
   const soloAvail=p.solo_available!==false&&p.solo_price;
-  document.getElementById('priceOptions').innerHTML=`
-    <div class="price-option recommended"><div class="price-option-type">👥 Guruh narxi</div><div class="price-option-price">${fmt(p.group_price)} so'm</div><div class="price-option-disc">↓ ${p.grp_disc}% arzon</div></div>
-    ${soloAvail?`<div class="price-option"><div class="price-option-type">👤 Yakka narx</div><div class="price-option-price">${fmt(p.solo_price)} so'm</div><div class="price-option-disc" style="color:var(--n400)">↓ ${p.solo_disc}% arzon</div></div>`:''}`;
-  document.getElementById('groupStatus').innerHTML=`
+  const dType=p.sale_type||'both';
+  let priceHtml='';
+  if(dType==='solo'){
+    priceHtml=`<div class="price-option recommended" style="grid-column:1/-1"><div class="price-option-type">🛒 Mahsulot narxi</div><div class="price-option-price">${fmt(p.solo_price)} so'm</div></div>`;
+  } else if(dType==='group'){
+    priceHtml=`<div class="price-option recommended"><div class="price-option-type">👥 Guruh narxi</div><div class="price-option-price">${fmt(p.group_price)} so'm</div>${p.grp_disc>0?`<div class="price-option-disc">↓ ${p.grp_disc}% arzon</div>`:''}</div>`;
+  } else {
+    priceHtml=`<div class="price-option recommended"><div class="price-option-type">👥 Guruh narxi</div><div class="price-option-price">${fmt(p.group_price)} so'm</div>${p.grp_disc>0?`<div class="price-option-disc">↓ ${p.grp_disc}% arzon</div>`:''}</div>${soloAvail?`<div class="price-option"><div class="price-option-type">👤 Yakka narx</div><div class="price-option-price">${fmt(p.solo_price)} so'm</div>${p.solo_disc>0?`<div class="price-option-disc" style="color:var(--n400)">↓ ${p.solo_disc}% arzon</div>`:''}</div>`:''}`;
+  }
+  document.getElementById('priceOptions').innerHTML=priceHtml;
+  if(dType==='solo'){
+    document.getElementById('groupStatus').style.display='none';
+  } else {
+    document.getElementById('groupStatus').style.display='';
+    document.getElementById('groupStatus').innerHTML=`
     <div class="group-status-row"><span class="group-status-label">Guruh holati</span><span class="group-status-value orange">${p.count}/${p.min_group} kishi</span></div>
     <div class="modal-progress-track"><div class="modal-progress-fill" style="width:${pct}%"></div></div>
     <div style="font-size:12px;color:var(--n500)">${needed>0?'Yana <strong>'+needed+' kishi</strong> kerak':'<i class=ri-checkbox-circle-fill style=color:#1A7544></i> Guruh to\'ldi!'}</div>
     <div style="font-size:12px;color:var(--n400);margin-top:4px">🕐 ${p.deadline}</div>`;
+  }
   const btns=document.getElementById('modalBtns');
-  btns.innerHTML=`
-    <button class="btn-main" onclick="openCheckout('${p.id}','group')"><i class="ri-group-line"></i> Guruhga qo'shilish — ${fmt(p.group_price)} so'm</button>
-    ${soloAvail?`<button class="btn-secondary" onclick="openCheckout('${p.id}','solo')"><i class="ri-shopping-cart-line"></i> Yakka sotib olish — ${fmt(p.solo_price)} so'm</button>`:''}`;
+  const sType=p.sale_type||'both';
+  let btnsHtml='';
+  if(sType==='solo'){
+    btnsHtml=`<a class="btn-main" href="/pay/${p.id}?type=solo" target="_blank"><i class="ri-shopping-bag-3-line"></i> Sotib olish — ${fmt(p.solo_price)} so'm</a>`;
+  } else if(sType==='group'){
+    btnsHtml=`<a class="btn-main" href="/pay/${p.id}?type=group" target="_blank"><i class="ri-group-line"></i> Guruhga qo'shilish — ${fmt(p.group_price)} so'm</a>`;
+  } else {
+    btnsHtml=`<a class="btn-main" href="/pay/${p.id}?type=group" target="_blank"><i class="ri-group-line"></i> Guruhga qo'shilish — ${fmt(p.group_price)} so'm</a>${soloAvail?`<a class="btn-secondary" href="/pay/${p.id}?type=solo" target="_blank" style="margin-top:8px"><i class="ri-shopping-cart-line"></i> Yakka sotib olish — ${fmt(p.solo_price)} so'm</a>`:''}`;
+  }
+  btns.innerHTML=btnsHtml;
   document.getElementById('modalOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
