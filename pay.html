@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Joynshop — To'lov</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+:root{
+  --o500:#FF6A1A; --o600:#E85D14; --o700:#CC4F0D;
+  --n50:#FAFAFA; --n100:#F4F5F7; --n200:#E5E7EB; --n300:#D1D5DB;
+  --n500:#6B7280; --n700:#374151; --n900:#111827;
+  --w:#fff; --g500:#10B981;
+  --r:14px; --rs:10px;
+  --sxs:0 1px 2px rgba(17,24,39,.05);
+  --ssm:0 1px 3px rgba(17,24,39,.08), 0 1px 2px rgba(17,24,39,.04);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--n50);color:var(--n900);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+body{min-height:100vh;padding-bottom:env(safe-area-inset-bottom);}
+
+.header{background:var(--w);padding:14px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--n200);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px;}
+.logo-mark{width:32px;height:32px;background:var(--o500);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;}
+.logo-mark i{font-size:18px;}
+.joyn{color:var(--n900);} .shop{color:var(--o500);}
+.secure{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--g500);font-weight:600;}
+
+.container{max-width:480px;margin:0 auto;padding:12px;}
+
+.card{background:var(--w);border-radius:var(--r);box-shadow:var(--ssm);overflow:hidden;margin-bottom:12px;}
+
+.gallery{position:relative;background:var(--n100);}
+.gallery img{width:100%;height:auto;display:block;max-height:400px;object-fit:contain;background:#fff;}
+.gallery-dots{display:flex;justify-content:center;gap:6px;padding:8px;}
+.gallery-dot{width:6px;height:6px;border-radius:50%;background:var(--n300);transition:all .2s;}
+.gallery-dot.active{background:var(--o500);width:18px;border-radius:3px;}
+
+.info{padding:14px 16px;}
+.shop-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;color:var(--g500);font-weight:600;text-transform:uppercase;}
+.shop-row i{font-size:8px;}
+.title{font-size:18px;font-weight:700;line-height:1.3;margin-bottom:8px;color:var(--n900);}
+.desc{font-size:13px;color:var(--n500);margin-bottom:12px;line-height:1.5;}
+
+.prices{display:flex;align-items:flex-end;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.price-main{font-size:24px;font-weight:800;color:var(--o600);}
+.price-old{font-size:14px;color:var(--n500);text-decoration:line-through;}
+.discount{background:#FEE2E2;color:#DC2626;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;}
+
+.group-info{background:var(--n50);padding:10px 12px;border-radius:var(--rs);margin-top:10px;}
+.group-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+.group-bar{height:6px;background:var(--n200);border-radius:3px;margin-top:6px;overflow:hidden;}
+.group-fill{height:100%;background:linear-gradient(90deg,var(--o500),#FF8A4A);border-radius:3px;transition:width .3s;}
+
+.section{padding:14px 16px;border-top:1px solid var(--n100);}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;color:var(--n500);margin-bottom:10px;letter-spacing:.5px;}
+
+.variants{display:flex;flex-wrap:wrap;gap:8px;}
+.variant{padding:8px 14px;border:1px solid var(--n200);border-radius:8px;font-size:13px;cursor:pointer;background:var(--w);transition:all .15s;font-weight:500;}
+.variant.selected{border-color:var(--o500);background:#FFF7F0;color:var(--o600);font-weight:600;}
+
+.delivery-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.delivery-opt{padding:12px;border:1px solid var(--n200);border-radius:10px;cursor:pointer;background:var(--w);text-align:center;transition:all .15s;}
+.delivery-opt.selected{border-color:var(--o500);background:#FFF7F0;}
+.delivery-opt i{font-size:20px;color:var(--n500);margin-bottom:4px;display:block;}
+.delivery-opt.selected i{color:var(--o500);}
+.delivery-opt-label{font-size:13px;font-weight:600;}
+
+.field{margin-bottom:10px;}
+.field label{display:block;font-size:12px;color:var(--n500);margin-bottom:4px;font-weight:600;}
+.field input,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--n200);border-radius:8px;font-size:14px;font-family:inherit;background:var(--w);}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--o500);}
+.field textarea{resize:vertical;min-height:60px;}
+
+.summary{padding:14px 16px;background:var(--n50);}
+.sum-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--n700);}
+.sum-row.total{font-size:16px;font-weight:700;color:var(--n900);margin-top:8px;padding-top:8px;border-top:1px solid var(--n200);}
+
+.pay-btn{position:sticky;bottom:0;background:var(--w);padding:12px 16px;border-top:1px solid var(--n200);box-shadow:0 -2px 8px rgba(0,0,0,.04);}
+.btn{width:100%;background:var(--o500);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s;}
+.btn:hover:not(:disabled){background:var(--o600);}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn i{font-size:18px;}
+
+.loading{text-align:center;padding:40px;color:var(--n500);}
+.error{text-align:center;padding:40px;color:#DC2626;}
+
+.success-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+.success-overlay.show{display:flex;}
+.success-card{background:var(--w);border-radius:16px;padding:32px 24px;text-align:center;max-width:320px;width:100%;}
+.success-icon{width:60px;height:60px;background:var(--g500);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:#fff;font-size:30px;}
+.success-title{font-size:18px;font-weight:700;margin-bottom:8px;}
+.success-text{font-size:13px;color:var(--n500);margin-bottom:16px;}
+.success-code{background:var(--n50);padding:10px;border-radius:8px;font-family:monospace;font-size:14px;font-weight:600;margin-bottom:16px;}
+.success-card .btn{padding:10px;font-size:14px;}
+
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-200%);background:var(--n900);color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:2000;transition:transform .25s;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+.toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-mark"><i class="ri-shopping-bag-3-line"></i></div>
+    <span><span class="joyn">Joyn</span><span class="shop">shop</span></span>
+  </div>
+  <div class="secure"><i class="ri-shield-check-fill"></i> Xavfsiz to'lov</div>
+</header>
+
+<div class="container" id="main">
+  <div class="loading">⏳ Yuklanmoqda...</div>
+</div>
+
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <div class="success-icon"><i class="ri-check-line"></i></div>
+    <div class="success-title">Buyurtma qabul qilindi!</div>
+    <div class="success-text">Sotuvchi sizga aloqaga chiqadi</div>
+    <div class="success-code" id="successCode">JS-XXXXXX</div>
+    <button class="btn" onclick="window.close()">Yopish</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const pid    = window.location.pathname.split('/').pop();
+const buyType = params.get('type') || 'group';
+
+let product = null, currentVariant = '', currentDelivery = 'pickup', currentPhoto = 0;
+
+function fmt(n){return new Intl.NumberFormat('en-US').format(n).replace(/,/g,' ');}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+async function loadProduct(){
+  try{
+    const res = await fetch('/api/product/' + pid);
+    const d = await res.json();
+    if(!d.ok){
+      document.getElementById('main').innerHTML = '<div class="error">❌ ' + (d.error||'Xatolik') + '</div>';
+      return;
+    }
+    product = d;
+    render();
+  }catch(e){
+    document.getElementById('main').innerHTML = '<div class="error">❌ Serverga ulanib bo\'lmadi</div>';
+  }
+}
+
+function getPrice(){
+  return buyType === 'solo' && product.solo_price ? product.solo_price : product.group_price;
+}
+
+function render(){
+  const p = product;
+  const price = getPrice();
+  const orig = p.original_price || price;
+  const disc = orig > price ? Math.round((orig - price) / orig * 100) : 0;
+  const isGroup = buyType === 'group';
+  const progress = Math.min(100, Math.round(p.count / p.min_group * 100));
+
+  // Galereya
+  let photos = p.photos || [];
+  if(photos.length === 0 && p.photo_url) photos = [p.photo_url];
+  const photoHtml = photos.length > 0
+    ? `<img id="mainPhoto" src="${photos[0].startsWith('http') ? photos[0] : '/api/photo/'+photos[0]}" alt="${p.name}">
+       ${photos.length > 1 ? `<div class="gallery-dots">${photos.map((_,i)=>`<div class="gallery-dot${i===0?' active':''}" onclick="switchPhoto(${i})"></div>`).join('')}</div>` : ''}`
+    : `<div style="padding:40px;text-align:center;color:var(--n500);">📷 Rasm yo'q</div>`;
+
+  let html = `
+    <div class="card">
+      <div class="gallery">${photoHtml}</div>
+      <div class="info">
+        <div class="shop-row"><i class="ri-circle-fill"></i> ${p.shop_name||'Sotuvchi'}</div>
+        <h1 class="title">${p.name}</h1>
+        ${p.description ? `<div class="desc">${p.description}</div>` : ''}
+
+        <div class="prices">
+          <div class="price-main">${fmt(price)} so'm</div>
+          ${disc > 0 ? `<div class="price-old">${fmt(orig)} so'm</div><div class="discount">-${disc}%</div>` : ''}
+        </div>
+
+        ${isGroup ? `
+          <div class="group-info">
+            <div class="group-row">
+              <span><i class="ri-group-line"></i> Guruh: ${p.count}/${p.min_group}</span>
+              <span style="color:var(--o500);font-weight:600;">Yana ${Math.max(0,p.min_group-p.count)} kishi</span>
+            </div>
+            <div class="group-bar"><div class="group-fill" style="width:${progress}%"></div></div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  // Variantlar
+  if(p.variants && p.variants.length > 0){
+    html += `
+      <div class="card">
+        <div class="section">
+          <div class="section-title">🎨 Variant tanlang</div>
+          <div class="variants">
+            ${p.variants.map(v => `<div class="variant" onclick="selectVariant('${v.replace(/'/g,"\\'")}', this)">${v}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Yetkazib berish
+  html += `
+    <div class="card">
+      <div class="section">
+        <div class="section-title">🚚 Yetkazib berish</div>
+        <div class="delivery-options">
+          <div class="delivery-opt selected" id="optPickup" onclick="selectDelivery('pickup')">
+            <i class="ri-store-2-line"></i>
+            <div class="delivery-opt-label">Olib ketish</div>
+          </div>
+          <div class="delivery-opt" id="optDeliver" onclick="selectDelivery('deliver')">
+            <i class="ri-truck-line"></i>
+            <div class="delivery-opt-label">Yetkazib berish</div>
+          </div>
+        </div>
+        <div class="field" id="addressField" style="display:none;margin-top:10px;">
+          <label>Manzil</label>
+          <textarea id="address" placeholder="Tuman, ko'cha, uy raqami..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section">
+        <div class="section-title">👤 Aloqa ma'lumotlari</div>
+        <div class="field">
+          <label>Ism familiyangiz</label>
+          <input type="text" id="userName" placeholder="Aziz Karimov">
+        </div>
+        <div class="field">
+          <label>Telefon raqamingiz</label>
+          <input type="tel" id="userPhone" placeholder="+998 90 123 45 67">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="summary">
+        <div class="sum-row"><span>Mahsulot narxi</span><span>${fmt(price)} so'm</span></div>
+        <div class="sum-row"><span>Yetkazib berish</span><span id="delivPrice">Bepul</span></div>
+        <div class="sum-row total"><span>Jami to'lov</span><span>${fmt(price)} so'm</span></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('main').innerHTML = html;
+}
+
+function switchPhoto(i){
+  if(!product || !product.photos) return;
+  const photos = product.photos;
+  document.getElementById('mainPhoto').src = photos[i].startsWith('http') ? photos[i] : '/api/photo/'+photos[i];
+  document.querySelectorAll('.gallery-dot').forEach((d,idx)=>d.classList.toggle('active',idx===i));
+  currentPhoto = i;
+}
+
+function selectVariant(v, el){
+  currentVariant = v;
+  document.querySelectorAll('.variant').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectDelivery(type){
+  currentDelivery = type;
+  document.getElementById('optPickup').classList.toggle('selected', type==='pickup');
+  document.getElementById('optDeliver').classList.toggle('selected', type==='deliver');
+  document.getElementById('addressField').style.display = type==='deliver' ? 'block' : 'none';
+}
+
+async function submitOrder(){
+  if(!product){showToast('Mahsulot yuklanmadi');return;}
+  const name  = document.getElementById('userName').value.trim();
+  const phone = document.getElementById('userPhone').value.trim();
+  const address = currentDelivery === 'deliver' ? document.getElementById('address').value.trim() : '';
+
+  if(!name){showToast('Ismingizni kiriting');return;}
+  if(!phone){showToast('Telefon raqamingizni kiriting');return;}
+  if(currentDelivery === 'deliver' && !address){showToast('Manzilni kiriting');return;}
+  if(product.variants && product.variants.length > 0 && !currentVariant){
+    showToast('Variantni tanlang');return;
+  }
+
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line"></i> Yuborilmoqda...';
+
+  try{
+    const res = await fetch('/api/web_checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        product_id: pid,
+        type:       buyType,
+        user_name:  name,
+        user_phone: phone,
+        variant:    currentVariant,
+        delivery:   currentDelivery,
+        address:    address,
+      })
+    });
+    const d = await res.json();
+    if(d.ok){
+      // Click checkout URL keladi (kelajakda) yoki shunchaki muvaffaqiyat
+      if(d.checkout_url){
+        window.location.href = d.checkout_url;
+      } else {
+        document.getElementById('successCode').textContent = '#' + d.code;
+        document.getElementById('successOverlay').classList.add('show');
+      }
+    } else {
+      showToast(d.error || 'Xatolik yuz berdi');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ri-secure-payment-line"></i> To\'lash — ' + fmt(getPrice()) + " so'm";
+    }
+  } catch(e){
+    showToast('Serverga ulanib bo\'lmadi');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-secure-payment-line"></i> To\'lash — ' + fmt(getPrice()) + " so'm";
+  }
+}
+
+// Sticky pay button
+function renderPayBtn(){
+  const html = `<div class="pay-btn"><button class="btn" id="payBtn" onclick="submitOrder()"><i class="ri-secure-payment-line"></i> To'lash — ${fmt(getPrice())} so'm</button></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+loadProduct().then(()=>{ if(product) renderPayBtn(); });
+</script>
+</body>
+</html>
