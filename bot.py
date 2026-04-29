@@ -3798,6 +3798,22 @@ def buyer_handle_cb(cb):
         answer_cb(cbid); return
 
     # ── OPEN SHOP ──
+    if d == 'settings_toggle_notif':
+        prof = get_profile(uid)
+        prof['notifications'] = not prof.get('notifications', True)
+        save_data()
+        notif_on = prof['notifications']
+        answer_cb(cbid, ("🔔 Yoqildi" if notif_on else "🔕 O'chirildi"))
+        send_buyer(uid,
+            "⚙️ <b>Sozlamalar</b>\n\n"
+            f"🔔 Bildirishnomalar: {'Yoqilgan ✅' if notif_on else 'O‘chirilgan ❌'}",
+            {'inline_keyboard': [[
+                {'text': ("🔕 O‘chirish" if notif_on else "🔔 Yoqish"),
+                 'callback_data': 'settings_toggle_notif'},
+            ]]}
+        )
+        return
+
     if d == 'open_shop':
         answer_cb(cbid)
         if APP_URL:
@@ -3805,7 +3821,7 @@ def buyer_handle_cb(cb):
                 "🛍 <b>Joynshop do'koni</b>\n\nMahsulotlarni ko'rish uchun:",
                 {'inline_keyboard': [
                     [{'text': "🌐 Saytga o'tish",  'url': APP_URL}],
-                    [{'text': "📱 Miniapp ochish", 'url': f'{APP_URL}/miniapp'}],
+                    [{'text': "📱 Miniapp ochish", 'web_app': {'url': f'{APP_URL}/miniapp'}}],
                 ]}
             )
         else:
@@ -4464,9 +4480,65 @@ def buyer_handle_msg(msg):
             "/mystatus   — Buyurtmalarim\n"
             "/myprofile  — Profilim\n"
             "/mywishlist — Saqlangan mahsulotlar\n"
-            "/refund     — Qaytarish so'rovi\n\n"
+            "/refund     — Qaytarish so'rovi\n"
+            "/feedback   — Fikr bildirish\n"
+            "/settings   — Sozlamalar\n\n"
             "🆘 Yordam: @joynshop_support"
         )
+        return
+
+    if text == '/feedback':
+        prof = get_profile(uid)
+        prof['awaiting_feedback'] = True
+        save_data()
+        send_buyer(cid,
+            "✍️ <b>Fikr bildirish</b>\n\n"
+            "Joynshop haqida fikr-mulohazalaringizni shu chatga yozib yuboring — "
+            "biz albatta ko'rib chiqamiz va javob beramiz.\n\n"
+            "Bekor qilish: /cancel\n"
+            "Yoki to'g'ridan-to'g'ri: @joynshop_support"
+        )
+        return
+
+    if text == '/settings':
+        prof = get_profile(uid)
+        notif_on = prof.get('notifications', True)
+        send_buyer(cid,
+            "⚙️ <b>Sozlamalar</b>\n\n"
+            f"🔔 Bildirishnomalar: {'Yoqilgan ✅' if notif_on else 'O‘chirilgan ❌'}\n\n"
+            "Profil ma'lumotlari uchun /myprofile",
+            {'inline_keyboard': [[
+                {'text': ("🔕 O‘chirish" if notif_on else "🔔 Yoqish"),
+                 'callback_data': 'settings_toggle_notif'},
+            ]]}
+        )
+        return
+
+    if text == '/cancel':
+        prof = get_profile(uid)
+        cleared = []
+        if prof.pop('awaiting_feedback', False):
+            cleared.append('feedback')
+        if prof.pop('awaiting_address', False):
+            cleared.append('address')
+        save_data()
+        send_buyer(cid, "✅ Bekor qilindi." if cleared else "Hech qanday faol jarayon yo'q.")
+        return
+
+    # Awaiting feedback (oddiy text yuborilsa, fikr sifatida qabul qilamiz)
+    prof = get_profile(uid)
+    if prof.get('awaiting_feedback') and text and not text.startswith('/'):
+        del prof['awaiting_feedback']
+        save_data()
+        if ADMIN_ID:
+            uname = msg.get('from', {}).get('username', '')
+            uname_str = f"@{uname}" if uname else f"ID {uid}"
+            send_seller(ADMIN_ID,
+                f"✍️ <b>Yangi fikr</b>\n\n"
+                f"👤 {uname_str}\n\n"
+                f"{text[:1000]}"
+            )
+        send_buyer(cid, "✅ Fikringiz yuborildi. Rahmat!")
         return
 
 # ══════════════════════════════════════════════════════════════════════
