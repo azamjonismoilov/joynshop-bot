@@ -107,7 +107,7 @@ APP_URL            = os.environ.get('APP_URL', '')
 BACKEND_URL        = os.environ.get('BACKEND_URL', APP_URL)
 
 def setup_bot_ui():
-    miniapp_url = f"{APP_URL}/miniapp" if APP_URL else None
+    miniapp_url = f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp" if (BACKEND_URL or APP_URL) else None
 
     if BUYER_TOKEN:
         if miniapp_url:
@@ -3821,7 +3821,7 @@ def buyer_handle_cb(cb):
                 "🛍 <b>Joynshop do'koni</b>\n\nMahsulotlarni ko'rish uchun:",
                 {'inline_keyboard': [
                     [{'text': "🌐 Saytga o'tish",  'url': APP_URL}],
-                    [{'text': "📱 Miniapp ochish", 'web_app': {'url': f'{APP_URL}/miniapp'}}],
+                    [{'text': "📱 Miniapp ochish", 'web_app': {'url': f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp"}}],
                 ]}
             )
         else:
@@ -4198,7 +4198,8 @@ def buyer_handle_msg(msg):
                 if not p:
                     send_buyer(cid, "❌ Mahsulot topilmadi yoki yopilgan.")
                     return
-                miniapp_url = f'{APP_URL}/miniapp?pid={pid}&action=buy&type={buy_type}' if APP_URL else None
+                _base = (BACKEND_URL or APP_URL or '').rstrip('/')
+                miniapp_url = f'{_base}/miniapp?pid={pid}&action=buy&type={buy_type}' if _base else None
                 if miniapp_url:
                     # Faqat bitta xabar — Mini App ochish tugmasi bilan
                     send_buyer(cid,
@@ -4233,7 +4234,8 @@ def buyer_handle_msg(msg):
                     )
             except: pass
             # /start with ref — welcome message
-            miniapp_url = f'{APP_URL}/miniapp' if APP_URL else None
+            _base = (BACKEND_URL or APP_URL or '').rstrip('/')
+            miniapp_url = f'{_base}/miniapp' if _base else None
             site_url    = APP_URL if APP_URL else None
 
             inline_row = []
@@ -4384,7 +4386,8 @@ def buyer_handle_msg(msg):
 
     # ── /start (parametrsiz) ──
     if text == '/start':
-        miniapp_url = f'{APP_URL}/miniapp' if APP_URL else None
+        _base = (BACKEND_URL or APP_URL or '').rstrip('/')
+        miniapp_url = f'{_base}/miniapp' if _base else None
         site_url    = APP_URL if APP_URL else None
 
         # 1 ta xabar: salom matni + inline [Saytga o'tish] [Miniapp] buttonlar
@@ -5167,7 +5170,7 @@ def setup_menu_route():
     from flask import jsonify
     if request.args.get('key','')!=DASHBOARD_PASSWORD:
         return jsonify({'ok':False,'error':'unauthorized'}),403
-    miniapp_url=f"{APP_URL}/miniapp" if APP_URL else None
+    miniapp_url = f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp" if (BACKEND_URL or APP_URL) else None
     results={}
     if BUYER_TOKEN and miniapp_url:
         r=requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton',
