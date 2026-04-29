@@ -4399,7 +4399,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    if text == '/myprofile':
+    if text == '/myprofile' or text == '👤 Profilim':
         p      = get_profile(uid)
         ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
         ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
@@ -4420,7 +4420,7 @@ def buyer_handle_msg(msg):
         )
         return
 
-    if text == '/mystatus':
+    if text == '/mystatus' or text == '📋 Buyurtmalarim':
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(cid, "📋 Buyurtma yo'q."); return
@@ -4434,7 +4434,7 @@ def buyer_handle_msg(msg):
         send_buyer(cid, r)
         return
 
-    if text == '/mywishlist':
+    if text == '/mywishlist' or text == '🤍 Wishlist':
         wl = wishlists.get(uid, [])
         if not wl:
             send_buyer(cid, "🤍 Wishlist bo'sh."); return
@@ -4458,7 +4458,7 @@ def buyer_handle_msg(msg):
         send_buyer(cid, "Qaysi buyurtmani qaytarmoqchisiz?", {'inline_keyboard': btns})
         return
 
-    if text == '/help':
+    if text == '/help' or text == '❓ Yordam':
         send_buyer(cid,
             "ℹ️ <b>Yordam</b>\n\n"
             "/mystatus   — Buyurtmalarim\n"
