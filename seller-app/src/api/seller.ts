@@ -1,0 +1,25 @@
+import { useQuery } from '@tanstack/react-query';
+import { apiGet } from './client';
+import type { MeResponse, ProductsResponse, ProductsQuery } from './types';
+
+export function useSellerMe() {
+  return useQuery({
+    queryKey: ['seller', 'me'],
+    queryFn: () => apiGet<MeResponse>('/seller/me'),
+    staleTime: 60_000, // 1 daqiqa cache
+  });
+}
+
+export function useSellerProducts(query: ProductsQuery = {}) {
+  return useQuery({
+    queryKey: ['seller', 'products', query],
+    queryFn: () => apiGet<ProductsResponse>('/seller/products', {
+      page:   query.page,
+      limit:  query.limit,
+      filter: query.filter,
+      search: query.search,
+    }),
+    staleTime: 30_000, // 30 soniya cache
+    placeholderData: (prev) => prev, // Keep previous page during pagination
+  });
+}
