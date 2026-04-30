@@ -3535,6 +3535,18 @@ def finalize_shop_onboarding(uid, cid, s, channel):
             [{'text': "➕ Mahsulot qo'shish"},  {'text': '👥 Mijozlar'}],
             [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
         ], 'resize_keyboard': True, 'is_persistent': True})
+    # 2-xabar — Mini App taklifi (inline web_app tugma)
+    # Eslatma: web_app inline tugmasi ishlashi uchun BotFather'da bot domeni
+    # https://seller.joynshop.uz ga o'rnatilgan bo'lishi kerak (/setdomain).
+    send_seller(cid,
+        "✅ <b>Onboarding tugadi!</b>\n\n"
+        "Endi siz Joynshop sotuvchisi sifatida ishlay olasiz.\n\n"
+        "💡 <b>Yangilik:</b> Mahsulotlaringizni kengaytirilgan ko'rinishda — "
+        "Sotuvchi paneli orqali ham boshqarishingiz mumkin.",
+        {'inline_keyboard': [[
+            {'text': "🚀 Sotuvchi panelini ochish",
+             'web_app': {'url': 'https://seller.joynshop.uz'}},
+        ]]})
 
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
