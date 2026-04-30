@@ -1996,7 +1996,31 @@ def seller_handle_cb(cb):
             answer_cb(cbid, f"🔒 {entry['name']} tez orada qo'shiladi", alert=True)
             return
         answer_cb(cbid)
-        # active integration uchun handler nomini globaldan qidiramiz va chaqiramiz
+        # Billz uchun maxsus mantiq — ulangan bo'lsa boshqaruv, aks holda onboarding
+        if integ_id == 'billz':
+            connected = seller_billz_connected_shops(uid)
+            if len(connected) == 1:
+                # Bitta do'kon ulangan — to'g'ridan boshqaruv menyusiga
+                _open_billz_management(uid, uid, connected[0])
+            elif len(connected) > 1:
+                # Ko'p do'kon ulangan — qaysi birini boshqarishni tanlash
+                kb = []
+                for idx in connected:
+                    sh = seller_shops[uid][idx]
+                    kb.append([{
+                        'text': f"✅ {sh.get('name','—')[:20]} → {sh.get('billz_shop_name','—')[:15]}",
+                        'callback_data': f'billz_view_{idx}',
+                    }])
+                kb.append([{'text': "🔙 Integratsiyalar", 'callback_data': 'menu_integrations'}])
+                send_seller(uid,
+                    "✅ <b>Billz POS — boshqaruv</b>\n\n"
+                    "Sizda bir nechta do'kon Billz'ga ulangan. Qaysi birini boshqarmoqchisiz?",
+                    {'inline_keyboard': kb})
+            else:
+                # Hech qaysi ulanmagan — onboarding boshlash
+                _start_billz_onboarding(uid, uid)
+            return
+        # Boshqa active integratsiyalar uchun standart handler
         handler_name = entry.get('handler')
         handler = globals().get(handler_name) if handler_name else None
         if handler:
@@ -3141,21 +3165,96 @@ def post_to_channel(uid, pid):
     except Exception as e:
         return False, f"Tarmoq xatosi: {e}"
 
+def seller_billz_connected_shops(uid):
+    """Sotuvchining Billz ulangan do'konlari indekslarini qaytaradi."""
+    return [i for i, sh in enumerate(seller_shops.get(uid, []))
+            if sh.get('billz_secret_token')]
+
+def integration_label(entry, uid):
+    """Integration uchun dinamik tugma matni (sotuvchi holatiga qarab)."""
+    if entry['status'] != 'active':
+        return f"🔒 {entry['name']}"
+    if entry['id'] == 'billz':
+        return ("✅ Billz POS" if seller_billz_connected_shops(uid) else "🟢 Billz POS")
+    # Boshqa active integratsiyalar — kelajakda shu pattern'ga moslashtiriladi
+    return f"🟢 {entry['name']}"
+
 def render_integrations_menu(uid, cid):
-    """Integratsiyalar ro'yxatini ko'rsatadi (active va coming_soon)."""
+    """Integratsiyalar ro'yxatini sotuvchining ulanganlik holati bilan ko'rsatadi."""
     txt = (
         "🔌 <b>Integratsiyalar</b>\n\n"
-        "Mahsulotlaringizni boshqa POS yoki ERP tizimidan avtomatik olib kelish.\n\n"
-        "🟢 — Faol  •  🔒 — Tez orada"
+        "✅ — Ulangan  •  🟢 — Mavjud  •  🔒 — Tez orada"
     )
     kb = []
     for entry in INTEGRATIONS:
         kb.append([{
-            'text': f"{entry['icon']} {entry['name']}" + ("" if entry['status'] == 'active' else " (tez orada)"),
+            'text':          integration_label(entry, uid),
             'callback_data': f"integ_{entry['id']}",
         }])
     kb.append([{'text': "🔙 Menyu", 'callback_data': 'back_menu'}])
     send_seller(cid, txt, {'inline_keyboard': kb})
+
+def _open_billz_management(uid, cid, shop_idx):
+    """Ulangan Billz do'koni uchun boshqaruv menyusi: import/discount/disconnect."""
+    shops = seller_shops.get(uid, [])
+    if shop_idx >= len(shops):
+        send_seller(cid, "❌ Do'kon topilmadi"); return
+    shop = shops[shop_idx]
+    billz_count = sum(1 for p in products.values()
+                      if p.get('seller_id') == uid and p.get('source') == 'billz')
+    txt = (
+        f"✅ <b>Billz POS — boshqaruv</b>\n\n"
+        f"🏪 Joynshop do'koni: <b>{shop.get('name','—')}</b>\n"
+        f"🏬 Billz do'koni: <b>{shop.get('billz_shop_name','—')}</b>\n"
+        f"📅 Ulangan: {shop.get('billz_connected_at','—')}\n"
+        f"📦 Import qilingan: {billz_count} ta\n"
+    )
+    kb = [
+        [{'text': "📥 Mahsulotlarni yangilash",      'callback_data': f'billz_import_{shop_idx}'}],
+        [{'text': "⚙️ Global chegirma sozlamalari", 'callback_data': f'billz_disc_{shop_idx}'}],
+        [{'text': "🔌 Billz ni o'chirish",            'callback_data': f'billz_disconnect_{shop_idx}'}],
+        [{'text': "🔙 Integratsiyalar",              'callback_data': 'menu_integrations'}],
+    ]
+    send_seller(cid, txt, {'inline_keyboard': kb})
+
+def _start_billz_onboarding(uid, cid):
+    """Hech qaysi do'kon ulanmagan — onboarding boshlash.
+    1 do'kon bo'lsa to'g'ri token kutiladi, ko'p bo'lsa do'kon tanlash so'raladi.
+    """
+    if not get_fernet():
+        send_seller(cid,
+            "⚠️ Billz integratsiyasi server tomonidan o'chirilgan.\n"
+            "Admin: BILLZ_ENCRYPTION_KEY env varni tekshiring.")
+        return
+    shops = seller_shops.get(uid, [])
+    if not shops:
+        send_seller(cid, "❌ Avval do'kon yarating: /start")
+        return
+    if len(shops) == 1:
+        # Bitta do'kon — to'g'ri token so'raymiz
+        seller_state[uid] = {'step': 'billz_secret_token', 'billz_shop_idx': 0}
+        send_seller(cid,
+            f"🔌 <b>Billz ulash — {shops[0].get('name','')}</b>\n\n"
+            f"<b>Qadamlar:</b>\n"
+            f"1. Billz UI → Sozlamalar → API → <b>Создать ключ</b>\n"
+            f"2. Yaratilgan secret token'ni nusxalang\n"
+            f"3. Token'ni shu chatga yuboring\n\n"
+            f"⚠️ Token shifrlanib saqlanadi. Bekor qilish: /cancel")
+        return
+    # Ko'p do'kon — qaysi birini ulashni so'raymiz
+    kb = []
+    for idx, sh in enumerate(shops):
+        connected = bool(sh.get('billz_secret_token'))
+        if connected:
+            label = f"✅ {sh.get('name','—')[:25]}"
+        else:
+            label = f"🟢 {sh.get('name','—')[:25]}"
+        kb.append([{'text': label, 'callback_data': f'billz_view_{idx}'}])
+    kb.append([{'text': "🔙 Integratsiyalar", 'callback_data': 'menu_integrations'}])
+    send_seller(cid,
+        "🟢 <b>Billz POS — ulash</b>\n\n"
+        "Qaysi do'koningizni Billz bilan bog'lashni xohlaysiz?",
+        {'inline_keyboard': kb})
 
 def render_billz_menu(uid, cid):
     """Sotuvchining do'konlarini va Billz holatini ko'rsatadi."""
