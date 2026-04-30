@@ -1907,35 +1907,104 @@ def seller_handle_cb(cb):
         if not p or p.get('seller_id') != uid:
             answer_cb(cbid, "❌ Topilmadi"); return
         answer_cb(cbid)
+        cls   = _classify_product_status(p)
         count = len(groups.get(pid, []))
-        st    = '🔥 Aktiv' if p.get('status') != 'closed' else '🔒 Yopilgan'
-        sale_labels = {'group':'👥 Guruhli','solo':'👤 Yakka','both':'👥+👤 Ikkalasi'}
+        is_billz_draft = (p.get('source') == 'billz' and not p.get('is_active', True))
+        # Narx liniyasi — draft uchun asl narx, aks holda guruh narxi
+        if is_billz_draft:
+            price_line = f"💰 {fmt(p.get('original_price',0))} so'm  <i>(asl narx)</i>"
+        else:
+            grp = p.get('group_price', 0) or p.get('original_price', 0)
+            price_line = f"💰 {fmt(grp)} so'm"
+        source_label = "Billz" if p.get('source') == 'billz' else "Manual"
         txt = (
-            f"📦 <b>{p.get('name','')}</b>\n"
-            f"🆔 <code>{pid}</code>\n\n"
-            f"{sale_labels.get(p.get('sale_type','both'),'')}\n"
-            f"💰 Asl: {fmt(p.get('original_price',0))} so'm\n"
-            f"👥 Guruh narxi: {fmt(p.get('group_price',0))} so'm\n"
+            f"{cls['emoji']} <b>{p.get('name','')}</b>\n\n"
+            f"{price_line}\n"
+            f"👥 Guruh: {count}/{p.get('min_group',0)}\n"
+            f"🛍 {source_label}\n"
+            f"📅 Tugash: {p.get('deadline','—') or '—'}\n"
+            f"📊 Status: {cls['label']}"
         )
-        if p.get('solo_price'):
-            txt += f"👤 Yakka narx: {fmt(p['solo_price'])} so'm\n"
-        txt += (
-            f"👥 Min guruh: {p.get('min_group',0)}\n"
-            f"👥 Hozir: {count}/{p.get('min_group',0)} {st}\n"
-            f"⏰ {p.get('deadline','')}\n"
-        )
-        if p.get('description'):
-            txt += f"\n📝 {p['description'][:200]}\n"
-        if p.get('variants'):
-            txt += f"🎨 {', '.join(p['variants'])}\n"
-        kb = {'inline_keyboard': [
-            [{'text': "✏️ Tahrirlash", 'callback_data': f'mp_edit_{pid}'},
-             {'text': "🗑 O'chirish",  'callback_data': f'mp_del_{pid}'}],
-            [{'text': "📢 Qayta e'lon", 'callback_data': f'boost_{pid}'}],
-            [{'text': "⬅️ Orqaga",     'callback_data': 'menu_myproducts'}],
-        ]}
-        send_seller(uid, txt, kb)
+        # Tugma layouti — holatga qarab
+        kb_rows = []
+        is_closed  = (p.get('status') == 'closed')
+        is_expired = (cls['label'] == 'Muddati tugagan')
+        if is_billz_draft:
+            kb_rows.append([
+                {'text': "▶️ Yoqish",   'callback_data': f'bz_activate_{pid}'},
+                {'text': "🗑 O'chirish", 'callback_data': f'mp_del_{pid}'},
+            ])
+        elif is_expired:
+            kb_rows.append([
+                {'text': "♻️ Qayta yoqish", 'callback_data': f'mp_renew_{pid}'},
+                {'text': "🗑 O'chirish",    'callback_data': f'mp_del_{pid}'},
+            ])
+        elif not is_closed:
+            kb_rows.append([
+                {'text': "✏️ Tahrirlash", 'callback_data': f'mp_edit_{pid}'},
+                {'text': "🗑 O'chirish",  'callback_data': f'mp_del_{pid}'},
+            ])
+        # Closed (faqat o'qish) — yuqori qator umuman yo'q
+        kb_rows.append([
+            {'text': "📊 Statistika", 'callback_data': f'mp_stats_{pid}'},
+            {'text': "🔙 Orqaga",     'callback_data': 'menu_myproducts'},
+        ])
+        send_seller(uid, txt, {'inline_keyboard': kb_rows})
         return
+
+    if d.startswith('mp_stats_'):
+        pid = d[9:]
+        if pid not in products:
+            answer_cb(cbid, "❌ Topilmadi"); return
+        answer_cb(cbid, "📊 Tez orada qo'shiladi", alert=True)
+        return
+
+    if d.startswith('mp_renew_') and not d.startswith('mp_renewh_'):
+        pid = d[9:]
+        p = products.get(pid)
+        if not p or p.get('seller_id') != uid:
+            answer_cb(cbid, "❌ Topilmadi"); return
+        answer_cb(cbid)
+        send_seller(uid,
+            f"♻️ <b>Qayta yoqish — {p.get('name','')}</b>\n\n"
+            f"Yangi muddat tanlang. Boshqa maydonlar saqlanadi (narx, min guruh va h.k.).",
+            {'inline_keyboard': [
+                [{'text': "24 soat",  'callback_data': f'mp_renewh_{pid}_24'},
+                 {'text': "2 kun",    'callback_data': f'mp_renewh_{pid}_48'}],
+                [{'text': "3 kun",    'callback_data': f'mp_renewh_{pid}_72'},
+                 {'text': "1 hafta",  'callback_data': f'mp_renewh_{pid}_168'}],
+                [{'text': "🔙 Bekor", 'callback_data': f'mp_view_{pid}'}],
+            ]})
+        return
+
+    if d.startswith('mp_renewh_'):
+        # mp_renewh_<pid>_<hours>
+        rest = d[len('mp_renewh_'):]
+        try:
+            pid, hours_str = rest.rsplit('_', 1)
+            hours = int(hours_str)
+        except (ValueError, IndexError):
+            answer_cb(cbid); return
+        p = products.get(pid)
+        if not p or p.get('seller_id') != uid:
+            answer_cb(cbid, "❌ Topilmadi"); return
+        if hours < 1 or hours > 720:
+            answer_cb(cbid, "❌ Noto'g'ri muddat"); return
+        new_dt = datetime.now() + timedelta(hours=hours)
+        p['deadline']    = new_dt.strftime('%d.%m.%Y %H:%M')
+        p['deadline_dt'] = new_dt.strftime('%Y-%m-%d %H:%M')
+        p['status']      = 'active'
+        p['is_active']   = True
+        save_data()
+        answer_cb(cbid, "✅ Qayta yoqildi")
+        send_seller(uid,
+            f"✅ <b>{p.get('name','')}</b> qayta yoqildi.\n\n"
+            f"📅 Yangi muddat: {p['deadline']}\n\n"
+            f"<i>Kanal posti caption'i 30 soniya ichida avtomatik yangilanadi.</i>",
+            {'inline_keyboard': [
+                [{'text': "👁 Mahsulotni ko'rish", 'callback_data': f'mp_view_{pid}'}],
+                [{'text': "📦 Mahsulotlarim",     'callback_data': 'menu_myproducts'}],
+            ]})
         return
 
     if d == 'menu_help':
@@ -2681,24 +2750,64 @@ def is_bot_admin_in(channel):
     except:
         return False
 
-MYPRODUCTS_PER_PAGE = 5
+MYPRODUCTS_PER_PAGE = 7
 
-def render_myproducts(uid, cid, page=0):
-    """Sotuvchining mahsulotlarini sahifalangan inline keyboard bilan ko'rsatadi.
-    Aktiv manual + Billz draft'lar (yoqilmagan) ko'rinadi. O'chirilganlar yashiriladi.
+def format_price_short(amount):
+    """1_400_000 → '1.4M', 2_000_000 → '2M', 550_000 → '550K', 999 → '999'."""
+    try:
+        n = int(amount or 0)
+    except (TypeError, ValueError):
+        return "0"
+    if n >= 1_000_000:
+        m = n / 1_000_000
+        return f"{int(m)}M" if m == int(m) else f"{m:.1f}M"
+    if n >= 1_000:
+        return f"{n // 1_000}K"
+    return str(n)
+
+def _classify_product_status(p):
+    """Mahsulot status'ini list va detail uchun yagona qilib qaytaradi.
+    Returns {'emoji': str, 'label': str, 'archived': bool}.
+    """
+    status    = p.get('status', 'active')
+    is_active = p.get('is_active', True)
+    source    = p.get('source', 'manual')
+    if status == 'closed':
+        return {'emoji': '🔒', 'label': 'Yopilgan', 'archived': True}
+    if source == 'billz' and not is_active:
+        return {'emoji': '⏸', 'label': 'Yoqilmagan', 'archived': False}
+    ddt = p.get('deadline_dt', '')
+    if ddt:
+        try:
+            if datetime.strptime(ddt, '%Y-%m-%d %H:%M') < datetime.now():
+                return {'emoji': '⏰', 'label': 'Muddati tugagan', 'archived': True}
+        except (ValueError, TypeError):
+            pass
+    return {'emoji': '🔥', 'label': 'Aktiv', 'archived': False}
+
+def _truncate_name(name, limit=25):
+    if not name:
+        return '—'
+    return name if len(name) <= limit else name[:limit-1].rstrip() + '…'
+
+def render_myproducts(uid, cid, page=0, mode='active'):
+    """Mahsulotlar ro'yxati 1-ustunli inline keyboard bilan.
+    mode='active'  — aktiv + Billz draft'lar (default)
+    mode='archived' — yopilgan + muddati tugagan (kelajakdagi Arxiv tugmasi uchun)
     """
     pids = []
     for pid in seller_products.get(uid, []):
         if pid not in products: continue
-        p = products[pid]
-        if p.get('status') == 'closed':
-            continue  # o'chirilgan — yashir
-        if p.get('is_active', True):
-            pids.append(pid)
-        elif p.get('source') == 'billz':
-            pids.append(pid)  # Billz draft — ko'rsat (yoqish kerak)
+        cls = _classify_product_status(products[pid])
+        if mode == 'active' and cls['archived']:
+            continue
+        if mode == 'archived' and not cls['archived']:
+            continue
+        pids.append(pid)
     if not pids:
-        send_seller(cid, "📦 Sizda mahsulot yo'q.",
+        empty_msg = ("📦 Sizda mahsulot yo'q." if mode == 'active'
+                     else "📦 Arxivda mahsulot yo'q.")
+        send_seller(cid, empty_msg,
             {'inline_keyboard': [[{'text': "➕ Qo'shish", 'callback_data': 'menu_addproduct'}]]})
         return
     total       = len(pids)
@@ -2707,52 +2816,36 @@ def render_myproducts(uid, cid, page=0):
     start       = page * MYPRODUCTS_PER_PAGE
     chunk       = pids[start:start + MYPRODUCTS_PER_PAGE]
 
-    txt = f"📦 <b>Mening mahsulotlarim</b> ({total} ta)\n"
-    txt += f"<i>Sahifa {page+1}/{total_pages}</i>\n\n"
+    title = "Mening mahsulotlarim" if mode == 'active' else "Arxiv"
+    txt = f"📦 <b>{title}</b> ({total} ta) · Sahifa {page+1}/{total_pages}"
+
     kb = []
     for pid in chunk:
-        p     = products.get(pid, {})
+        p     = products[pid]
+        cls   = _classify_product_status(p)
+        name  = _truncate_name(p.get('name', '—'), 25)
         count = len(groups.get(pid, []))
-        is_billz = p.get('source') == 'billz'
-        is_draft = is_billz and not p.get('is_active', False)
-        if is_draft:
-            st_icon = '⚪️'
-            badge   = '🛍 Billz · ⏸ Yoqilmagan'
-        elif is_billz:
-            st_icon = '🟢'
-            badge   = '🛍 Billz · ✅ Aktiv'
-        elif p.get('status') == 'closed':
-            st_icon = '🔒'
-            badge   = "🔒 Yopilgan"
+        min_g = p.get('min_group', 0)
+        if cls['label'] == 'Aktiv':
+            price = format_price_short(p.get('group_price', 0) or p.get('original_price', 0))
+            label = f"{name} · {price} · 👥{count}/{min_g}"
+        elif cls['label'] == 'Yoqilmagan':
+            # Draft: group_price=0 — narx asl narxdan
+            price = format_price_short(p.get('original_price', 0))
+            label = f"{cls['emoji']} {name} · {price} · 👥{count}/{min_g}"
         else:
-            st_icon = '🔥'
-            badge   = '✏️ Manual'
-        name = p.get('name', '—')[:30]
-        txt += f"━━━━━━━━━━━━━━━\n{st_icon} <b>{name}</b>  <i>{badge}</i>\n"
-        if is_draft:
-            txt += f"💰 Asl: {fmt(p.get('original_price',0))} so'm — yoqish uchun narx kerak\n"
-        else:
-            txt += f"👥 {count}/{p.get('min_group',0)} • 💰 {fmt(p.get('group_price',0))} so'm\n"
-        txt += f"🆔 <code>{pid}</code>\n\n"
-        if is_draft:
-            kb.append([
-                {'text': f"▶️ Yoqish — {name[:14]}", 'callback_data': f'bz_activate_{pid}'},
-                {'text': "🗑",                       'callback_data': f'mp_del_{pid}'},
-            ])
-        else:
-            kb.append([
-                {'text': f"👁 {name[:18]}", 'callback_data': f'mp_view_{pid}'},
-                {'text': "✏️",              'callback_data': f'mp_edit_{pid}'},
-                {'text': "🗑",              'callback_data': f'mp_del_{pid}'},
-            ])
+            # Yopilgan / Muddati tugagan
+            label = f"{cls['emoji']} {name} · {cls['label']}"
+        kb.append([{'text': label, 'callback_data': f'mp_view_{pid}'}])
+
+    page_cb_prefix = 'mp_page_' if mode == 'active' else 'mp_arch_page_'
     nav = []
     if page > 0:
-        nav.append({'text': "⬅️ Oldingi", 'callback_data': f'mp_page_{page-1}'})
+        nav.append({'text': "⬅️ Oldingi", 'callback_data': f'{page_cb_prefix}{page-1}'})
     if page < total_pages - 1:
-        nav.append({'text': "Keyingi ➡️", 'callback_data': f'mp_page_{page+1}'})
-    if nav:
-        kb.append(nav)
-    kb.append([{'text': "🔙 Menyu", 'callback_data': 'back_menu'}])
+        nav.append({'text': "➡️ Keyingi", 'callback_data': f'{page_cb_prefix}{page+1}'})
+    nav.append({'text': "🔙 Menyu", 'callback_data': 'back_menu'})
+    kb.append(nav)
     send_seller(cid, txt, {'inline_keyboard': kb})
 
 def finalize_shop_onboarding(uid, cid, s, channel):
