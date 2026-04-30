@@ -8316,6 +8316,103 @@ def api_seller_shop_detail(idx):
     })
     return jsonify(brief)
 
+# ─── SPRINT 1.4: chart + billz detail + mxik proxy ──────────────────
+
+@app.route('/api/v1/seller/stats/chart', methods=['GET'])
+@require_seller
+def api_seller_stats_chart():
+    """Kunlik GMV chart data — N kun uchun.
+    days: 7 | 14 | 30 | 60 | 90 (default: 14)"""
+    uid = g.seller_uid
+    try:
+        days = int(request.args.get('days', 14))
+    except ValueError:
+        days = 14
+    if days not in (7, 14, 30, 60, 90):
+        return jsonify({'error': 'invalid_days', 'reason': 'allowed: 7,14,30,60,90'}), 400
+
+    pids = set(_seller_get_pids(uid))
+    confirmed = [o for o in orders.values()
+                 if o.get('product_id') in pids and o.get('status') == 'confirmed']
+
+    today  = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    cutoff = today - timedelta(days=days - 1)
+
+    # Bucket'larni nol bilan to'ldirish (continuous chart uchun)
+    daily = {}
+    for i in range(days):
+        day = cutoff + timedelta(days=i)
+        daily[day.strftime('%Y-%m-%d')] = {'gmv': 0, 'orders': 0}
+
+    for o in confirmed:
+        dt = _parse_order_dt(o)
+        if not dt:
+            continue
+        day_key = dt.strftime('%Y-%m-%d')
+        if day_key in daily:
+            daily[day_key]['gmv']    += o.get('amount', 0)
+            daily[day_key]['orders'] += 1
+
+    data = [{'date': k, 'gmv': v['gmv'], 'orders': v['orders']}
+            for k, v in sorted(daily.items())]
+    total_gmv = sum(d['gmv'] for d in data)
+    avg_daily = total_gmv // days if days else 0
+
+    return jsonify({
+        'days':      days,
+        'data':      data,
+        'total_gmv': total_gmv,
+        'avg_daily': avg_daily,
+    })
+
+@app.route('/api/v1/seller/integrations/billz/<int:shop_idx>', methods=['GET'])
+@require_seller
+def api_seller_integration_billz(shop_idx):
+    """Billz shop detail per-shop."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    if shop_idx < 0 or shop_idx >= len(shops):
+        return jsonify({'error': 'not_found'}), 404
+    shop = shops[shop_idx]
+    connected = bool(shop.get('billz_secret_token'))
+
+    imported_count = 0
+    if connected:
+        # Sotuvchining Billz mahsulotlarini sanaymiz (shop bo'yicha aniq filter
+        # _billz_make_product_dict'da billz_shop_id saqlanmaydi — umumiy hisob)
+        for pid in _seller_get_pids(uid):
+            p = products.get(pid)
+            if p and p.get('source') == 'billz':
+                imported_count += 1
+
+    return jsonify({
+        'shop_idx':  shop_idx,
+        'shop_name': shop.get('name', ''),
+        'billz': {
+            'connected':             connected,
+            'billz_shop_id':         shop.get('billz_shop_id', '') if connected else '',
+            'billz_shop_name':       shop.get('billz_shop_name', '') if connected else '',
+            'connected_at':          shop.get('billz_connected_at', '') if connected else '',
+            'imported_count':        imported_count,
+            'global_solo_discount':  shop.get('billz_global_solo_discount', 10),
+            'global_group_discount': shop.get('billz_global_group_discount', 20),
+        },
+    })
+
+@app.route('/api/v1/seller/mxik/search', methods=['GET'])
+@require_seller
+def api_seller_mxik_search():
+    """MXIK qidiruv proxy — server-side cache va graceful degradation.
+    tasnif.soliq.uz Render egress sekin bo'lsa, ok=false bilan xato qaytadi."""
+    q = (request.args.get('q', '') or '').strip()
+    if len(q) < 2:
+        return jsonify({'error': 'invalid_query', 'reason': 'min 2 chars'}), 400
+    results, err = mxik_search(q)
+    if err:
+        # Graceful — 200 with ok:false (Mini App'da xushmuomala xato xabari)
+        return jsonify({'ok': False, 'error': err, 'results': []})
+    return jsonify({'ok': True, 'results': results or [], 'count': len(results or [])})
+
 @app.route('/api/v1/seller/integrations', methods=['GET'])
 @require_seller
 def api_seller_integrations():
