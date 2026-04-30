@@ -749,7 +749,7 @@ PROD_ALLOWED_CBS = {
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
-    'back_menu', 'noop', 'menu_mycustomers', 'menu_inventory', 'menu_export', 'live_cancel', 'live_start',
+    'back_menu', 'noop', 'menu_mycustomers', 'menu_export', 'live_cancel', 'live_start',
 }
 
 PROD_BLOCKED_TEXTS = {
@@ -1186,7 +1186,10 @@ def seller_handle_cb(cb):
             f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
             f"📊 Komissiya (5%): {fmt(commission)} so'm\n"
             f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
-            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
+            {'inline_keyboard': [
+                [{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}],
+                [{'text': "🔙 Menyu",         'callback_data': 'back_menu'}],
+            ]}
         )
         return
 
@@ -1753,66 +1756,6 @@ def seller_handle_cb(cb):
             send_seller(uid, f"❌ Eksport xatosi: {e}")
         return
 
-    if d == 'menu_inventory':
-        answer_cb(cbid)
-        my_pids = seller_products.get(uid, [])
-        my_products = [(pid, products[pid]) for pid in my_pids if pid in products]
-        # Stocki bor mahsulotlar
-        with_stock = [(pid, p) for pid, p in my_products if p.get('stock', 9999) < 9999]
-
-        if not with_stock:
-            send_seller(uid,
-                "📦 <b>Inventar</b>\n\n"
-                "Hozircha qoldig'i belgilangan mahsulot yo'q.\n"
-                "Yangi mahsulot qo'shganda <b>qoldiq miqdor</b>ni kiriting.",
-                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]}
-            )
-            return
-
-        # Saralash: stock kam birinchi
-        with_stock.sort(key=lambda x: x[1].get('stock', 0))
-        critical = [x for x in with_stock if x[1].get('stock', 0) == 0]
-        low      = [x for x in with_stock if 0 < x[1].get('stock', 0) <= 5]
-        normal   = [x for x in with_stock if x[1].get('stock', 0) > 5]
-
-        text = "📦 <b>Inventar</b>\n━━━━━━━━━━━━━━━\n\n"
-
-        if critical:
-            text += f"🔴 <b>Tugagan ({len(critical)}):</b>\n"
-            for pid, p in critical[:5]:
-                text += f"  • {p.get('name','—')} — <b>0 ta</b>\n"
-            text += "\n"
-
-        if low:
-            text += f"🟡 <b>Kam qolgan ({len(low)}):</b>\n"
-            for pid, p in low[:10]:
-                stock = p.get('stock', 0)
-                text += f"  • {p.get('name','—')} — <b>{stock} ta</b>\n"
-            text += "\n"
-
-        if normal:
-            text += f"🟢 <b>Yetarli ({len(normal)}):</b>\n"
-            for pid, p in normal[:10]:
-                stock = p.get('stock', 0)
-                text += f"  • {p.get('name','—')} — {stock} ta\n"
-
-        # Sotilgan miqdorni hisoblash
-        total_sold = sum(p.get('stock_initial', 0) - p.get('stock', 0) for _, p in with_stock if p.get('stock', 0) < p.get('stock_initial', 0))
-
-        text += f"\n━━━━━━━━━━━━━━━\n"
-        text += f"📊 Jami sotildi: {total_sold} ta"
-
-        kb = []
-        for pid, p in with_stock[:10]:
-            stock = p.get('stock', 0)
-            icon  = "🔴" if stock == 0 else "🟡" if stock <= 5 else "🟢"
-            kb.append([{'text': f"{icon} {p.get('name','—')[:25]} ({stock} ta)",
-                        'callback_data': f'edit_prod_{pid}'}])
-        kb.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
-
-        send_seller(uid, text, {'inline_keyboard': kb})
-        return
-
     if d == 'menu_myorders':
         answer_cb(cbid)
         my_pids = seller_products.get(uid, [])
@@ -2030,21 +1973,17 @@ def seller_handle_cb(cb):
         send_seller(uid,
             "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\nGuruh savdosi orqali ko'proq soting!",
             {'inline_keyboard': [
-                [{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}],
                 [
-                    {'text': "📊 Statistika",    'callback_data': 'menu_mystats'},
-                    {'text': "📋 Buyurtmalar",   'callback_data': 'menu_myorders'},
+                    {'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
+                    {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'},
                 ],
                 [
-                    {'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'},
-                    {'text': "👥 Mijozlar",       'callback_data': 'menu_mycustomers'},
+                    {'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
+                    {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'},
                 ],
                 [
-                    {'text': "📦 Inventar",       'callback_data': 'menu_inventory'},
-                    {'text': "📑 Eksport",        'callback_data': 'menu_export'},
-                ],
-                [
-                    {'text': "❓ Yordam",         'callback_data': 'menu_help'},
+                    {'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
+                    {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'},
                 ],
             ]}
         )
@@ -2885,9 +2824,9 @@ def finalize_shop_onboarding(uid, cid, s, channel):
         "Endi mahsulot qo'sha olasiz!",
         {'keyboard': [
             [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
-            [{'text': "➕ Mahsulot qo'shish"},  {'text': "📢 Do'konlarim"}],
+            [{'text': "➕ Mahsulot qo'shish"},  {'text': '👥 Mijozlar'}],
             [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
-        ], 'resize_keyboard': True})
+        ], 'resize_keyboard': True, 'is_persistent': True})
 
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -3572,6 +3511,31 @@ def seller_handle_msg(msg):
     uid  = msg['from']['id']
     text = msg.get('text', '')
 
+    # ─── GLOBAL ESCAPE COMMANDS ────────────────────────────────
+    # /cancel — har qanday step'dan chiqib menyuga qaytadi
+    # /menu   — back_menu ekranini chiqaradi (state'ga tegmasdan)
+    # Bu /start dan ham, prod_* dan ham, ob_* dan ham ishlaydi.
+    if text == '/cancel':
+        seller_state.pop(uid, None)
+        send_seller(cid,
+            "❌ Bekor qilindi.\n\n🏪 <b>Bosh menyu:</b>",
+            {'inline_keyboard': [
+                [{'text': "🏠 Menyu ochish", 'callback_data': 'back_menu'}],
+            ]})
+        return
+    if text == '/menu':
+        send_seller(cid,
+            "🏪 <b>Joynshop Sotuvchi Paneli</b>",
+            {'inline_keyboard': [
+                [{'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
+                 {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'}],
+                [{'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
+                 {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'}],
+                [{'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
+                 {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'}],
+            ]})
+        return
+
     if is_prod_in_progress(uid) and text in PROD_BLOCKED_TEXTS:
         send_seller(cid, get_prod_progress_text(uid),
             {'inline_keyboard': [
@@ -3616,9 +3580,9 @@ def seller_handle_msg(msg):
                 f"Guruh savdosi orqali ko'proq soting!",
                 {'keyboard': [
                     [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
-                    [{'text': '➕ Mahsulot qo\'shish'}, {'text': "📢 Do'konlarim"}],
+                    [{'text': '➕ Mahsulot qo\'shish'}, {'text': '👥 Mijozlar'}],
                     [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
-                ], 'resize_keyboard': True}
+                ], 'resize_keyboard': True, 'is_persistent': True}
             )
         return
 
@@ -3641,7 +3605,8 @@ def seller_handle_msg(msg):
             f"━━━━━━━━━━━━━━━\n"
             f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
             f"📊 Komissiya (5%): {fmt(commission)} so'm\n"
-            f"✅ Sof daromad: {fmt(revenue-commission)} so'm"
+            f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
+            {'inline_keyboard': [[{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}]]}
         )
         return
 
@@ -3814,7 +3779,7 @@ def seller_handle_msg(msg):
             send_seller(cid, "Qaysi do'kon uchun mahsulot qo'shmoqchisiz?", {'inline_keyboard': btns})
         return
 
-    if text == '/mychannels' or text == "📢 Do'konlarim" or text == '📢 Kanallarim':
+    if text in ('/mychannels', '/shops', "📢 Do'konlarim", '📢 Kanallarim'):
         shops = seller_shops.get(uid, [])
         if shops:
             r = "🏪 <b>Do'konlaringiz:</b>\n\n"
