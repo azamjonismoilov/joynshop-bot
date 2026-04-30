@@ -264,6 +264,13 @@ def load_data():
         for _shops in seller_shops.values():
             for _shop in _shops:
                 _shop.setdefault('onboarding_status', 'active')
+                # Billz fields (Phase 1 onboarding)
+                _shop.setdefault('billz_secret_token', None)
+                _shop.setdefault('billz_shop_id', '')
+                _shop.setdefault('billz_shop_name', '')
+                _shop.setdefault('billz_connected_at', None)
+                _shop.setdefault('billz_global_solo_discount', 10)
+                _shop.setdefault('billz_global_group_discount', 20)
         pending_moderator_codes= data.get('pending_moderator_codes', {})
         referrals              = data.get('referrals', {})
         raw_rm                 = data.get('referral_map', {})
@@ -1974,6 +1981,108 @@ def seller_handle_cb(cb):
         )
         return
 
+    # ─── BILLZ INTEGRATION CALLBACKS ───
+    if d.startswith('billz_view_'):
+        try:
+            idx = int(d[11:])
+        except ValueError:
+            answer_cb(cbid); return
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops):
+            answer_cb(cbid, "❌ Do'kon topilmadi"); return
+        shop = shops[idx]
+        answer_cb(cbid)
+        connected = bool(shop.get('billz_secret_token'))
+        if connected:
+            txt = (
+                f"✅ <b>{shop.get('name','')}</b>\n\n"
+                f"Billz: ulangan\n"
+                f"🏬 Billz do'koni: <b>{shop.get('billz_shop_name','—')}</b>\n"
+                f"📅 Ulangan: {shop.get('billz_connected_at','—')}\n"
+            )
+            kb = [
+                [{'text': "🔌 Uzish (Phase 4)", 'callback_data': f'billz_disconnect_{idx}'}],
+                [{'text': "⬅️ Orqaga",        'callback_data': 'billz_menu'}],
+            ]
+        else:
+            txt = (
+                f"⚪️ <b>{shop.get('name','')}</b>\n\n"
+                f"Billz hali ulanmagan.\n\n"
+                f"<b>Ulash uchun:</b>\n"
+                f"1. Billz UI → Sozlamalar → API → <b>Создать ключ</b>\n"
+                f"2. Yaratilgan secret token'ni nusxalang\n"
+                f"3. Quyidagi tugmani bosing va token'ni shu chatga yuboring"
+            )
+            kb = [
+                [{'text': "🔌 Billz ni ulash", 'callback_data': f'billz_connect_{idx}'}],
+                [{'text': "⬅️ Orqaga",        'callback_data': 'billz_menu'}],
+            ]
+        send_seller(uid, txt, {'inline_keyboard': kb})
+        return
+
+    if d == 'billz_menu':
+        answer_cb(cbid)
+        render_billz_menu(uid, uid)
+        return
+
+    if d.startswith('billz_connect_'):
+        try:
+            idx = int(d[14:])
+        except ValueError:
+            answer_cb(cbid); return
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops):
+            answer_cb(cbid, "❌ Do'kon topilmadi"); return
+        if not get_fernet():
+            answer_cb(cbid, "❌ Encryption sozlanmagan", alert=True); return
+        answer_cb(cbid)
+        seller_state[uid] = {'step': 'billz_secret_token', 'billz_shop_idx': idx}
+        send_seller(uid,
+            f"🔌 <b>Billz ulash</b>\n\n"
+            f"Billz secret token'ingizni shu chatga yuboring.\n\n"
+            f"⚠️ Token shifrlanib saqlanadi. Bekor qilish: /cancel")
+        return
+
+    if d.startswith('billz_pickshop_'):
+        # billz_pickshop_<seller_shop_idx>_<billz_shop_id>
+        rest = d[len('billz_pickshop_'):]
+        try:
+            seller_idx_str, billz_shop_id = rest.split('_', 1)
+            seller_idx = int(seller_idx_str)
+        except (ValueError, IndexError):
+            answer_cb(cbid); return
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'billz_shop_select':
+            answer_cb(cbid, "❌ Holat topilmadi"); return
+        candidates = s.get('billz_candidates', [])
+        chosen = next((c for c in candidates if c['shop_id'] == billz_shop_id), None)
+        if not chosen:
+            answer_cb(cbid, "❌ Do'kon topilmadi"); return
+        plain_token = s.get('billz_pending_token')
+        if not plain_token:
+            seller_state.pop(uid, None)
+            answer_cb(cbid, "❌ Token yo'qoldi"); return
+        encrypted = encrypt_token(plain_token)
+        if not encrypted:
+            answer_cb(cbid, "❌ Shifrlash xatosi", alert=True); return
+        shops = seller_shops.get(uid, [])
+        if seller_idx >= len(shops):
+            answer_cb(cbid, "❌ Do'kon topilmadi"); return
+        shops[seller_idx]['billz_secret_token']  = encrypted
+        shops[seller_idx]['billz_shop_id']       = chosen['shop_id']
+        shops[seller_idx]['billz_shop_name']     = chosen['shop_name']
+        shops[seller_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
+        save_data()
+        seller_state.pop(uid, None)
+        answer_cb(cbid, "✅ Ulandi!")
+        send_seller(uid,
+            f"✅ <b>Billz ulandi!</b>\n\n"
+            f"🏪 {shops[seller_idx].get('name','')}\n"
+            f"🏬 Billz do'koni: <b>{chosen['shop_name']}</b>\n\n"
+            f"Keyingi qadam: mahsulotlarni import qilish (Faza 2 — keyingi deploy).",
+            {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+        return
+
     if d.startswith('boost_') and not d.startswith('boost_confirm_'):
         pid = d[6:]
         p = products.get(pid)
@@ -2474,6 +2583,171 @@ def finalize_shop_onboarding(uid, cid, s, channel):
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
+# ─── BILLZ INTEGRATION ──────────────────────────────────────────────
+BILLZ_BASE_URL          = 'https://api-admin.billz.ai'
+BILLZ_ENCRYPTION_KEY    = os.environ.get('BILLZ_ENCRYPTION_KEY', '')
+_billz_fernet_cache     = {'fernet': None, 'tried': False}
+# In-memory access_token cache: {(seller_uid, shop_idx): {'token': '...', 'fetched_at': dt}}
+_billz_access_tokens    = {}
+
+def get_fernet():
+    """Fernet shifrlovchini qaytaradi. Kalit yo'q yoki noto'g'ri bo'lsa None."""
+    if _billz_fernet_cache['tried']:
+        return _billz_fernet_cache['fernet']
+    _billz_fernet_cache['tried'] = True
+    if not BILLZ_ENCRYPTION_KEY:
+        logging.warning("BILLZ_ENCRYPTION_KEY yo'q — Billz integratsiyasi o'chirilgan")
+        return None
+    try:
+        from cryptography.fernet import Fernet
+        _billz_fernet_cache['fernet'] = Fernet(BILLZ_ENCRYPTION_KEY.encode())
+        return _billz_fernet_cache['fernet']
+    except Exception as e:
+        logging.error(f"BILLZ_ENCRYPTION_KEY noto'g'ri: {e}")
+        return None
+
+def encrypt_token(plain_token):
+    """Plain string token ni Fernet bilan shifrlaydi va URL-safe base64 string qaytaradi."""
+    f = get_fernet()
+    if not f or not plain_token:
+        return None
+    return f.encrypt(plain_token.encode()).decode('ascii')
+
+def decrypt_token(encrypted_str):
+    """Shifrlangan stringni ochib plain token qaytaradi. Xato bo'lsa None."""
+    f = get_fernet()
+    if not f or not encrypted_str:
+        return None
+    try:
+        return f.decrypt(encrypted_str.encode('ascii')).decode()
+    except Exception as e:
+        logging.error(f"decrypt_token error: {e}")
+        return None
+
+def billz_login(secret_token):
+    """secret_token bilan Billz auth qiladi.
+    Returns (access_token: str | None, error: str | None).
+    """
+    if not secret_token:
+        return None, "Token bo'sh"
+    try:
+        r = requests.post(
+            f'{BILLZ_BASE_URL}/v1/auth/login',
+            json={'secret_token': secret_token},
+            timeout=10
+        )
+        if r.status_code == 401:
+            return None, "Secret token noto'g'ri"
+        if r.status_code != 200:
+            return None, f"Billz xatosi: HTTP {r.status_code}"
+        data = r.json() or {}
+        token = data.get('data', {}).get('access_token') or data.get('access_token')
+        if not token:
+            return None, "Billz javobida access_token topilmadi"
+        return token, None
+    except requests.Timeout:
+        return None, "Billz ga ulanish vaqti o'tdi (timeout)"
+    except Exception as e:
+        logging.error(f"billz_login exception: {e}")
+        return None, f"Tarmoq xatosi: {e}"
+
+def _billz_get_access_token(uid, shop_idx, force_refresh=False):
+    """Sotuvchi do'koni uchun amaldagi access_token'ni qaytaradi.
+    Memory cache yoki secret_token'dan qaytadan auth.
+    Returns (access_token: str | None, error: str | None).
+    """
+    cache_key = (uid, shop_idx)
+    if not force_refresh and cache_key in _billz_access_tokens:
+        cached = _billz_access_tokens[cache_key]
+        # 23 soat — 24 soatlik token uchun xavfsizlik chegarasi
+        if (datetime.now() - cached['fetched_at']).total_seconds() < 23 * 3600:
+            return cached['token'], None
+    shops = seller_shops.get(uid, [])
+    if shop_idx >= len(shops):
+        return None, "Do'kon topilmadi"
+    encrypted = shops[shop_idx].get('billz_secret_token')
+    if not encrypted:
+        return None, "Billz ulanmagan"
+    plain = decrypt_token(encrypted)
+    if not plain:
+        return None, "Token shifrini ochib bo'lmadi (BILLZ_ENCRYPTION_KEY o'zgarganmi?)"
+    token, err = billz_login(plain)
+    if not token:
+        return None, err
+    _billz_access_tokens[cache_key] = {'token': token, 'fetched_at': datetime.now()}
+    return token, None
+
+def billz_get(uid, shop_idx, path, params=None):
+    """Billz GET so'rovi. 401 bo'lsa avtomatik qayta auth.
+    Returns (data: dict | None, error: str | None).
+    """
+    for attempt in range(2):
+        token, err = _billz_get_access_token(uid, shop_idx, force_refresh=(attempt > 0))
+        if not token:
+            return None, err
+        try:
+            r = requests.get(
+                f'{BILLZ_BASE_URL}{path}',
+                headers={'Authorization': f'Bearer {token}'},
+                params=params or {},
+                timeout=15,
+            )
+            if r.status_code == 401:
+                # Token expired — qayta auth
+                _billz_access_tokens.pop((uid, shop_idx), None)
+                continue
+            if r.status_code != 200:
+                return None, f"Billz HTTP {r.status_code}: {r.text[:200]}"
+            return r.json(), None
+        except requests.Timeout:
+            return None, "Billz timeout"
+        except Exception as e:
+            logging.error(f"billz_get exception: {e}")
+            return None, f"Tarmoq xatosi: {e}"
+    return None, "Avtorizatsiya muvaffaqiyatsiz"
+
+def billz_extract_shops(products_response):
+    """Billz mahsulot javobidan shop ro'yxatini chiqaradi.
+    Returns [{'shop_id': str, 'shop_name': str}, ...] yoki [].
+    """
+    shops_seen = {}
+    items = products_response.get('products') or products_response.get('data') or []
+    if isinstance(items, dict):
+        items = items.get('products', [])
+    for prod in items:
+        for smv in prod.get('shop_measurement_values', []) or []:
+            sid = smv.get('shop_id')
+            sname = smv.get('shop_name', sid)
+            if sid and sid not in shops_seen:
+                shops_seen[sid] = sname
+    return [{'shop_id': k, 'shop_name': v} for k, v in shops_seen.items()]
+
+def render_billz_menu(uid, cid):
+    """Sotuvchining do'konlarini va Billz holatini ko'rsatadi."""
+    if not get_fernet():
+        send_seller(cid,
+            "⚠️ Billz integratsiyasi server tomonidan o'chirilgan.\n"
+            "Admin: BILLZ_ENCRYPTION_KEY env varni tekshiring.")
+        return
+    shops = seller_shops.get(uid, [])
+    if not shops:
+        send_seller(cid, "❌ Avval do'kon yarating: /start")
+        return
+    txt = "🔌 <b>Billz integratsiyasi</b>\n\n"
+    txt += "Billz POS dan mahsulotlaringizni avtomatik olib kelish.\n\n"
+    kb = []
+    for idx, shop in enumerate(shops):
+        connected = bool(shop.get('billz_secret_token'))
+        billz_name = shop.get('billz_shop_name', '')
+        if connected:
+            label = f"✅ {shop.get('name','—')[:20]} → {billz_name[:15]}"
+        else:
+            label = f"⚪️ {shop.get('name','—')[:25]} (ulanmagan)"
+        kb.append([{'text': label, 'callback_data': f'billz_view_{idx}'}])
+    kb.append([{'text': "🔙 Menyu", 'callback_data': 'back_menu'}])
+    send_seller(cid, txt, {'inline_keyboard': kb})
+
+
 def show_prod_confirm(cid, s, shop):
     orig = s.get('original_price', 0); grp = s.get('group_price', 0)
     disc = round((orig-grp)/orig*100) if orig else 0
@@ -2812,6 +3086,10 @@ def seller_handle_msg(msg):
         send_seller(cid, f"✅ <b>{p['name']}</b> o'chirildi.")
         return
 
+    if text == '/billz' or text == '🔌 Billz':
+        render_billz_menu(uid, cid)
+        return
+
     if text == '/help':
         send_seller(cid,
             "ℹ️ <b>Sotuvchi yordam</b>\n\n"
@@ -2823,6 +3101,7 @@ def seller_handle_msg(msg):
             "/golive      — 🔴 Live boshlash\n"
             "/mylive      — 📺 Live dashboard\n"
             "/mychannels  — 📢 Kanallarim\n"
+            "/billz       — 🔌 Billz integratsiyasi\n"
             "/help        — ℹ️ Yordam\n\n"
             "💬 Yordam: @joynshop_support"
         )
@@ -3374,6 +3653,82 @@ def seller_handle_msg(msg):
             s['variants'] = raw; s['step'] = 'prod_confirm'
             shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
             send_seller(cid, f"✅ Variantlar: {', '.join(raw)}"); show_prod_confirm(cid, s, shop)
+
+        elif step == 'billz_secret_token':
+            if text.strip() == '/cancel':
+                seller_state.pop(uid, None)
+                send_seller(cid, "❌ Bekor qilindi.",
+                    {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+                return
+            secret = text.strip()
+            if len(secret) < 10:
+                send_seller(cid, "❌ Token juda qisqa. Qayta yuboring yoki /cancel"); return
+            shop_idx = s.get('billz_shop_idx', 0)
+            send_seller(cid, "🔍 Billz bilan ulanish tekshirilmoqda...")
+            access_token, err = billz_login(secret)
+            if not access_token:
+                send_seller(cid,
+                    f"❌ Ulanish muvaffaqiyatsiz: {err}\n\n"
+                    f"Tokenni qayta tekshirib yuboring yoki /cancel")
+                return
+            # Mahsulot olib ko'rib do'konlarni aniqlash
+            try:
+                r = requests.get(
+                    f'{BILLZ_BASE_URL}/v2/products',
+                    headers={'Authorization': f'Bearer {access_token}'},
+                    params={'limit': 1, 'page': 1}, timeout=15
+                )
+                if r.status_code != 200:
+                    send_seller(cid,
+                        f"❌ Billz dan mahsulot olishda xato: HTTP {r.status_code}\n\n"
+                        f"Token to'g'ri lekin ruxsat cheklanganmi? Qayta urining yoki /cancel")
+                    return
+                resp = r.json() or {}
+            except Exception as e:
+                send_seller(cid, f"❌ Tarmoq xatosi: {e}\n\nQayta urining yoki /cancel")
+                return
+            candidates = billz_extract_shops(resp)
+            if not candidates:
+                send_seller(cid,
+                    "⚠️ Billz hisobingizda mahsulot topilmadi yoki shop_measurement_values bo'sh.\n\n"
+                    "Avval Billz UI'da kamida bitta mahsulot va do'kon yarating, keyin qayta urining.")
+                seller_state.pop(uid, None)
+                return
+            if len(candidates) == 1:
+                # Avtomatik tanlash
+                only = candidates[0]
+                encrypted = encrypt_token(secret)
+                if not encrypted:
+                    send_seller(cid, "❌ Shifrlash xatosi"); seller_state.pop(uid, None); return
+                shops = seller_shops.get(uid, [])
+                if shop_idx >= len(shops):
+                    send_seller(cid, "❌ Do'kon topilmadi"); seller_state.pop(uid, None); return
+                shops[shop_idx]['billz_secret_token']  = encrypted
+                shops[shop_idx]['billz_shop_id']       = only['shop_id']
+                shops[shop_idx]['billz_shop_name']     = only['shop_name']
+                shops[shop_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
+                save_data()
+                seller_state.pop(uid, None)
+                send_seller(cid,
+                    f"✅ <b>Billz ulandi!</b>\n\n"
+                    f"🏬 Billz do'koni: <b>{only['shop_name']}</b>\n\n"
+                    f"Mahsulotlarni import qilish — Faza 2 (keyingi deploy).",
+                    {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+                return
+            # Bir nechta do'kon — tanlash so'raymiz
+            s['step']               = 'billz_shop_select'
+            s['billz_pending_token']= secret
+            s['billz_candidates']   = candidates
+            kb = [[{'text': c['shop_name'][:40],
+                    'callback_data': f"billz_pickshop_{shop_idx}_{c['shop_id']}"}]
+                  for c in candidates[:20]]
+            kb.append([{'text': "❌ Bekor", 'callback_data': 'billz_menu'}])
+            send_seller(cid,
+                f"✅ Token to'g'ri.\n\n"
+                f"Billz hisobingizda <b>{len(candidates)}</b> ta do'kon topildi. "
+                f"Joynshop'dagi <b>{seller_shops.get(uid,[{}])[shop_idx].get('name','')}</b> bilan qaysisini bog'lashni xohlaysiz?",
+                {'inline_keyboard': kb})
+            return
 
         elif step and step.startswith('pp_edit_'):
             if text.strip() == '/cancel':
