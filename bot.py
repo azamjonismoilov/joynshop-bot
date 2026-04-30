@@ -3206,16 +3206,13 @@ def integration_label(entry, uid):
     if entry['status'] != 'active':
         return f"🔒 {entry['name']}"
     if entry['id'] == 'billz':
-        return ("✅ Billz POS" if seller_billz_connected_shops(uid) else "🟢 Billz POS")
+        return ("✅ Billz POS" if seller_billz_connected_shops(uid) else "➕ Billz POS")
     # Boshqa active integratsiyalar — kelajakda shu pattern'ga moslashtiriladi
-    return f"🟢 {entry['name']}"
+    return f"➕ {entry['name']}"
 
 def render_integrations_menu(uid, cid):
     """Integratsiyalar ro'yxatini sotuvchining ulanganlik holati bilan ko'rsatadi."""
-    txt = (
-        "🔌 <b>Integratsiyalar</b>\n\n"
-        "✅ — Ulangan  •  🟢 — Mavjud  •  🔒 — Tez orada"
-    )
+    txt = "🔌 <b>Integratsiyalar</b>"
     kb = []
     for entry in INTEGRATIONS:
         kb.append([{
