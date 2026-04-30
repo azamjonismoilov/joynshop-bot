@@ -773,7 +773,6 @@ PROD_ALLOWED_CBS = {
     'prod_mxik_manual_btn', 'prod_mxik_again', 'prod_mxik_confirm', 'prod_mxik_skip',
     'prod_confirm_publish', 'prod_continue', 'prod_restart',
     'prod_deadline_24', 'prod_deadline_48', 'prod_deadline_72', 'prod_deadline_168',
-    'prod_stock_unlimited',
     'ob_skip_phone2', 'ob_skip_address', 'ob_skip_social', 'ob_keep_phone',
     'ob_delivery_deliver', 'ob_delivery_pickup', 'ob_delivery_both',
     'edit_shop_0', 'edit_shop_1', 'edit_shop_2',
@@ -792,7 +791,7 @@ PROD_BLOCKED_TEXTS = {
 def is_prod_in_progress(uid):
     s = seller_state.get(uid)
     if not s: return False
-    prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group','prod_stock',
+    prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group',
                   'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants',
                   'prod_mxik_search','prod_mxik_manual','prod_mxik_confirm_state'}
     return s.get('step') in prod_steps
@@ -1191,23 +1190,6 @@ def seller_handle_cb(cb):
         }
         msg = step_msgs.get(step, "Davom eting:")
         send_seller(uid, f"✅ Davom etmoqdasiz\n\n{msg}")
-        return
-
-    if d == 'prod_stock_unlimited':
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'prod_stock':
-            return
-        s['stock'] = 9999  # cheksiz
-        s['step'] = 'prod_desc'
-        s['description'] = ''
-        s['variants'] = []
-        send_seller(uid,
-            "✅ Qoldiq: ♾ Cheksiz\n\n"
-            "<b>6/7</b> Mahsulot tavsifi (ixtiyoriy):\n"
-            "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
-            {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
-        )
         return
 
     if d == 'prod_skip_desc':
@@ -4069,8 +4051,6 @@ def show_prod_confirm(cid, s, shop):
     sale_labels = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
     sale_line   = f"\n{sale_labels.get(s.get('sale_type','both'), '')}"
     min_group_line = f"\n👥 Min guruh: {s['min_group']} kishi" if s.get('sale_type') != 'solo' else ''
-    stock          = s.get('stock', 9999)
-    stock_line     = f"\n📦 Qoldiq: {'♾ Cheksiz' if stock >= 9999 else str(stock) + ' ta'}"
     # Deadline
     hours = int(s.get('deadline_hours', 48))
     deadline_labels = {24: '24 soat', 48: '2 kun', 72: '3 kun', 168: '1 hafta'}
@@ -4086,7 +4066,7 @@ def show_prod_confirm(cid, s, shop):
         f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}"
         f"{cat_line}{sale_line}\n"
         f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
-        f"{min_group_line}{stock_line}\n📢 {shop.get('channel','—')}"
+        f"{min_group_line}\n📢 {shop.get('channel','—')}"
         f"{deadline_line}{mxik_line}"
         f"{desc_line}{solo_line}{variants_line}"
     )
@@ -4959,31 +4939,16 @@ def seller_handle_msg(msg):
             ok, mg, err = validate_min_group_text(text)
             if not ok:
                 send_seller(cid, err); return
-            s['min_group'] = mg; s['step'] = 'prod_stock'
+            s['min_group'] = mg
+            s['step'] = 'prod_desc'
+            s['description'] = ''
+            s['variants'] = []
             send_seller(cid,
                 f"✅ Minimal guruh: {mg} kishi\n\n"
-                "<b>5/7</b> 📦 <b>Qoldiq miqdor</b> (sizda nechta bor?):\n"
-                "<i>Masalan: 20</i>\n\n"
-                "Qoldiq tugaganda mahsulot avtomatik yopiladi.",
-                {'inline_keyboard': [[{'text': "♾ Cheksiz", 'callback_data': 'prod_stock_unlimited'}]]}
+                "<b>6/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+                "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
             )
-
-        elif step == 'prod_stock':
-            try:
-                stock = int(text)
-                if stock < 1 or stock > 10000:
-                    send_seller(cid, "❌ 1 dan 10000 gacha kiriting!"); return
-                s['stock'] = stock
-                s['step'] = 'prod_desc'
-                s['description'] = ''
-                s['variants'] = []
-                send_seller(cid,
-                    f"✅ Qoldiq: {stock} ta\n\n"
-                    "<b>6/7</b> Mahsulot tavsifi (ixtiyoriy):\n"
-                    "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
-                    {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
-                )
-            except: send_seller(cid, "❌ Raqam kiriting!")
 
         elif step == 'prod_desc':
             s['description'] = text[:300]
