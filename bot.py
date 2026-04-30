@@ -7945,6 +7945,271 @@ def api_seller_categories():
         })
     return jsonify({'categories': items})
 
+# ─── SPRINT 1.2: Order detail + CRM ─────────────────────────────────
+
+@app.route('/api/v1/seller/orders/<code>', methods=['GET'])
+@require_seller
+def api_seller_order_detail(code):
+    """Buyurtma to'liq detail — product info, buyer lifetime, timeline."""
+    uid = g.seller_uid
+    o = orders.get(code)
+    if not o:
+        return jsonify({'error': 'not_found'}), 404
+    pid = o.get('product_id', '')
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        return jsonify({'error': 'not_found'}), 404
+
+    item = _format_order_item(code, o)
+    # Product subset — list ekrandagidan biroz boyroq
+    cls = _classify_product_status(p)
+    item['product'] = {
+        'id':            pid,
+        'name':          p.get('name', ''),
+        'photo_url':     p.get('photo_url') or (f"/api/photo/{p['photo_id']}" if p.get('photo_id') else ''),
+        'original_price':p.get('original_price', 0),
+        'group_price':   p.get('group_price', 0),
+        'solo_price':    p.get('solo_price', 0),
+        'min_group':     p.get('min_group', 0),
+        'count':         len(groups.get(pid, [])),
+        'status':        p.get('status', 'active'),
+        'status_label':  cls['label'],
+        'shop_name':     p.get('shop_name', ''),
+        'channel':       p.get('seller_channel', ''),
+    }
+    # Buyer lifetime — CRM'dan
+    sid = str(uid)
+    cuid = str(o.get('user_id', ''))
+    cust = customers.get(sid, {}).get(cuid, {})
+    item['buyer']['total_orders']    = cust.get('total_orders', 0)
+    item['buyer']['lifetime_value']  = cust.get('total_spent', 0)
+    item['buyer']['tags']            = cust.get('tags', [])
+    item['buyer']['first_order']     = cust.get('first_order', '')
+    item['buyer']['last_order']      = cust.get('last_order', '')
+
+    # Timeline — order state transitions (mavjud field'lardan inferred)
+    timeline = [{'event': 'created', 'at': o.get('created', ''), 'meta': {}}]
+    payment_id = o.get('telegram_payment_charge_id') or ''
+    payment_method = o.get('payment_method') or ''
+    if payment_method or payment_id:
+        timeline.append({
+            'event': 'payment',
+            'at':    o.get('created', ''),  # Telegram payment timestamp ayri saqlanmaydi
+            'meta':  {'method': payment_method, 'tg_charge_id': payment_id},
+        })
+    status = o.get('status', 'pending')
+    if status == 'confirmed':
+        timeline.append({'event': 'confirmed', 'at': o.get('confirmed_at', ''), 'meta': {}})
+    elif status == 'rejected':
+        timeline.append({'event': 'rejected', 'at': o.get('rejected_at', ''),
+                         'meta': {'reason': o.get('reject_reason', '')}})
+    elif status == 'cancelled':
+        timeline.append({'event': 'cancelled', 'at': '', 'meta': {}})
+    item['timeline'] = timeline
+
+    return jsonify(item)
+
+# ─── CRM helpers ────────────────────────────────────────────────────
+
+def _days_since_last(c):
+    """last_order'dan beri necha kun. Parse fail bo'lsa 999."""
+    try:
+        last_dt = datetime.strptime(c.get('last_order', '01.01.2020'), '%d.%m.%Y')
+        return (datetime.now() - last_dt).days
+    except (ValueError, TypeError):
+        return 999
+
+def _classify_customer_activity(c):
+    """Returns (key, emoji, label) — 🟢 Faol, 🟡 O'rtacha, 🔴 Yo'qotilgan."""
+    d = _days_since_last(c)
+    if d < 7:    return ('active',  '🟢', 'Faol')
+    if d < 30:   return ('average', '🟡', "O'rtacha")
+    return ('lost', '🔴', "Yo'qotilgan")
+
+def _format_customer_brief(cuid, c, rank=None):
+    """Customer list item format."""
+    act_key, act_emoji, act_label = _classify_customer_activity(c)
+    medal = None
+    if rank is not None and rank <= 3:
+        medal = ['🥇', '🥈', '🥉'][rank - 1]
+    return {
+        'cuid':            cuid,
+        'user_id':         c.get('user_id', 0),
+        'name':            c.get('name', '—'),
+        'phone':           c.get('phone', ''),
+        'username':        c.get('username', ''),
+        'total_orders':    c.get('total_orders', 0),
+        'total_spent':     c.get('total_spent', 0),
+        'first_order':     c.get('first_order', ''),
+        'last_order':      c.get('last_order', ''),
+        'days_since_last': _days_since_last(c),
+        'activity':        act_key,
+        'activity_emoji':  act_emoji,
+        'activity_label':  act_label,
+        'tags':            c.get('tags', []),
+        'rank':            rank,
+        'medal':           medal,
+    }
+
+@app.route('/api/v1/seller/customers', methods=['GET'])
+@require_seller
+def api_seller_customers():
+    """CRM mijozlar ro'yxati filter va pagination bilan."""
+    uid = g.seller_uid
+    filt = (request.args.get('filter', 'all') or 'all').lower()
+    valid_filters = {'all', 'vip', 'active', 'lost', 'new', 'repeat'}
+    if filt not in valid_filters:
+        return jsonify({'error': 'invalid_filter'}), 400
+
+    try:
+        page = max(0, int(request.args.get('page', 0)))
+    except ValueError:
+        page = 0
+    try:
+        limit = min(50, max(1, int(request.args.get('limit', 20))))
+    except ValueError:
+        limit = 20
+    search = (request.args.get('search', '') or '').lower().strip()
+
+    sid = str(uid)
+    my_custs = customers.get(sid, {})
+
+    # Summary (filter'siz, hammasi)
+    total_revenue = sum(v.get('total_spent', 0) for v in my_custs.values())
+    summary = {
+        'total':         len(my_custs),
+        'vip':           sum(1 for v in my_custs.values() if 'vip' in v.get('tags', [])),
+        'active':        sum(1 for v in my_custs.values() if _days_since_last(v) < 7),
+        'lost':          sum(1 for v in my_custs.values() if _days_since_last(v) >= 30),
+        'new':           sum(1 for v in my_custs.values() if v.get('total_orders', 0) == 1),
+        'repeat':        sum(1 for v in my_custs.values() if v.get('total_orders', 0) > 1),
+        'total_revenue': total_revenue,
+    }
+
+    # Filter
+    items_filtered = []
+    for cuid, c in my_custs.items():
+        if filt == 'vip' and 'vip' not in c.get('tags', []):
+            continue
+        if filt == 'active' and _days_since_last(c) >= 7:
+            continue
+        if filt == 'lost' and _days_since_last(c) < 30:
+            continue
+        if filt == 'new' and c.get('total_orders', 0) != 1:
+            continue
+        if filt == 'repeat' and c.get('total_orders', 0) <= 1:
+            continue
+        if search:
+            hay = (c.get('name', '') or '').lower()
+            if search not in hay:
+                continue
+        items_filtered.append((cuid, c))
+
+    # Sort by total_spent desc
+    items_filtered.sort(key=lambda x: x[1].get('total_spent', 0), reverse=True)
+
+    total = len(items_filtered)
+    pages = max(1, (total + limit - 1) // limit)
+    page  = min(page, pages - 1) if total > 0 else 0
+    start_idx = page * limit
+    chunk = items_filtered[start_idx : start_idx + limit]
+
+    items = []
+    for i, (cuid, c) in enumerate(chunk, start=start_idx + 1):
+        items.append(_format_customer_brief(cuid, c, rank=i))
+
+    return jsonify({
+        'items':    items,
+        'total':    total,
+        'page':     page,
+        'pages':    pages,
+        'has_next': (page + 1) < pages,
+        'filter':   filt,
+        'summary':  summary,
+    })
+
+@app.route('/api/v1/seller/customers/<cuid>', methods=['GET'])
+@require_seller
+def api_seller_customer_detail(cuid):
+    """Bitta mijoz to'liq detail."""
+    uid = g.seller_uid
+    sid = str(uid)
+    c = customers.get(sid, {}).get(cuid)
+    if not c:
+        return jsonify({'error': 'not_found'}), 404
+
+    avg = (c.get('total_spent', 0) // c.get('total_orders', 1)) if c.get('total_orders') else 0
+    act_key, act_emoji, act_label = _classify_customer_activity(c)
+
+    return jsonify({
+        'cuid':           cuid,
+        'user_id':        c.get('user_id', 0),
+        'name':           c.get('name', '—'),
+        'phone':          c.get('phone', ''),
+        'username':       c.get('username', ''),
+        'total_orders':   c.get('total_orders', 0),
+        'total_spent':    c.get('total_spent', 0),
+        'avg_check':      avg,
+        'first_order':    c.get('first_order', ''),
+        'last_order':     c.get('last_order', ''),
+        'activity':       act_key,
+        'activity_emoji': act_emoji,
+        'activity_label': act_label,
+        'tags':           c.get('tags', []),
+        'note':           c.get('note', ''),
+        'source':         c.get('source', 'order'),
+        'available_tags': [
+            {'id': 'vip',     'label': "⭐ VIP"},
+            {'id': 'problem', 'label': "🔴 Muammoli"},
+            {'id': 'loyal',   'label': "💎 Doimiy"},
+        ],
+    })
+
+@app.route('/api/v1/seller/customers/<cuid>/history', methods=['GET'])
+@require_seller
+def api_seller_customer_history(cuid):
+    """Mijozning xaridlar tarixi (oxirgi 20 ta saqlangan)."""
+    uid = g.seller_uid
+    sid = str(uid)
+    c = customers.get(sid, {}).get(cuid)
+    if not c:
+        return jsonify({'error': 'not_found'}), 404
+
+    try:
+        page = max(0, int(request.args.get('page', 0)))
+    except ValueError:
+        page = 0
+    try:
+        limit = min(50, max(1, int(request.args.get('limit', 20))))
+    except ValueError:
+        limit = 20
+
+    history = list(reversed(c.get('orders', [])))  # eng yangisi tepada
+    total = len(history)
+    pages = max(1, (total + limit - 1) // limit)
+    page  = min(page, pages - 1) if total > 0 else 0
+    chunk = history[page*limit : (page+1)*limit]
+
+    items = []
+    for o in chunk:
+        items.append({
+            'product':  o.get('product', '—'),
+            'amount':   o.get('amount', 0),
+            'date':     o.get('date', ''),
+            'type':     o.get('type', ''),    # bo'sh bo'lishi mumkin (eski yozuvlarda yo'q)
+            'status':   o.get('status', ''),  # bo'sh bo'lishi mumkin
+        })
+
+    return jsonify({
+        'items':       items,
+        'total':       total,
+        'page':        page,
+        'pages':       pages,
+        'has_next':    (page + 1) < pages,
+        'total_spent': c.get('total_spent', 0),
+        'note':        "Oxirgi 20 ta xarid saqlanadi." if total >= 20 else None,
+    })
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
