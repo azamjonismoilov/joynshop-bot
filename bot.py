@@ -3025,7 +3025,22 @@ def validate_director_name(text):
 MXIK_BASE_URL    = 'https://tasnif.soliq.uz/api/cls-api'
 MXIK_CACHE_TTL   = 300        # 5 daqiqa
 MXIK_PAGE_SIZE   = 10         # API'dan har bir sahifa uchun
+MXIK_TIMEOUT_PRIMARY = 10     # birinchi urinish
+MXIK_TIMEOUT_RETRY   = 5      # qayta urinish
 _mxik_search_cache = {}       # {keyword.lower(): (fetched_at: datetime, results: list)}
+
+# Session — DNS, TLS connection reuse (Render → Toshkent geographik latency uchun muhim)
+_mxik_session = None
+def _get_mxik_session():
+    global _mxik_session
+    if _mxik_session is None:
+        _mxik_session = requests.Session()
+        _mxik_session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; JoynshopBot/1.0; +https://joynshop.uz)',
+            'Accept':     'application/json',
+            'Accept-Language': 'ru,uz;q=0.9,en;q=0.8',
+        })
+    return _mxik_session
 
 def mxik_validate_code(text):
     """17 raqamli MXIK kod validatsiyasi.
@@ -3048,9 +3063,19 @@ def mxik_simplify_item(item):
         'units':    item.get('unitsName', '') or '',
     }
 
+def _mxik_do_request(keyword, timeout):
+    """Bitta MXIK so'rov — exception'larni propagate qiladi."""
+    return _get_mxik_session().get(
+        f'{MXIK_BASE_URL}/elasticsearch/search',
+        params={'search': keyword, 'size': MXIK_PAGE_SIZE, 'page': 0, 'lang': 'ru'},
+        timeout=timeout,
+    )
+
 def mxik_search(keyword):
     """Tasnif.soliq.uz dan kalit so'z bo'yicha qidirish.
-    5 daqiqalik cache. Returns (results: list[dict] | None, error: str | None).
+    5 daqiqalik cache. 10s primary + 5s retry timeout.
+    Session reuse orqali DNS/TLS overhead kamayadi.
+    Returns (results: list[dict] | None, error: str | None).
     """
     key = (keyword or '').lower().strip()
     if not key:
@@ -3060,26 +3085,37 @@ def mxik_search(keyword):
         fetched_at, results = _mxik_search_cache[key]
         if (datetime.now() - fetched_at).total_seconds() < MXIK_CACHE_TTL:
             return results, None
-    try:
-        r = requests.get(
-            f'{MXIK_BASE_URL}/elasticsearch/search',
-            params={'search': keyword, 'size': MXIK_PAGE_SIZE, 'page': 0, 'lang': 'ru'},
-            timeout=5,
-        )
-        if r.status_code != 200:
-            return None, f"Tasnif.soliq.uz HTTP {r.status_code}"
-        data = r.json() or {}
-        if not data.get('success'):
-            return None, "Qidiruv tizimi javob bermadi"
-        items = data.get('data') or []
-        results = [mxik_simplify_item(it) for it in items]
-        _mxik_search_cache[key] = (datetime.now(), results)
-        return results, None
-    except requests.Timeout:
-        return None, "Qidiruv vaqti o'tdi (5s)"
-    except Exception as e:
-        logging.error(f"mxik_search exception: {e}")
-        return None, "Tarmoq xatosi"
+
+    last_err = None
+    for attempt, timeout in enumerate([MXIK_TIMEOUT_PRIMARY, MXIK_TIMEOUT_RETRY], 1):
+        try:
+            r = _mxik_do_request(keyword, timeout=timeout)
+            if r.status_code != 200:
+                last_err = f"HTTP {r.status_code}"
+                logging.warning(f"MXIK HTTP non-200 (attempt {attempt}, query={key!r}): {r.status_code}")
+                continue
+            data = r.json() or {}
+            if not data.get('success'):
+                last_err = "javob success=false"
+                logging.warning(f"MXIK success=false (attempt {attempt}, query={key!r}): {data}")
+                continue
+            items = data.get('data') or []
+            results = [mxik_simplify_item(it) for it in items]
+            _mxik_search_cache[key] = (datetime.now(), results)
+            return results, None
+        except requests.Timeout:
+            last_err = f"timeout {timeout}s"
+            logging.warning(f"MXIK timeout (attempt {attempt}, query={key!r}, t={timeout}s)")
+        except requests.ConnectionError as e:
+            last_err = "connection error"
+            logging.error(f"MXIK ConnectionError (attempt {attempt}, query={key!r}): {e}")
+        except Exception as e:
+            last_err = "unknown error"
+            logging.error(f"MXIK unknown exception (attempt {attempt}, query={key!r}): {type(e).__name__}: {e}")
+
+    # Ikkala urinish ham fail
+    return None, ("⚠️ tasnif.soliq.uz hozir javob bermayapti.\n"
+                  "Kodni qo'lda kiriting yoki keyinroq urinib ko'ring.")
 
 def validate_min_group_text(text):
     """Min guruh: butun son, 2-100 oralig'ida.
