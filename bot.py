@@ -2217,16 +2217,17 @@ def seller_handle_cb(cb):
     if d == 'menu_help':
         answer_cb(cbid)
         send_seller(uid,
-"ℹ️ <b>Sotuvchi yordam</b>\n\n"
-            "/start         — 🏠 Bosh sahifa\n"
-            "/addproduct    — ➕ Mahsulot qo'shish\n"
-            "/myproducts    — 📦 Mahsulotlarim\n"
-            "/myorders      — 📋 Buyurtmalar\n"
-            "/mystats       — 📊 Statistika\n"
-            "/golive        — 🔴 Live boshlash\n"
-            "/mylive        — 📺 Live dashboard\n"
-            "/mychannels    — 📢 Kanallarim\n"
-            "/help          — ℹ️ Yordam\n\n"
+"📘 <b>Sotuvchi yordam</b>\n\n"
+            "/start       — 🏠 Bosh sahifa\n"
+            "/addproduct  — ➕ Mahsulot qo'shish\n"
+            "/myproducts  — 📦 Mahsulotlarim\n"
+            "/myorders    — 📋 Buyurtmalar\n"
+            "/mystats     — 📊 Statistika\n"
+            "/billz       — 🔌 Billz integratsiyasi\n"
+            "/legal       — 📋 Yuridik ma'lumotlar\n"
+            "/menu        — 📱 Bosh menyu\n"
+            "/cancel      — ❌ Bekor qilish\n"
+            "/help        — ℹ️ Yordam\n\n"
             "💬 Yordam: @joynshop_support",
             {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
         )
@@ -4448,16 +4449,16 @@ def seller_handle_msg(msg):
 
     if text == '/help':
         send_seller(cid,
-            "ℹ️ <b>Sotuvchi yordam</b>\n\n"
+            "📘 <b>Sotuvchi yordam</b>\n\n"
             "/start       — 🏠 Bosh sahifa\n"
             "/addproduct  — ➕ Mahsulot qo'shish\n"
             "/myproducts  — 📦 Mahsulotlarim\n"
             "/myorders    — 📋 Buyurtmalar\n"
             "/mystats     — 📊 Statistika\n"
-            "/golive      — 🔴 Live boshlash\n"
-            "/mylive      — 📺 Live dashboard\n"
-            "/mychannels  — 📢 Kanallarim\n"
             "/billz       — 🔌 Billz integratsiyasi\n"
+            "/legal       — 📋 Yuridik ma'lumotlar\n"
+            "/menu        — 📱 Bosh menyu\n"
+            "/cancel      — ❌ Bekor qilish\n"
             "/help        — ℹ️ Yordam\n\n"
             "💬 Yordam: @joynshop_support"
         )
