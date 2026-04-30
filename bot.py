@@ -255,6 +255,8 @@ def load_data():
         # Migration: ensure is_active default for products saved before the field existed
         for _p in products.values():
             _p.setdefault('is_active', True)
+            _p.setdefault('mxik_code', None)
+            _p.setdefault('mxik_name', None)
         groups                 = data.get('groups', {})
         orders                 = data.get('orders', {})
         wishlists              = data.get('wishlists', {})
@@ -768,6 +770,7 @@ threading.Thread(target=live_update_loop, daemon=True).start()
 # ─── SPAM ────────────────────────────────────────────────────────────
 PROD_ALLOWED_CBS = {
     'prod_photo_done', 'prod_skip_desc', 'prod_add_desc', 'prod_add_solo', 'prod_add_variants',
+    'prod_mxik_manual_btn', 'prod_mxik_again', 'prod_mxik_confirm',
     'prod_confirm_publish', 'prod_continue', 'prod_restart',
     'prod_deadline_24', 'prod_deadline_48', 'prod_deadline_72', 'prod_deadline_168',
     'prod_stock_unlimited',
@@ -790,7 +793,8 @@ def is_prod_in_progress(uid):
     s = seller_state.get(uid)
     if not s: return False
     prod_steps = {'prod_name','prod_category','prod_sale_type','prod_photo','prod_price','prod_min_group','prod_stock',
-                  'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants'}
+                  'prod_desc','prod_confirm','prod_edit_desc','prod_edit_solo','prod_edit_variants',
+                  'prod_mxik_search','prod_mxik_manual','prod_mxik_confirm_state'}
     return s.get('step') in prod_steps
 
 def get_prod_progress_text(uid):
@@ -1198,7 +1202,129 @@ def seller_handle_cb(cb):
         answer_cb(cbid)
         s = seller_state.get(uid)
         if not s: return
-        s['description'] = ''; s['step'] = 'prod_confirm'
+        s['description'] = ''
+        s['step'] = 'prod_mxik_search'
+        send_seller(uid,
+            "🔍 <b>MXIK kodi (fiskal chek uchun)</b>\n\n"
+            "Mahsulot nomini yoki kalit so'z kiriting:\n"
+            "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
+            "Bekor qilish: /cancel",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+            ]})
+        return
+
+    # ─── MXIK CALLBACKS ───
+    if d == 'prod_mxik_again':
+        answer_cb(cbid)
+        s = seller_state.get(uid)
+        if not s: return
+        s['step'] = 'prod_mxik_search'
+        s.pop('mxik_results', None)
+        send_seller(uid,
+            "🔍 Yangi qidiruv. Kalit so'zni kiriting:",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+            ]})
+        return
+
+    if d == 'prod_mxik_manual_btn':
+        answer_cb(cbid)
+        s = seller_state.get(uid)
+        if not s: return
+        s['step'] = 'prod_mxik_manual'
+        send_seller(uid,
+            "🔢 17 raqamli MXIK kodni kiriting:\n\n"
+            "<i>Masalan: 03304011003000000</i>")
+        return
+
+    if d.startswith('prod_mxik_page_'):
+        answer_cb(cbid)
+        s = seller_state.get(uid)
+        if not s or 'mxik_results' not in s: return
+        try:
+            pg = int(d[len('prod_mxik_page_'):])
+        except ValueError:
+            return
+        render_mxik_results(uid, uid, s.get('mxik_keyword',''), s['mxik_results'], page=pg)
+        return
+
+    if d.startswith('prod_mxik_pick_'):
+        s = seller_state.get(uid)
+        if not s or 'mxik_results' not in s:
+            answer_cb(cbid, "❌ Holat yo'qoldi"); return
+        try:
+            idx = int(d[len('prod_mxik_pick_'):])
+        except ValueError:
+            answer_cb(cbid); return
+        results = s['mxik_results']
+        if idx < 0 or idx >= len(results):
+            answer_cb(cbid, "❌ Topilmadi"); return
+        item = results[idx]
+        s['mxik_code'] = item['code']
+        s['mxik_name'] = item['name']
+        s['step'] = 'prod_mxik_confirm_state'
+        answer_cb(cbid)
+        render_mxik_confirm(uid, uid, item['code'], item['name'], item.get('classify',''))
+        return
+
+    if d == 'prod_mxik_confirm':
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'prod_mxik_confirm_state':
+            answer_cb(cbid, "❌ Holat yo'qoldi"); return
+        if not s.get('mxik_code'):
+            answer_cb(cbid, "❌ MXIK tanlanmagan"); return
+        answer_cb(cbid, "✅ Saqlandi")
+        s.pop('mxik_results', None)
+        s.pop('mxik_keyword', None)
+        after = s.get('mxik_after', 'create')
+
+        # ─── pp_edit rejimida: products[pid] ga to'g'ridan saqlaymiz ───
+        if after == 'edit_pp':
+            pid = s.get('pp_pid')
+            p = products.get(pid)
+            if p and p.get('seller_id') == uid:
+                p['mxik_code'] = s['mxik_code']
+                p['mxik_name'] = s['mxik_name']
+                save_data()
+                # Kanal post caption'ini yangilash shart emas — MXIK caption'da ko'rsatilmaydi
+            seller_state.pop(uid, None)
+            send_seller(uid,
+                f"✅ MXIK saqlandi: <code>{s['mxik_code']}</code>",
+                {'inline_keyboard': [
+                    [{'text': "👁 Mahsulotni ko'rish", 'callback_data': f'mp_view_{pid}'}],
+                    [{'text': "📦 Mahsulotlarim",     'callback_data': 'menu_myproducts'}],
+                ]})
+            return
+
+        # ─── Billz activation rejimida: products[pid] ga saqlab bz_act_solo ga o'tamiz ───
+        if after == 'bz_act':
+            pid = s.get('bz_pid')
+            p = products.get(pid)
+            if p and p.get('seller_id') == uid:
+                p['mxik_code'] = s['mxik_code']
+                p['mxik_name'] = s['mxik_name']
+                save_data()
+            # Bz state'ni qayta tiklab bz_act_solo'ga o'tamiz
+            new_state = {k: v for k, v in s.items()
+                         if k.startswith('bz_') or k == 'bz_pid'}
+            new_state['step'] = 'bz_act_solo'
+            seller_state[uid] = new_state
+            orig = int((p or {}).get('original_price', 0) or 0)
+            solo_disc = new_state.get('bz_suggested_solo')
+            if not solo_disc:
+                # Re-derive — bz_activate_<pid> chaqirilganda saqlangan, lekin yo'q bo'lsa
+                solo_disc = max(1, int(orig * 0.9))
+            send_seller(uid,
+                f"✅ MXIK saqlandi.\n\n"
+                f"💰 Asl narx: <b>{fmt(orig)} so'm</b>\n\n"
+                f"<b>1/4</b> Yakka narxni yozing (so'm).\n"
+                f"💡 Tavsiya: <b>{fmt(solo_disc)}</b> so'm\n\n"
+                f"Bekor qilish: /cancel")
+            return
+
+        # ─── Default (create rejimida): prod_confirm'ga o'tish ───
+        s['step'] = 'prod_confirm'
         shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
         show_prod_confirm(uid, s, shop)
         return
@@ -1882,6 +2008,7 @@ def seller_handle_cb(cb):
              {'text': "📝 Tavsif",         'callback_data': f'mp_edit_field_desc_{pid}'}],
             [{'text': "🎨 Variantlar",     'callback_data': f'mp_edit_field_variants_{pid}'},
              {'text': "📸 Rasm",           'callback_data': f'mp_edit_field_photo_{pid}'}],
+            [{'text': "🏷 MXIK",           'callback_data': f'mp_edit_field_mxik_{pid}'}],
             [{'text': "⬅️ Orqaga",         'callback_data': f'mp_view_{pid}'}],
         ]}
         send_seller(uid,
@@ -1900,6 +2027,21 @@ def seller_handle_cb(cb):
         if not p or p.get('seller_id') != uid:
             answer_cb(cbid, "❌ Topilmadi"); return
         answer_cb(cbid)
+        # MXIK — alohida search flow (prod_mxik_* step'larini qayta ishlatadi, lekin edit rejimida)
+        if field == 'mxik':
+            seller_state[uid] = {
+                'step': 'prod_mxik_search',
+                'pp_pid': pid,
+                'mxik_after': 'edit_pp',
+            }
+            send_seller(uid,
+                f"🏷 <b>MXIK qayta tanlash</b>\n\n"
+                f"📦 {p.get('name','')[:50]}\n\n"
+                f"Mahsulot nomini yoki kalit so'z kiriting:",
+                {'inline_keyboard': [
+                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                ]})
+            return
         prompts = {
             'name':      ("📝 Yangi nom yozing:", 'pp_edit_name'),
             'orig':      ("💰 Yangi asl narxni yozing (so'm):", 'pp_edit_orig'),
@@ -1934,6 +2076,8 @@ def seller_handle_cb(cb):
             grp = p.get('group_price', 0) or p.get('original_price', 0)
             price_line = f"💰 {fmt(grp)} so'm"
         source_label = "Billz" if p.get('source') == 'billz' else "Manual"
+        mxik_code = p.get('mxik_code')
+        mxik_line = f"\n🏷 MXIK: <code>{mxik_code}</code>" if mxik_code else "\n🏷 MXIK: ⚠️ Yo'q (kiritish kerak)"
         txt = (
             f"{cls['emoji']} <b>{p.get('name','')}</b>\n\n"
             f"{price_line}\n"
@@ -1941,6 +2085,7 @@ def seller_handle_cb(cb):
             f"🛍 {source_label}\n"
             f"📅 Tugash: {p.get('deadline','—') or '—'}\n"
             f"📊 Status: {cls['label']}"
+            f"{mxik_line}"
         )
         # Tugma layouti — holatga qarab
         kb_rows = []
@@ -2176,6 +2321,29 @@ def seller_handle_cb(cb):
         orig = int(p.get('original_price', 0) or 0)
         suggested_solo  = max(1, int(orig * (100 - solo_disc) / 100))
         suggested_group = max(1, int(orig * (100 - group_disc) / 100))
+
+        # Agar mahsulotda MXIK yo'q bo'lsa — avval MXIK qadami
+        if not p.get('mxik_code'):
+            seller_state[uid] = {
+                'step': 'prod_mxik_search',
+                'bz_pid': pid,
+                'mxik_after': 'bz_act',
+                'bz_suggested_solo':  suggested_solo,
+                'bz_suggested_group': suggested_group,
+            }
+            # Mahsulot nomi bilan boshlovchi taklif — sotuvchi xohlasa darhol qidiradi
+            send_seller(uid,
+                f"▶️ <b>Yoqish — {p.get('name','')[:40]}</b>\n\n"
+                f"🏷 <b>Avval MXIK kodi kerak</b>\n\n"
+                f"Mahsulot nomi yoki kalit so'z kiriting:\n"
+                f"<i>Taklif: {p.get('name','')[:30]}</i>\n\n"
+                f"Bekor qilish: /cancel",
+                {'inline_keyboard': [
+                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                ]})
+            return
+
+        # MXIK bor — to'g'ridan narx qadamiga
         seller_state[uid] = {
             'step': 'bz_act_solo', 'bz_pid': pid,
             'bz_suggested_solo':  suggested_solo,
@@ -2853,6 +3021,66 @@ def validate_director_name(text):
         return False, '', "❌ To'liq F.I.O. kiriting (familiya, ism, sharif — 3 ta so'z)"
     return True, s[:150], ''
 
+# ─── MXIK (tasnif.soliq.uz) ─────────────────────────────────────────
+MXIK_BASE_URL    = 'https://tasnif.soliq.uz/api/cls-api'
+MXIK_CACHE_TTL   = 300        # 5 daqiqa
+MXIK_PAGE_SIZE   = 10         # API'dan har bir sahifa uchun
+_mxik_search_cache = {}       # {keyword.lower(): (fetched_at: datetime, results: list)}
+
+def mxik_validate_code(text):
+    """17 raqamli MXIK kod validatsiyasi.
+    Returns (ok, code, err)."""
+    import re
+    s = (text or '').strip().replace(' ', '').replace('-', '')
+    if not re.fullmatch(r'\d{17}', s):
+        return False, '', "❌ MXIK kod aynan 17 raqam bo'lishi kerak"
+    return True, s, ''
+
+def mxik_simplify_item(item):
+    """API response item'idan kerakli field'larni ajratadi."""
+    parts = [item.get('groupName', ''), item.get('className', '')]
+    classify = ' → '.join(p for p in parts if p)[:80]
+    return {
+        'code':     item.get('mxikCode', ''),
+        'name':     item.get('subPositionName') or item.get('positionName') or item.get('name', ''),
+        'classify': classify,
+        'brand':    item.get('brandName') or '',
+        'units':    item.get('unitsName', '') or '',
+    }
+
+def mxik_search(keyword):
+    """Tasnif.soliq.uz dan kalit so'z bo'yicha qidirish.
+    5 daqiqalik cache. Returns (results: list[dict] | None, error: str | None).
+    """
+    key = (keyword or '').lower().strip()
+    if not key:
+        return None, "Bo'sh so'rov"
+    # Cache check
+    if key in _mxik_search_cache:
+        fetched_at, results = _mxik_search_cache[key]
+        if (datetime.now() - fetched_at).total_seconds() < MXIK_CACHE_TTL:
+            return results, None
+    try:
+        r = requests.get(
+            f'{MXIK_BASE_URL}/elasticsearch/search',
+            params={'search': keyword, 'size': MXIK_PAGE_SIZE, 'page': 0, 'lang': 'ru'},
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return None, f"Tasnif.soliq.uz HTTP {r.status_code}"
+        data = r.json() or {}
+        if not data.get('success'):
+            return None, "Qidiruv tizimi javob bermadi"
+        items = data.get('data') or []
+        results = [mxik_simplify_item(it) for it in items]
+        _mxik_search_cache[key] = (datetime.now(), results)
+        return results, None
+    except requests.Timeout:
+        return None, "Qidiruv vaqti o'tdi (5s)"
+    except Exception as e:
+        logging.error(f"mxik_search exception: {e}")
+        return None, "Tarmoq xatosi"
+
 def validate_min_group_text(text):
     """Min guruh: butun son, 2-100 oralig'ida.
     Returns (ok, value, error_msg).
@@ -3015,13 +3243,16 @@ def render_myproducts(uid, cid, page=0, mode='active'):
         name  = _truncate_name(p.get('name', '—'), 25)
         count = len(groups.get(pid, []))
         min_g = p.get('min_group', 0)
+        # MXIK belgisi — aktiv/draft mahsulot uchun yo'q bo'lsa ⚠️ prefix
+        mxik_warn = '⚠️ ' if (cls['label'] in ('Aktiv', 'Yoqilmagan')
+                              and not p.get('mxik_code')) else ''
         if cls['label'] == 'Aktiv':
             price = format_price_short(p.get('group_price', 0) or p.get('original_price', 0))
-            label = f"{name} · {price} · 👥{count}/{min_g}"
+            label = f"{mxik_warn}{name} · {price} · 👥{count}/{min_g}"
         elif cls['label'] == 'Yoqilmagan':
             # Draft: group_price=0 — narx asl narxdan
             price = format_price_short(p.get('original_price', 0))
-            label = f"{cls['emoji']} {name} · {price} · 👥{count}/{min_g}"
+            label = f"{cls['emoji']} {mxik_warn}{name} · {price} · 👥{count}/{min_g}"
         else:
             # Yopilgan / Muddati tugagan
             label = f"{cls['emoji']} {name} · {cls['label']}"
@@ -3036,6 +3267,62 @@ def render_myproducts(uid, cid, page=0, mode='active'):
     nav.append({'text': "🔙 Menyu", 'callback_data': 'back_menu'})
     kb.append(nav)
     send_seller(cid, txt, {'inline_keyboard': kb})
+
+def render_mxik_results(uid, cid, keyword, results, page=0):
+    """MXIK qidiruv natijalarini ko'rsatadi (5 ta per sahifa)."""
+    PER_PAGE = 5
+    total    = len(results)
+    start    = page * PER_PAGE
+    chunk    = results[start:start + PER_PAGE]
+    if not chunk:
+        send_seller(cid,
+            f"🔍 \"{keyword}\" — natija topilmadi.\n\nBoshqa kalit so'z yoki kodni qo'lda kiriting.",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                [{'text': "🔄 Qayta qidirish",        'callback_data': 'prod_mxik_again'}],
+                [{'text': "✋ Bekor",                 'callback_data': 'back_menu'}],
+            ]})
+        return
+    txt = (
+        f"🔍 \"{keyword}\" — {total} ta natija "
+        f"(sahifa {page+1}/{(total + PER_PAGE - 1) // PER_PAGE})\n"
+        f"━━━━━━━━━━━━━━━\n\n"
+        "Quyidagilardan birini tanlang:"
+    )
+    kb = []
+    for i, item in enumerate(chunk):
+        idx = start + i
+        kb.append([{
+            'text': f"{i+1}. {item['name'][:40]}",
+            'callback_data': f'prod_mxik_pick_{idx}',
+        }])
+    nav = []
+    if page > 0:
+        nav.append({'text': "◀️", 'callback_data': f'prod_mxik_page_{page-1}'})
+    if start + PER_PAGE < total:
+        nav.append({'text': "▶️ Yana", 'callback_data': f'prod_mxik_page_{page+1}'})
+    if nav:
+        kb.append(nav)
+    kb.append([
+        {'text': "🔢 Qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'},
+        {'text': "🔄 Boshqa so'z",     'callback_data': 'prod_mxik_again'},
+    ])
+    kb.append([{'text': "✋ Bekor", 'callback_data': 'back_menu'}])
+    send_seller(cid, txt, {'inline_keyboard': kb})
+
+def render_mxik_confirm(uid, cid, mxik_code, mxik_name, classify=''):
+    """Tanlangan MXIK kodni tasdiqlash ekrani."""
+    classify_line = f"\n📋 Tasnif: {classify}" if classify else ''
+    send_seller(cid,
+        f"✅ <b>MXIK tanlandi:</b>\n\n"
+        f"🏷 Kod: <code>{mxik_code}</code>\n"
+        f"📦 Nomi: {mxik_name}"
+        f"{classify_line}\n\n"
+        f"Tasdiqlaysizmi?",
+        {'inline_keyboard': [
+            [{'text': "✅ Ha, tasdiqlash", 'callback_data': 'prod_mxik_confirm'}],
+            [{'text': "🔄 Boshqasini qidirish", 'callback_data': 'prod_mxik_again'}],
+        ]})
 
 def seller_has_legal(uid):
     """Sotuvchi yuridik ma'lumotlarini to'liq kiritganmi tekshiradi."""
@@ -3662,6 +3949,8 @@ def show_prod_confirm(cid, s, shop):
     hours = int(s.get('deadline_hours', 48))
     deadline_labels = {24: '24 soat', 48: '2 kun', 72: '3 kun', 168: '1 hafta'}
     deadline_line = f"\n⏰ Muddat: {deadline_labels.get(hours, str(hours)+' soat')}"
+    mxik_code = s.get('mxik_code')
+    mxik_line = f"\n🏷 MXIK: <code>{mxik_code}</code>" if mxik_code else "\n🏷 MXIK: ⚠️ Yo'q"
     # Deadline tugmalari — hozirgi tanlangan belgilangan
     def dl_btn(h, label):
         mark = '✅ ' if hours == h else ''
@@ -3672,7 +3961,7 @@ def show_prod_confirm(cid, s, shop):
         f"{cat_line}{sale_line}\n"
         f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
         f"{min_group_line}{stock_line}\n📢 {shop.get('channel','—')}"
-        f"{deadline_line}"
+        f"{deadline_line}{mxik_line}"
         f"{desc_line}{solo_line}{variants_line}",
         {'inline_keyboard': [
             [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
@@ -3770,6 +4059,8 @@ def publish_product(uid, cid, s):
         'status':         'active',
         'is_active':      True,
         'solo_available': True,
+        'mxik_code':      s.get('mxik_code'),
+        'mxik_name':      s.get('mxik_name'),
     }
     groups[pid] = []
     if uid not in seller_products: seller_products[uid] = []
@@ -4567,10 +4858,53 @@ def seller_handle_msg(msg):
             except: send_seller(cid, "❌ Raqam kiriting!")
 
         elif step == 'prod_desc':
-            s['description'] = text[:300]; s['step'] = 'prod_confirm'
-            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            send_seller(cid, "✅ Tavsif saqlandi!")
-            show_prod_confirm(cid, s, shop)
+            s['description'] = text[:300]
+            s['step'] = 'prod_mxik_search'
+            send_seller(cid,
+                "✅ Tavsif saqlandi.\n\n"
+                "🔍 <b>MXIK kodi (fiskal chek uchun)</b>\n\n"
+                "Mahsulot nomini yoki kalit so'z kiriting:\n"
+                "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
+                "Kodni bilsangiz qo'lda kiritish mumkin. Bekor qilish: /cancel",
+                {'inline_keyboard': [
+                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                ]})
+
+        elif step == 'prod_mxik_search':
+            keyword = text.strip()
+            if len(keyword) < 2:
+                send_seller(cid, "❌ Kamida 2 ta belgi kiriting"); return
+            results, err = mxik_search(keyword)
+            if err:
+                send_seller(cid,
+                    f"⚠️ {err}\n\n"
+                    f"Qaytadan urining yoki kodni qo'lda kiriting:",
+                    {'inline_keyboard': [
+                        [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                        [{'text': "🔄 Qayta qidirish",        'callback_data': 'prod_mxik_again'}],
+                    ]})
+                return
+            if not results:
+                send_seller(cid,
+                    f"🔍 \"{keyword}\" — natija yo'q.\n\nBoshqa kalit so'z bilan urinib ko'ring.",
+                    {'inline_keyboard': [
+                        [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                        [{'text': "🔄 Boshqa so'z",          'callback_data': 'prod_mxik_again'}],
+                    ]})
+                return
+            s['mxik_results'] = results
+            s['mxik_keyword'] = keyword
+            render_mxik_results(uid, cid, keyword, results, page=0)
+
+        elif step == 'prod_mxik_manual':
+            ok, code, err = mxik_validate_code(text)
+            if not ok:
+                send_seller(cid, err); return
+            # Qo'lda kiritilgan kodni saqlaymiz, "manual" deb belgi
+            s['mxik_code'] = code
+            s['mxik_name'] = "(qo'lda kiritilgan)"
+            s['step'] = 'prod_mxik_confirm_state'
+            render_mxik_confirm(uid, cid, code, s['mxik_name'])
 
         elif step == 'prod_edit_desc':
             s['description'] = text[:300]; s['step'] = 'prod_confirm'
