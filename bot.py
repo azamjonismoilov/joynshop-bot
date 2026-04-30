@@ -7583,6 +7583,367 @@ def api_seller_products():
         'has_next': (page + 1) < pages,
     })
 
+# ─── SPRINT 1.1: Read-only endpoints ────────────────────────────────
+
+def _parse_order_dt(o):
+    """Order created sanasini datetime ga o'giradi (parse fail bo'lsa None)."""
+    try:
+        return datetime.strptime(o.get('created', '01.01.2000 00:00'), '%d.%m.%Y %H:%M')
+    except (ValueError, TypeError):
+        return None
+
+@app.route('/api/v1/seller/stats', methods=['GET'])
+@require_seller
+def api_seller_stats():
+    """Sotuvchi statistikasi range filter bilan.
+    range: today | week | month | all (default: week)"""
+    uid = g.seller_uid
+    range_key = (request.args.get('range', 'week') or 'week').lower()
+    if range_key not in ('today', 'week', 'month', 'all'):
+        return jsonify({'error': 'invalid_range', 'reason': "range: today|week|month|all"}), 400
+
+    pids = set(_seller_get_pids(uid))
+    if not pids:
+        return jsonify({
+            'range': range_key,
+            'gmv': 0, 'commission': 0, 'net_income': 0,
+            'orders_total': 0, 'orders_confirmed': 0, 'orders_pending': 0,
+            'conversion_rate': 0,
+            'products_total': 0, 'products_active': 0, 'products_archived': 0,
+            'groups_filled': 0, 'buyers_unique': 0, 'avg_check': 0,
+            'top_products': [], 'top_customers': [],
+        })
+
+    # Range filter
+    now = datetime.now()
+    if range_key == 'today':
+        cutoff = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif range_key == 'week':
+        cutoff = now - timedelta(days=7)
+    elif range_key == 'month':
+        cutoff = now - timedelta(days=30)
+    else:
+        cutoff = None
+
+    def in_range(o):
+        if cutoff is None:
+            return True
+        dt = _parse_order_dt(o)
+        return dt is not None and dt >= cutoff
+
+    my_orders = [o for o in orders.values() if o.get('product_id') in pids]
+    in_range_orders = [o for o in my_orders if in_range(o)]
+    confirmed = [o for o in in_range_orders if o.get('status') == 'confirmed']
+    pending   = [o for o in in_range_orders if o.get('status') in ('pending', 'confirming')]
+
+    gmv         = sum(o.get('amount', 0) for o in confirmed)
+    commission  = int(gmv * COMMISSION_RATE)
+    net_income  = gmv - commission
+    orders_total     = len(in_range_orders)
+    orders_confirmed = len(confirmed)
+    orders_pending   = len(pending)
+    conversion = round((orders_confirmed / orders_total) * 100, 1) if orders_total else 0
+    avg_check  = (gmv // orders_confirmed) if orders_confirmed else 0
+    buyers_unique = len({o.get('user_id') for o in confirmed if o.get('user_id')})
+
+    products_total = sum(1 for pid in pids if pid in products)
+    products_active = 0
+    products_archived = 0
+    groups_filled = 0
+    for pid in pids:
+        p = products.get(pid)
+        if not p:
+            continue
+        cls = _classify_product_status(p)
+        if cls['archived']:
+            products_archived += 1
+        else:
+            products_active += 1
+        if len(groups.get(pid, [])) >= p.get('min_group', 9999):
+            groups_filled += 1
+
+    # Top products by revenue (in range)
+    rev_by_pid = {}
+    sold_by_pid = {}
+    for o in confirmed:
+        pid = o.get('product_id')
+        rev_by_pid[pid]  = rev_by_pid.get(pid, 0) + o.get('amount', 0)
+        sold_by_pid[pid] = sold_by_pid.get(pid, 0) + 1
+    top_products = []
+    for pid, revenue in sorted(rev_by_pid.items(), key=lambda x: x[1], reverse=True)[:5]:
+        p = products.get(pid, {})
+        top_products.append({
+            'id':      pid,
+            'name':    p.get('name', '—')[:40],
+            'sold':    sold_by_pid.get(pid, 0),
+            'revenue': revenue,
+        })
+
+    # Top customers (from CRM, in range)
+    sid = str(uid)
+    my_custs = customers.get(sid, {})
+    cust_revenue = {}
+    for o in confirmed:
+        cuid = str(o.get('user_id', ''))
+        cust_revenue[cuid] = cust_revenue.get(cuid, 0) + o.get('amount', 0)
+    top_customers = []
+    for cuid, spent in sorted(cust_revenue.items(), key=lambda x: x[1], reverse=True)[:5]:
+        c = my_custs.get(cuid, {})
+        top_customers.append({
+            'cuid':   cuid,
+            'name':   c.get('name', '—')[:30],
+            'spent':  spent,
+            'orders': sum(1 for o in confirmed if str(o.get('user_id', '')) == cuid),
+        })
+
+    return jsonify({
+        'range':            range_key,
+        'gmv':              gmv,
+        'commission':       commission,
+        'net_income':       net_income,
+        'orders_total':     orders_total,
+        'orders_confirmed': orders_confirmed,
+        'orders_pending':   orders_pending,
+        'conversion_rate':  conversion,
+        'products_total':   products_total,
+        'products_active':  products_active,
+        'products_archived':products_archived,
+        'groups_filled':    groups_filled,
+        'buyers_unique':    buyers_unique,
+        'avg_check':        avg_check,
+        'top_products':     top_products,
+        'top_customers':    top_customers,
+    })
+
+@app.route('/api/v1/seller/products/<pid>', methods=['GET'])
+@require_seller
+def api_seller_product_detail(pid):
+    """Bitta mahsulot to'liq detail."""
+    uid = g.seller_uid
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        return jsonify({'error': 'not_found'}), 404
+
+    cls = _classify_product_status(p)
+    cat_name = p.get('category', '')
+    cat_icon = next((icon for name, icon in CATEGORIES if name == cat_name), '📦')
+
+    # Photos array — S3 first, file_id proxy fallback
+    photos = []
+    photo_urls = p.get('photo_urls') or ([p['photo_url']] if p.get('photo_url') else [])
+    photo_ids  = p.get('photo_ids')  or ([p['photo_id']]  if p.get('photo_id')  else [])
+    primary_set = False
+    for url in photo_urls:
+        if url:
+            photos.append({'url': url, 'is_primary': not primary_set})
+            primary_set = True
+    if not photos:
+        for fid in photo_ids:
+            if fid:
+                photos.append({'url': f'/api/photo/{fid}', 'is_primary': not primary_set})
+                primary_set = True
+
+    # Channel post URL
+    ch_chat = p.get('channel_chat_id')
+    ch_msg  = p.get('channel_message_id')
+    channel_post_url = None
+    if ch_chat and ch_msg:
+        if isinstance(ch_chat, str) and ch_chat.startswith('@'):
+            channel_post_url = f"https://t.me/{ch_chat[1:]}/{ch_msg}"
+        elif isinstance(ch_chat, (int, str)):
+            chat_id_str = str(ch_chat).replace('-100', '')
+            channel_post_url = f"https://t.me/c/{chat_id_str}/{ch_msg}"
+
+    # Deadline seconds left
+    deadline_seconds = 0
+    ddt = p.get('deadline_dt')
+    if ddt:
+        try:
+            deadline_seconds = max(0, int((datetime.strptime(ddt, '%Y-%m-%d %H:%M') - datetime.now()).total_seconds()))
+        except (ValueError, TypeError):
+            pass
+
+    # Stats — barcha vaqtlar bo'yicha
+    p_orders   = [o for o in orders.values() if o.get('product_id') == pid]
+    confirmed  = [o for o in p_orders if o.get('status') == 'confirmed']
+    revenue    = sum(o.get('amount', 0) for o in confirmed)
+    wl_count   = sum(1 for wl in wishlists.values() if pid in wl)
+    first_dt = min((_parse_order_dt(o) for o in confirmed if _parse_order_dt(o)), default=None)
+    last_dt  = max((_parse_order_dt(o) for o in confirmed if _parse_order_dt(o)), default=None)
+
+    return jsonify({
+        'id':                    pid,
+        'name':                  p.get('name', ''),
+        'description':           p.get('description', ''),
+        'category':              cat_name,
+        'category_icon':         cat_icon,
+        'sale_type':             p.get('sale_type', 'both'),
+        'original_price':        p.get('original_price', 0),
+        'group_price':           p.get('group_price', 0),
+        'solo_price':            p.get('solo_price', 0),
+        'min_group':             p.get('min_group', 0),
+        'count':                 len(groups.get(pid, [])),
+        'status':                p.get('status', 'active'),
+        'status_label':          cls['label'],
+        'status_emoji':          cls['emoji'],
+        'is_archived':           cls['archived'],
+        'source':                p.get('source', 'manual'),
+        'is_billz_draft':        (p.get('source') == 'billz' and not p.get('is_active', True)),
+        'deadline':              p.get('deadline', ''),
+        'deadline_dt':           p.get('deadline_dt', ''),
+        'deadline_seconds_left': deadline_seconds,
+        'photos':                photos,
+        'variants':              p.get('variants', []),
+        'barcode':               p.get('barcode', ''),
+        'sku':                   p.get('sku', ''),
+        'brand_name':            p.get('brand_name', ''),
+        'shop': {
+            'name':    p.get('shop_name', ''),
+            'channel': p.get('seller_channel', ''),
+        },
+        'mxik': {
+            'code':    p.get('mxik_code'),
+            'name':    p.get('mxik_name'),
+            'missing': not p.get('mxik_code') and cls['label'] in ('Aktiv', 'Yoqilmagan'),
+        },
+        'stats': {
+            'orders_total':   len(confirmed),
+            'revenue':        revenue,
+            'wishlist_count': wl_count,
+            'first_order':    first_dt.strftime('%d.%m.%Y') if first_dt else '',
+            'last_order':     last_dt.strftime('%d.%m.%Y')  if last_dt  else '',
+        },
+        'channel_post_url':      channel_post_url,
+    })
+
+ORDER_STATUS_META = {
+    'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},
+    'confirming': {'emoji': '🔄', 'label': "Tasdiqlash kutilmoqda"},
+    'confirmed':  {'emoji': '✅', 'label': "Tasdiqlandi"},
+    'rejected':   {'emoji': '❌', 'label': "Rad etildi"},
+    'cancelled':  {'emoji': '🚫', 'label': "Bekor qilindi"},
+}
+
+DELIVERY_LABEL = {'pickup': 'Olib ketish', 'deliver': 'Yetkazib berish'}
+
+def _format_order_item(code, o):
+    """Order list yoki detail uchun yagona format."""
+    p = products.get(o.get('product_id', ''), {})
+    photo_url = p.get('photo_url') or ''
+    if not photo_url and p.get('photo_id'):
+        photo_url = f"/api/photo/{p['photo_id']}"
+    status = o.get('status', 'pending')
+    meta = ORDER_STATUS_META.get(status, {'emoji': '?', 'label': status})
+    return {
+        'code':           code,
+        'product_id':     o.get('product_id', ''),
+        'product_name':   p.get('name', '')[:60],
+        'product_photo':  photo_url,
+        'buyer': {
+            'user_id':  o.get('user_id', 0),
+            'name':     o.get('user_name', ''),
+            'phone':    o.get('user_phone', ''),
+            'username': o.get('username', ''),
+        },
+        'amount':         o.get('amount', 0),
+        'type':           o.get('type', 'group'),
+        'type_label':     'Yakka' if o.get('type') == 'solo' else 'Guruh',
+        'variant':        o.get('variant', ''),
+        'delivery':       o.get('delivery', 'pickup'),
+        'delivery_label': DELIVERY_LABEL.get(o.get('delivery', 'pickup'), '—'),
+        'address':        o.get('address', ''),
+        'status':         status,
+        'status_emoji':   meta['emoji'],
+        'status_label':   meta['label'],
+        'payment_method': o.get('payment_method', ''),
+        'created':        o.get('created', ''),
+    }
+
+@app.route('/api/v1/seller/orders', methods=['GET'])
+@require_seller
+def api_seller_orders():
+    """Buyurtmalar list filter va pagination bilan."""
+    uid = g.seller_uid
+    status = (request.args.get('status', 'confirming') or 'confirming').lower()
+    valid_statuses = {'pending', 'confirming', 'confirmed', 'rejected', 'cancelled', 'all'}
+    if status not in valid_statuses:
+        return jsonify({'error': 'invalid_status'}), 400
+
+    try:
+        page = max(0, int(request.args.get('page', 0)))
+    except ValueError:
+        page = 0
+    try:
+        limit = min(50, max(1, int(request.args.get('limit', 20))))
+    except ValueError:
+        limit = 20
+    search = (request.args.get('search', '') or '').lower().strip()
+
+    pids = set(_seller_get_pids(uid))
+
+    # Status counts (filter'siz, shu sotuvchi uchun)
+    summary = {'pending': 0, 'confirming': 0, 'confirmed': 0, 'rejected': 0}
+    for o in orders.values():
+        if o.get('product_id') not in pids:
+            continue
+        st = o.get('status', '')
+        if st in summary:
+            summary[st] += 1
+
+    # Filtered list
+    filtered = []
+    for code, o in orders.items():
+        if o.get('product_id') not in pids:
+            continue
+        if status != 'all' and o.get('status') != status:
+            continue
+        if search:
+            hay = (code.lower() + ' ' + (o.get('user_name', '') or '').lower())
+            if search not in hay:
+                continue
+        filtered.append((code, o))
+
+    # Sort by created desc
+    filtered.sort(key=lambda x: _parse_order_dt(x[1]) or datetime(2000, 1, 1), reverse=True)
+
+    total = len(filtered)
+    pages = max(1, (total + limit - 1) // limit)
+    page  = min(page, pages - 1) if total > 0 else 0
+    chunk = filtered[page*limit : (page+1)*limit]
+
+    items = [_format_order_item(code, o) for code, o in chunk]
+
+    return jsonify({
+        'items':    items,
+        'total':    total,
+        'page':     page,
+        'pages':    pages,
+        'has_next': (page + 1) < pages,
+        'summary':  summary,
+    })
+
+@app.route('/api/v1/seller/categories', methods=['GET'])
+@require_seller
+def api_seller_categories():
+    """Mahsulot kategoriyalari ro'yxati global product count bilan."""
+    counts = {}
+    for p in products.values():
+        if p.get('status') == 'closed':
+            continue
+        if not p.get('is_active', True):
+            continue
+        cat = p.get('category', '')
+        if cat:
+            counts[cat] = counts.get(cat, 0) + 1
+    items = []
+    for name, icon in CATEGORIES:
+        items.append({
+            'name':           name,
+            'icon':           icon,
+            'products_count': counts.get(name, 0),
+        })
+    return jsonify({'categories': items})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
