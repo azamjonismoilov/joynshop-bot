@@ -8210,6 +8210,145 @@ def api_seller_customer_history(cuid):
         'note':        "Oxirgi 20 ta xarid saqlanadi." if total >= 20 else None,
     })
 
+# ─── SPRINT 1.3: Legal + Shops + Integrations ───────────────────────
+
+LEGAL_STATUS_LABEL = {'yatt': 'YaTT', 'mchj': 'MChJ'}
+
+@app.route('/api/v1/seller/legal', methods=['GET'])
+@require_seller
+def api_seller_legal():
+    """Sotuvchining yuridik ma'lumotlari."""
+    uid = g.seller_uid
+    prof = seller_profiles.get(uid) or seller_profiles.get(str(uid)) or {}
+    completed = bool(prof.get('legal_completed_at'))
+    if not completed:
+        return jsonify({
+            'completed':         False,
+            'completed_at':      None,
+            'legal_status':      None,
+            'legal_status_label':None,
+            'stir':              None,
+            'bank_name':         None,
+            'bank_account':      None,
+            'bank_account_formatted': None,
+            'bank_mfo':          None,
+            'director_name':     None,
+        })
+    acc = prof.get('bank_account') or ''
+    return jsonify({
+        'completed':              True,
+        'completed_at':           prof.get('legal_completed_at'),
+        'legal_status':           prof.get('legal_status'),
+        'legal_status_label':     LEGAL_STATUS_LABEL.get(prof.get('legal_status'), '—'),
+        'stir':                   prof.get('stir'),
+        'bank_name':              prof.get('bank_name'),
+        'bank_account':           acc,
+        'bank_account_formatted': _format_account(acc),
+        'bank_mfo':               prof.get('bank_mfo'),
+        'director_name':          prof.get('director_name'),
+    })
+
+DELIVERY_LABEL_FULL = {
+    'pickup':  '🏪 Olib ketish',
+    'deliver': '🚚 Yetkazib berish',
+    'both':    '🚚🏪 Ikkalasi',
+}
+
+def _format_shop_brief(idx, shop, uid):
+    """Shop list item format."""
+    channel = shop.get('channel', '')
+    products_count = sum(
+        1 for pid in _seller_get_pids(uid)
+        if pid in products
+        and products[pid].get('seller_channel') == channel
+        and products[pid].get('status') != 'closed'
+    )
+    return {
+        'idx':               idx,
+        'name':              shop.get('name', ''),
+        'phone':             shop.get('phone', ''),
+        'phone2':            shop.get('phone2', ''),
+        'address':           shop.get('address', ''),
+        'social':            shop.get('social', {}),
+        'delivery':          shop.get('delivery', 'pickup'),
+        'delivery_label':    DELIVERY_LABEL_FULL.get(shop.get('delivery', 'pickup'), '—'),
+        'channel':           channel,
+        'channel_verified':  channel in verified_channels,
+        'verified':          shop.get('verified', False),
+        'onboarding_status': shop.get('onboarding_status', 'active'),
+        'products_count':    products_count,
+        'billz_connected':   bool(shop.get('billz_secret_token')),
+        'billz_shop_name':   shop.get('billz_shop_name', ''),
+    }
+
+@app.route('/api/v1/seller/shops', methods=['GET'])
+@require_seller
+def api_seller_shops():
+    """Sotuvchining barcha do'konlari."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    return jsonify({
+        'shops': [_format_shop_brief(i, sh, uid) for i, sh in enumerate(shops)],
+    })
+
+@app.route('/api/v1/seller/shops/<int:idx>', methods=['GET'])
+@require_seller
+def api_seller_shop_detail(idx):
+    """Bitta shop detail — extra metrics bilan."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    if idx < 0 or idx >= len(shops):
+        return jsonify({'error': 'not_found'}), 404
+    shop = shops[idx]
+    brief = _format_shop_brief(idx, shop, uid)
+    # Extra metrics — orders va revenue shu shop kanaligi bo'yicha
+    channel = shop.get('channel', '')
+    shop_pids = {pid for pid in _seller_get_pids(uid)
+                 if pid in products and products[pid].get('seller_channel') == channel}
+    shop_orders = [o for o in orders.values() if o.get('product_id') in shop_pids]
+    confirmed = [o for o in shop_orders if o.get('status') == 'confirmed']
+    last_order_dt = max((_parse_order_dt(o) for o in confirmed if _parse_order_dt(o)), default=None)
+    brief.update({
+        'orders_total':     len(shop_orders),
+        'orders_confirmed': len(confirmed),
+        'revenue':          sum(o.get('amount', 0) for o in confirmed),
+        'last_order':       last_order_dt.strftime('%d.%m.%Y') if last_order_dt else '',
+    })
+    return jsonify(brief)
+
+@app.route('/api/v1/seller/integrations', methods=['GET'])
+@require_seller
+def api_seller_integrations():
+    """Barcha integratsiyalar status — per-shop bo'yicha."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    items = []
+    for entry in INTEGRATIONS:
+        info = {
+            'id':     entry['id'],
+            'name':   entry['name'],
+            'icon':   entry['icon'],
+            'status': entry['status'],  # 'active' | 'coming_soon'
+        }
+        if entry['id'] == 'billz' and entry['status'] == 'active':
+            shop_statuses = []
+            connected = 0
+            for i, sh in enumerate(shops):
+                is_connected = bool(sh.get('billz_secret_token'))
+                if is_connected:
+                    connected += 1
+                shop_statuses.append({
+                    'shop_idx':         i,
+                    'shop_name':        sh.get('name', ''),
+                    'connected':        is_connected,
+                    'billz_shop_name':  sh.get('billz_shop_name', ''),
+                })
+            info['connected_shops'] = connected
+            info['total_shops']     = len(shops)
+            info['shop_statuses']   = shop_statuses
+        items.append(info)
+    return jsonify({'integrations': items})
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
