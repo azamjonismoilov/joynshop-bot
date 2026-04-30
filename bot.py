@@ -1,6 +1,7 @@
 import os, json, logging, random, string, threading, time, requests
+import hmac, hashlib, functools, urllib.parse
 from datetime import datetime, timedelta
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 import pg8000
 
 try:
@@ -7362,6 +7363,213 @@ def api_checkout():
         )
 
     return jsonify({'ok': True, 'code': code, 'amount': amount, 'invoice_link': invoice_link})
+
+
+# ══════════════════════════════════════════════════════════════════════
+#  SELLER MINI APP API (v1) — seller.joynshop.uz frontend
+# ══════════════════════════════════════════════════════════════════════
+# Authorization: tma <Telegram WebApp initData>
+# Validatsiya: HMAC-SHA256 with secret_key=HMAC-SHA256(b'WebAppData', SELLER_TOKEN)
+# auth_date freshness: 24 soat
+
+def verify_telegram_init_data(init_data, bot_token, max_age=86400):
+    """Telegram WebApp initData ni HMAC bilan tekshiradi.
+    Returns user dict (id, first_name, ...) yoki None.
+    """
+    if not init_data or not bot_token:
+        return None
+    try:
+        parsed = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
+    except Exception:
+        return None
+    received_hash = parsed.pop('hash', None)
+    if not received_hash:
+        return None
+    # auth_date freshness
+    try:
+        auth_date = int(parsed.get('auth_date', '0'))
+    except (ValueError, TypeError):
+        return None
+    if auth_date <= 0 or (datetime.now().timestamp() - auth_date) > max_age:
+        return None
+    # data_check_string — sorted alphabetically, joined with \n
+    data_check_string = '\n'.join(f'{k}={v}' for k, v in sorted(parsed.items()))
+    secret_key   = hmac.new(b'WebAppData', bot_token.encode(), hashlib.sha256).digest()
+    computed     = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(computed, received_hash):
+        return None
+    # Valid — parse user
+    user_json = parsed.get('user')
+    if not user_json:
+        return None
+    try:
+        return json.loads(user_json)
+    except json.JSONDecodeError:
+        return None
+
+def require_seller(fn):
+    """Decorator: /api/v1/seller/* endpoint'larini Telegram initData orqali himoyalaydi.
+    Sets g.seller_uid (int) va g.seller_user (dict)."""
+    @functools.wraps(fn)
+    def wrapped(*args, **kwargs):
+        auth = request.headers.get('Authorization', '')
+        if not auth.startswith('tma '):
+            return jsonify({'error': 'unauthorized', 'reason': 'missing_init_data'}), 401
+        user = verify_telegram_init_data(auth[4:], SELLER_TOKEN)
+        if not user:
+            return jsonify({'error': 'unauthorized', 'reason': 'invalid_init_data'}), 401
+        uid = user.get('id')
+        if not uid:
+            return jsonify({'error': 'unauthorized', 'reason': 'no_user_id'}), 401
+        # Sotuvchi ekanligini tekshirish — eng kamida bitta shop bo'lishi kerak
+        has_shop = uid in seller_shops or str(uid) in seller_shops
+        if not has_shop:
+            return jsonify({'error': 'forbidden', 'reason': 'not_a_seller'}), 403
+        g.seller_uid  = int(uid)
+        g.seller_user = user
+        return fn(*args, **kwargs)
+    return wrapped
+
+def _seller_get_shops(uid):
+    """seller_shops dict'idan har xil key turlarini hisobga olib shop list qaytaradi."""
+    return seller_shops.get(uid) or seller_shops.get(str(uid)) or []
+
+def _seller_get_pids(uid):
+    return seller_products.get(uid) or seller_products.get(str(uid)) or []
+
+@app.route('/api/v1/seller/me', methods=['GET'])
+@require_seller
+def api_seller_me():
+    """Sotuvchi profili va umumiy ma'lumot."""
+    uid  = g.seller_uid
+    user = g.seller_user
+    shops = _seller_get_shops(uid)
+    shops_info = [{
+        'name':              shop.get('name', ''),
+        'channel':           shop.get('channel', ''),
+        'billz_connected':   bool(shop.get('billz_secret_token')),
+        'billz_shop_name':   shop.get('billz_shop_name', ''),
+        'onboarding_status': shop.get('onboarding_status', 'active'),
+    } for shop in shops]
+    pids = _seller_get_pids(uid)
+    products_count  = sum(1 for pid in pids
+                          if pid in products and products[pid].get('status') != 'closed')
+    orders_pending  = sum(1 for o in orders.values()
+                          if o.get('product_id') in pids and o.get('status') == 'confirming')
+    # Stats summary
+    today_str  = datetime.now().strftime('%d.%m.%Y')
+    week_start = datetime.now() - timedelta(days=7)
+    confirmed  = [o for o in orders.values()
+                  if o.get('product_id') in pids and o.get('status') == 'confirmed']
+    gmv_today = sum(o.get('amount', 0) for o in confirmed
+                    if o.get('created', '').startswith(today_str))
+    gmv_week  = 0
+    for o in confirmed:
+        try:
+            if datetime.strptime(o.get('created','01.01.2000 00:00'), '%d.%m.%Y %H:%M') >= week_start:
+                gmv_week += o.get('amount', 0)
+        except (ValueError, TypeError):
+            pass
+    return jsonify({
+        'uid':             uid,
+        'first_name':      user.get('first_name', ''),
+        'last_name':       user.get('last_name', ''),
+        'username':        user.get('username', ''),
+        'photo_url':       user.get('photo_url', ''),
+        'shops':           shops_info,
+        'legal_completed': seller_has_legal(uid),
+        'billz_connected': bool(seller_billz_connected_shops(uid)),
+        'products_count':  products_count,
+        'orders_pending':  orders_pending,
+        'stats_summary': {
+            'gmv_today': gmv_today,
+            'gmv_week':  gmv_week,
+        },
+    })
+
+@app.route('/api/v1/seller/products', methods=['GET'])
+@require_seller
+def api_seller_products():
+    """Sotuvchi mahsulotlari ro'yxati. Pagination + filter + search."""
+    uid = g.seller_uid
+    try:
+        page = max(0, int(request.args.get('page', 0)))
+    except ValueError:
+        page = 0
+    try:
+        limit = min(50, max(1, int(request.args.get('limit', 20))))
+    except ValueError:
+        limit = 20
+    filt   = (request.args.get('filter', 'active') or 'active').lower()
+    search = (request.args.get('search', '') or '').lower().strip()
+
+    pids_all = _seller_get_pids(uid)
+    items_filtered = []
+    for pid in pids_all:
+        if pid not in products:
+            continue
+        p   = products[pid]
+        cls = _classify_product_status(p)
+        # Filter
+        if filt == 'active':
+            if cls['archived']:
+                continue
+        elif filt == 'archived':
+            if not cls['archived']:
+                continue
+        # filt == 'all' — hammasi
+        # Search (name substring)
+        if search and search not in p.get('name', '').lower():
+            continue
+        items_filtered.append((pid, p, cls))
+
+    # Sort: Billz draft'lar yuqorida, qolgani deadline_dt asc bo'yicha
+    def sort_key(item):
+        pid, p, cls = item
+        is_draft = (p.get('source') == 'billz' and not p.get('is_active', True))
+        return (0 if is_draft else 1, p.get('deadline_dt', ''))
+    items_filtered.sort(key=sort_key)
+
+    total = len(items_filtered)
+    pages = max(1, (total + limit - 1) // limit)
+    page  = min(page, pages - 1) if total > 0 else 0
+    chunk = items_filtered[page*limit : (page+1)*limit]
+
+    items_out = []
+    for pid, p, cls in chunk:
+        photo_url = p.get('photo_url') or ''
+        if not photo_url and p.get('photo_id'):
+            photo_url = f'/api/photo/{p["photo_id"]}'
+        is_billz_draft = (p.get('source') == 'billz' and not p.get('is_active', True))
+        price_amt = p.get('group_price', 0) or p.get('original_price', 0)
+        items_out.append({
+            'id':              pid,
+            'name':            p.get('name', ''),
+            'price':           price_amt,
+            'price_short':     format_price_short(price_amt),
+            'original_price':  p.get('original_price', 0),
+            'min_group':       p.get('min_group', 0),
+            'count':           len(groups.get(pid, [])),
+            'status':          p.get('status', 'active'),
+            'status_label':    cls['label'],
+            'status_emoji':    cls['emoji'],
+            'source':          p.get('source', 'manual'),
+            'is_billz_draft':  is_billz_draft,
+            'mxik_missing':    not p.get('mxik_code') and cls['label'] in ('Aktiv', 'Yoqilmagan'),
+            'deadline':        p.get('deadline', ''),
+            'deadline_dt':     p.get('deadline_dt', ''),
+            'photo_url':       photo_url,
+            'shop_name':       p.get('shop_name', ''),
+            'channel':         p.get('seller_channel', ''),
+        })
+
+    return jsonify({
+        'items':    items_out,
+        'total':    total,
+        'page':     page,
+        'pages':    pages,
+        'has_next': (page + 1) < pages,
+    })
 
 
 if __name__ == '__main__':
