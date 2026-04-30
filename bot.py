@@ -318,8 +318,12 @@ def answer_pre_checkout(query_id, ok=True, error=None, token=None):
     return api('answerPreCheckoutQuery', data, token or SELLER_TOKEN)
 
 # ─── CRM HELPER ─────────────────────────────────────────────────────
-def update_customer(seller_id, user_id, user_name, amount, product_name, source='order'):
-    """Sotuvchining CRM bazasini yangilash"""
+def update_customer(seller_id, user_id, user_name, amount, product_name,
+                    source='order', phone='', username=''):
+    """Sotuvchining CRM bazasini yangilash.
+    phone/username — yangi mijozlarda saqlanadi. Eski mijozlar uchun bo'sh string
+    bo'lsa, mavjud qiymat saqlanadi.
+    """
     sid = str(seller_id)
     uid = str(user_id)
     if sid not in customers:
@@ -335,12 +339,19 @@ def update_customer(seller_id, user_id, user_name, amount, product_name, source=
             'last_order':   datetime.now().strftime('%d.%m.%Y'),
             'source':       source,
             'tags':         [],
+            'phone':        '',
+            'username':     '',
         }
     cust = customers[sid][uid]
     cust['name']         = user_name
     cust['total_orders'] += 1
     cust['total_spent']  += amount
     cust['last_order']   = datetime.now().strftime('%d.%m.%Y')
+    # Yangi qiymat berilgan bo'lsa yangilanadi, aks holda mavjud saqlanadi
+    if phone:
+        cust['phone'] = phone
+    if username:
+        cust['username'] = username.lstrip('@')
     cust['orders'].append({
         'product': product_name,
         'amount':  amount,
@@ -1199,7 +1210,7 @@ def seller_handle_cb(cb):
         my_customers = customers.get(sid, {})
 
         # Filter va sahifa
-        per_page    = 5
+        per_page    = 7
         page        = 1
         cur_filter  = 'all'
         if d.startswith('crm_page_'):
@@ -1214,12 +1225,12 @@ def seller_handle_cb(cb):
             cust = my_customers.get(cuid, {})
             if not cust:
                 send_seller(uid, "❌ Mijoz topilmadi."); return
-            orders_text = ""
-            for o in reversed(cust.get('orders', [])[-5:]):
-                orders_text += f"  \u2022 {o['product']} \u2014 {fmt(o['amount'])} so'm ({o['date']})\n"
             avg  = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
             tags = ', '.join(cust.get('tags', [])) or '\u2014'
             note = cust.get('note', '')
+            phone    = cust.get('phone', '') or '\u2014'
+            username = cust.get('username', '')
+            username_line = f"@{username}" if username else '\u2014'
             # Faollik holati
             from datetime import datetime as _dt, timedelta
             try:
@@ -1232,27 +1243,54 @@ def seller_handle_cb(cb):
                 activity = "—"
 
             send_seller(uid,
-                "👤 <b>" + cust['name'] + "</b>\n"
+                f"👤 <b>{cust['name']}</b>\n"
                 "━━━━━━━━━━━━━━━\n"
                 "📊 <b>Statistika:</b>\n"
-                "🛒 Jami xaridlar: " + str(cust['total_orders']) + " ta\n"
-                "💰 Jami sarflagan: " + fmt(cust['total_spent']) + " so'm\n"
-                "📈 O'rtacha check: " + fmt(avg) + " so'm\n"
-                "📅 Birinchi xarid: " + cust.get('first_order','—') + "\n"
-                "📅 Oxirgi xarid: " + cust.get('last_order','—') + "\n"
-                "⚡ Holati: " + activity + "\n"
-                "🏷 Teglar: " + tags + "\n"
-                + (f"📝 <b>Izoh:</b> {note}\n" if note else "") +
-                "\n🛍 <b>So'nggi xaridlar:</b>\n" + (orders_text or "  Hali yo'q"),
+                f"🛒 Jami xaridlar: {cust['total_orders']} ta\n"
+                f"💰 Jami sarflagan: {fmt(cust['total_spent'])} so'm\n"
+                f"📈 O'rtacha check: {fmt(avg)} so'm\n"
+                f"📅 Birinchi xarid: {cust.get('first_order','—')}\n"
+                f"📅 Oxirgi xarid: {cust.get('last_order','—')}\n"
+                f"⚡ Holati: {activity}\n"
+                f"🏷 Teglar: {tags}\n"
+                f"📞 Telefon: {phone}\n"
+                f"👤 Username: {username_line}"
+                + (f"\n\n📝 <b>Izoh:</b> {note}" if note else ""),
                 {'inline_keyboard': [
                     [{'text': "⭐ VIP",       'callback_data': 'crm_tag_'+cuid+'_vip'},
                      {'text': "🔴 Muammoli", 'callback_data': 'crm_tag_'+cuid+'_problem'},
                      {'text': "💎 Doimiy",   'callback_data': 'crm_tag_'+cuid+'_loyal'}],
-                    [{'text': "💬 Xabar yuborish", 'callback_data': 'crm_msg_'+cuid}],
-                    [{'text': "📝 Izoh qo'shish",  'callback_data': 'crm_note_'+cuid}],
-                    [{'text': "⬅️ Orqaga", 'callback_data': 'menu_mycustomers'}],
+                    [{'text': "💬 Xabar yuborish",   'callback_data': 'crm_msg_'+cuid}],
+                    [{'text': "📝 Izoh qo'shish",     'callback_data': 'crm_note_'+cuid}],
+                    [{'text': "📊 Xaridlar tarixi",   'callback_data': 'crm_history_'+cuid}],
+                    [{'text': "⬅️ Orqaga",           'callback_data': 'menu_mycustomers'}],
                 ]}
             )
+            return
+
+        # ─── XARIDLAR TARIXI ───
+        if d.startswith('crm_history_'):
+            cuid = d[len('crm_history_'):]
+            cust = my_customers.get(cuid, {})
+            if not cust:
+                send_seller(uid, "❌ Mijoz topilmadi."); return
+            orders_list = list(reversed(cust.get('orders', [])))  # eng yangi tepada
+            if not orders_list:
+                txt = (f"📊 <b>Xaridlar tarixi — {cust['name']}</b>\n"
+                       f"━━━━━━━━━━━━━━━\n\nHali xarid yo'q.")
+            else:
+                lines = [f"📊 <b>Xaridlar tarixi — {cust['name']}</b>",
+                         "━━━━━━━━━━━━━━━"]
+                for i, o in enumerate(orders_list, 1):
+                    lines.append(f"{i}. {o.get('product','—')}")
+                    lines.append(f"   💰 {fmt(o.get('amount',0))} so'm · {o.get('date','—')}")
+                lines.append("━━━━━━━━━━━━━━━")
+                lines.append(f"💰 Jami: {fmt(cust['total_spent'])} so'm")
+                lines.append("<i>(oxirgi 20 ta xarid ko'rsatilgan)</i>")
+                txt = "\n".join(lines)
+            send_seller(uid, txt, {'inline_keyboard': [
+                [{'text': "⬅️ Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}],
+            ]})
             return
 
         # ─── TEG QO'YISH ───
@@ -1394,9 +1432,14 @@ def seller_handle_cb(cb):
         ])
         # Qidiruv
         kb_rows.append([{'text': "🔍 Qidirish", 'callback_data': 'crm_search'}])
-        # Mijozlar
+        # Mijozlar — yangi format: "👤 {ism} · {N} ta · {summa_qisqa}"
         for cuid, cust in page_custs:
-            kb_rows.append([{'text': "👤 " + cust['name'], 'callback_data': 'crm_view_' + cuid}])
+            cust_name = cust.get('name', '—')
+            if len(cust_name) > 22:
+                cust_name = cust_name[:21].rstrip() + '…'
+            label = (f"👤 {cust_name} · {cust['total_orders']} ta · "
+                     f"{format_price_short(cust['total_spent'])}")
+            kb_rows.append([{'text': label, 'callback_data': 'crm_view_' + cuid}])
         # Pagination
         nav = []
         if page > 1:
@@ -2396,7 +2439,8 @@ def seller_handle_cb(cb):
         # CRM yangilash
         seller_id = p.get('seller_id')
         if seller_id:
-            update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''))
+            update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''),
+                            phone=o.get('user_phone',''), username=o.get('username',''))
 
         # ─── INVENTAR: stock kamaytirish ───
         if pid in products and products[pid].get('stock', 9999) < 9999:
@@ -2723,6 +2767,19 @@ def _classify_product_status(p):
         except (ValueError, TypeError):
             pass
     return {'emoji': '🔥', 'label': 'Aktiv', 'archived': False}
+
+def render_customer_list(uid, cid, page=1, cur_filter='all'):
+    """CRM mijozlar ro'yxatini chiqaradi (text handler va callback dispatcher uchun).
+    Mavjud `menu_mycustomers` callback ichidagi rendering logikasini qayta ishlatadi.
+    """
+    if page > 1:
+        data = f'crm_page_{page}'
+    elif cur_filter != 'all':
+        data = f'crm_filter_{cur_filter}'
+    else:
+        data = 'menu_mycustomers'
+    # Soxta callback_query — seller_handle_cb ichida answer_cb('0', ...) silently fail bo'ladi
+    seller_handle_cb({'id': '0', 'from': {'id': uid}, 'data': data})
 
 def _truncate_name(name, limit=25):
     if not name:
@@ -3676,6 +3733,10 @@ def seller_handle_msg(msg):
 
     if text == '/integrations' or text == '🔌 Integratsiyalar':
         render_integrations_menu(uid, cid)
+        return
+
+    if text == '/mycustomers' or text == '👥 Mijozlar':
+        render_customer_list(uid, cid)
         return
 
     if text == '/billz' or text == '🔌 Billz':
@@ -4739,7 +4800,8 @@ def handle_successful_payment(msg):
         if pid not in groups: groups[pid] = []
         if uid not in groups[pid]: groups[pid].append(uid)
         sid = p.get('seller_id')
-        update_customer(sid, uid, uname, amount, p.get('name',''))
+        update_customer(sid, uid, uname, amount, p.get('name',''),
+                        username=msg['from'].get('username',''))
         save_data()
         # Sotuvchiga xabar
         if sid:
