@@ -1088,13 +1088,21 @@ def seller_handle_cb(cb):
         s = seller_state.get(uid)
         if not s: answer_cb(cbid); return
         s['step'] = 'prod_edit_desc'; answer_cb(cbid)
-        send_seller(uid, "Tavsif yozing (max 300 belgi):"); return
+        _send_or_edit_prod(uid, s,
+            "📝 <b>Yangi tavsif yozing</b>\n\n"
+            "Maksimum 300 belgi.\n\n"
+            "<i>Bekor qilish: /cancel</i>", None)
+        return
 
     if d == 'prod_add_solo':
         s = seller_state.get(uid)
         if not s: answer_cb(cbid); return
         s['step'] = 'prod_edit_solo'; answer_cb(cbid)
-        send_seller(uid, "Yakka sotuv narxini yozing (so'm):"); return
+        _send_or_edit_prod(uid, s,
+            "💰 <b>Yakka sotuv narxini yozing</b>\n\n"
+            "Faqat raqam (so'm).\n\n"
+            "<i>Bekor qilish: /cancel</i>", None)
+        return
 
     if d.startswith('prod_deadline_'):
         s = seller_state.get(uid)
@@ -1112,7 +1120,11 @@ def seller_handle_cb(cb):
         s = seller_state.get(uid)
         if not s: answer_cb(cbid); return
         s['step'] = 'prod_edit_variants'; answer_cb(cbid)
-        send_seller(uid, "Variantlarni vergul bilan yozing:\n<i>38, 39, 40 yoki Qizil, Ko'k</i>"); return
+        _send_or_edit_prod(uid, s,
+            "🎨 <b>Variantlarni vergul bilan yozing</b>\n\n"
+            "<i>Masalan: 38, 39, 40 yoki Qizil, Ko'k, Yashil</i>\n\n"
+            "<i>Bekor qilish: /cancel</i>", None)
+        return
 
     if d in ('start_addproduct', 'menu_addproduct'):
         answer_cb(cbid)
@@ -4023,6 +4035,27 @@ def render_billz_menu(uid, cid):
     send_seller(cid, txt, {'inline_keyboard': kb})
 
 
+def _send_or_edit_prod(cid, s, text, kb):
+    """Mahsulot tasdiqlash ekranida xabarni yangilaydi (yangi yubormaydi).
+    state['prod_msg_id'] mavjud bo'lsa edit, aks holda yangi yuboradi va saqlaydi.
+    Telegram 48s edit cheklovi yoki boshqa xato — fallback: yangi xabar.
+    """
+    mid = s.get('prod_msg_id') if isinstance(s, dict) else None
+    if mid:
+        try:
+            r = edit_message(cid, mid, text, kb)
+            if r and r.get('ok'):
+                return r
+        except Exception as e:
+            logging.warning(f"prod_msg edit failed: {e}")
+    # Fallback yoki birinchi xabar — yangi yuborish
+    r = send_seller(cid, text, kb)
+    if r and isinstance(r, dict) and isinstance(s, dict):
+        result = r.get('result', {})
+        if result.get('message_id'):
+            s['prod_msg_id'] = result['message_id']
+    return r
+
 def show_prod_confirm(cid, s, shop):
     orig = s.get('original_price', 0); grp = s.get('group_price', 0)
     disc = round((orig-grp)/orig*100) if orig else 0
@@ -4048,21 +4081,23 @@ def show_prod_confirm(cid, s, shop):
     def dl_btn(h, label):
         mark = '✅ ' if hours == h else ''
         return {'text': f"{mark}{label}", 'callback_data': f'prod_deadline_{h}'}
-    send_seller(cid,
+    text = (
         f"📋 <b>Mahsulotni tekshiring:</b>\n\n"
         f"📦 <b>{s['name']}</b>\n🏪 {shop.get('name','')}"
         f"{cat_line}{sale_line}\n"
         f"📸 {photos} ta rasm\n💰 {orig:,} → {grp:,} so'm (-{disc}%)"
         f"{min_group_line}{stock_line}\n📢 {shop.get('channel','—')}"
         f"{deadline_line}{mxik_line}"
-        f"{desc_line}{solo_line}{variants_line}",
-        {'inline_keyboard': [
-            [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
-            [dl_btn(24,'24 soat'), dl_btn(48,'2 kun'), dl_btn(72,'3 kun'), dl_btn(168,'1 hafta')],
-            [{'text': "📝 Tavsif",        'callback_data': 'prod_add_desc'},
-             {'text': "💰 Yakka narx",    'callback_data': 'prod_add_solo'}],
-            [{'text': "🎨 Variantlar",    'callback_data': 'prod_add_variants'}],
-        ]})
+        f"{desc_line}{solo_line}{variants_line}"
+    )
+    kb = {'inline_keyboard': [
+        [{'text': "🚀 E'lon qilish!", 'callback_data': 'prod_confirm_publish'}],
+        [dl_btn(24,'24 soat'), dl_btn(48,'2 kun'), dl_btn(72,'3 kun'), dl_btn(168,'1 hafta')],
+        [{'text': "📝 Tavsif",        'callback_data': 'prod_add_desc'},
+         {'text': "💰 Yakka narx",    'callback_data': 'prod_add_solo'}],
+        [{'text': "🎨 Variantlar",    'callback_data': 'prod_add_variants'}],
+    ]}
+    _send_or_edit_prod(cid, s, text, kb)
 
 def show_confirm(cid, s):
     channel = s.get('seller_channel', '')
@@ -5005,7 +5040,7 @@ def seller_handle_msg(msg):
         elif step == 'prod_edit_desc':
             s['description'] = text[:300]; s['step'] = 'prod_confirm'
             shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            send_seller(cid, "✅ Tavsif saqlandi!"); show_prod_confirm(cid, s, shop)
+            show_prod_confirm(cid, s, shop)
 
         elif step == 'prod_edit_solo':
             solo = parse_price(text)
@@ -5019,14 +5054,14 @@ def seller_handle_msg(msg):
                 send_seller(cid, err); return
             s['solo_price'] = solo; s['step'] = 'prod_confirm'
             shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            send_seller(cid, "✅ Yakka narx saqlandi!"); show_prod_confirm(cid, s, shop)
+            show_prod_confirm(cid, s, shop)
 
         elif step == 'prod_edit_variants':
             raw = [v.strip() for v in text.replace('،',',').split(',') if v.strip()]
             if not raw: send_seller(cid, "❌ Kamida 1 ta variant!"); return
             s['variants'] = raw; s['step'] = 'prod_confirm'
             shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            send_seller(cid, f"✅ Variantlar: {', '.join(raw)}"); show_prod_confirm(cid, s, shop)
+            show_prod_confirm(cid, s, shop)
 
         elif step in ('leg_stir', 'leg_account', 'leg_bank_name', 'leg_mfo', 'leg_director'):
             # Yuridik ma'lumot kiritish — har step alohida validatsiya
