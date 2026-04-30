@@ -1981,6 +1981,30 @@ def seller_handle_cb(cb):
         )
         return
 
+    # ─── INTEGRATIONS DISPATCH ───
+    if d == 'menu_integrations':
+        answer_cb(cbid)
+        render_integrations_menu(uid, uid)
+        return
+
+    if d.startswith('integ_'):
+        integ_id = d[6:]
+        entry = next((e for e in INTEGRATIONS if e['id'] == integ_id), None)
+        if not entry:
+            answer_cb(cbid, "❌ Topilmadi"); return
+        if entry['status'] != 'active':
+            answer_cb(cbid, f"🔒 {entry['name']} tez orada qo'shiladi", alert=True)
+            return
+        answer_cb(cbid)
+        # active integration uchun handler nomini globaldan qidiramiz va chaqiramiz
+        handler_name = entry.get('handler')
+        handler = globals().get(handler_name) if handler_name else None
+        if handler:
+            handler(uid, uid)
+        else:
+            send_seller(uid, f"⚠️ {entry['name']} handler topilmadi")
+        return
+
     # ─── BILLZ INTEGRATION CALLBACKS ───
     if d.startswith('billz_view_'):
         try:
@@ -1994,15 +2018,20 @@ def seller_handle_cb(cb):
         answer_cb(cbid)
         connected = bool(shop.get('billz_secret_token'))
         if connected:
+            billz_count = sum(1 for p in products.values()
+                              if p.get('seller_id') == uid and p.get('source') == 'billz')
             txt = (
                 f"✅ <b>{shop.get('name','')}</b>\n\n"
                 f"Billz: ulangan\n"
                 f"🏬 Billz do'koni: <b>{shop.get('billz_shop_name','—')}</b>\n"
                 f"📅 Ulangan: {shop.get('billz_connected_at','—')}\n"
+                f"📦 Import qilingan: {billz_count} ta\n"
             )
             kb = [
-                [{'text': "🔌 Uzish (Phase 4)", 'callback_data': f'billz_disconnect_{idx}'}],
-                [{'text': "⬅️ Orqaga",        'callback_data': 'billz_menu'}],
+                [{'text': "📥 Mahsulotlarni import/yangilash", 'callback_data': f'billz_import_{idx}'}],
+                [{'text': "⚙️ Global chegirma sozlamalari",   'callback_data': f'billz_disc_{idx}'}],
+                [{'text': "🔌 Uzish (Phase 4)",                'callback_data': f'billz_disconnect_{idx}'}],
+                [{'text': "⬅️ Orqaga",                         'callback_data': 'billz_menu'}],
             ]
         else:
             txt = (
@@ -2023,6 +2052,137 @@ def seller_handle_cb(cb):
     if d == 'billz_menu':
         answer_cb(cbid)
         render_billz_menu(uid, uid)
+        return
+
+    if d.startswith('bz_activate_'):
+        pid = d[12:]
+        p = products.get(pid)
+        if not p or p.get('seller_id') != uid:
+            answer_cb(cbid, "❌ Topilmadi"); return
+        if p.get('source') != 'billz':
+            answer_cb(cbid, "❌ Faqat Billz mahsulotlari"); return
+        answer_cb(cbid)
+        # Sotuvchi shop'idan global discount
+        shop = next((sh for sh in seller_shops.get(uid, [])
+                     if sh.get('billz_secret_token')), None)
+        solo_disc  = (shop or {}).get('billz_global_solo_discount', 10)
+        group_disc = (shop or {}).get('billz_global_group_discount', 20)
+        orig = int(p.get('original_price', 0) or 0)
+        suggested_solo  = max(1, int(orig * (100 - solo_disc) / 100))
+        suggested_group = max(1, int(orig * (100 - group_disc) / 100))
+        seller_state[uid] = {
+            'step': 'bz_act_solo', 'bz_pid': pid,
+            'bz_suggested_solo':  suggested_solo,
+            'bz_suggested_group': suggested_group,
+        }
+        send_seller(uid,
+            f"▶️ <b>Yoqish — {p.get('name','')}</b>\n\n"
+            f"💰 Asl narx: <b>{fmt(orig)} so'm</b>\n\n"
+            f"<b>1/4</b> Yakka narxni yozing (so'm).\n"
+            f"💡 Tavsiya: <b>{fmt(suggested_solo)}</b> so'm  ({solo_disc}% chegirma)\n\n"
+            f"Bekor qilish: /cancel")
+        return
+
+    if d.startswith('bz_deadline_'):
+        # bz_deadline_24, _48, _72, _168
+        try:
+            hours = int(d[12:])
+        except ValueError:
+            answer_cb(cbid); return
+        s = seller_state.get(uid)
+        if not s or s.get('step') != 'bz_act_deadline':
+            answer_cb(cbid); return
+        pid = s.get('bz_pid')
+        p = products.get(pid)
+        if not p:
+            seller_state.pop(uid, None)
+            answer_cb(cbid, "❌ Topilmadi"); return
+        answer_cb(cbid, f"✅ {hours} soat")
+        deadline_dt = datetime.now() + timedelta(hours=hours)
+        p['deadline']    = deadline_dt.strftime('%d.%m.%Y %H:%M')
+        p['deadline_dt'] = deadline_dt.strftime('%Y-%m-%d %H:%M')
+        p['solo_price']  = s.get('bz_solo', 0)
+        p['group_price'] = s.get('bz_group', 0)
+        p['min_group']   = s.get('bz_min', 3)
+        p['solo_available'] = bool(p['solo_price'])
+        p['is_active']   = True
+        p['status']      = 'active'
+        save_data()
+        seller_state.pop(uid, None)
+        send_seller(uid, "📤 Kanalga e'lon qilinmoqda...")
+        ok, err = post_to_channel(uid, pid)
+        save_data()
+        if ok:
+            send_seller(uid,
+                f"✅ <b>Yoqildi va e'lon qilindi!</b>\n\n"
+                f"📦 {p.get('name','')}\n"
+                f"💰 {fmt(p.get('group_price',0))} so'm\n"
+                f"⏰ {p.get('deadline','')}",
+                {'inline_keyboard': [
+                    [{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}],
+                ]})
+        else:
+            # Kanal post fail — is_active'ni qaytaramiz
+            p['is_active'] = False
+            p['status']    = 'draft'
+            save_data()
+            send_seller(uid,
+                f"⚠️ Yoqildi, lekin kanalga post qo'yib bo'lmadi:\n{err}\n\n"
+                f"Bot kanalga admin sifatida qo'shilganmi? "
+                f"Tekshiring va /myproducts → Yoqish bosib qaytadan urining.")
+        return
+
+    if d.startswith('billz_disc_') and not d.startswith('billz_disc_set_'):
+        try:
+            idx = int(d[11:])
+        except ValueError:
+            answer_cb(cbid); return
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops):
+            answer_cb(cbid, "❌ Topilmadi"); return
+        shop = shops[idx]
+        answer_cb(cbid)
+        send_seller(uid,
+            f"⚙️ <b>Global chegirma sozlamalari</b>\n\n"
+            f"Bu qiymatlar yangi Billz mahsulotini yoqishda <b>tavsiya narx</b> sifatida ishlatiladi.\n\n"
+            f"👤 Solo chegirma:  <b>{shop.get('billz_global_solo_discount', 10)}%</b>\n"
+            f"👥 Guruh chegirma: <b>{shop.get('billz_global_group_discount', 20)}%</b>",
+            {'inline_keyboard': [
+                [{'text': "👤 Solo chegirma o'zgartirish", 'callback_data': f'billz_disc_set_solo_{idx}'}],
+                [{'text': "👥 Guruh chegirma o'zgartirish", 'callback_data': f'billz_disc_set_grp_{idx}'}],
+                [{'text': "⬅️ Orqaga",                     'callback_data': f'billz_view_{idx}'}],
+            ]})
+        return
+
+    if d.startswith('billz_disc_set_'):
+        # billz_disc_set_solo_<idx> | billz_disc_set_grp_<idx>
+        rest = d[len('billz_disc_set_'):]
+        try:
+            kind, idx_str = rest.rsplit('_', 1)
+            idx = int(idx_str)
+        except (ValueError, IndexError):
+            answer_cb(cbid); return
+        if kind not in ('solo', 'grp'):
+            answer_cb(cbid); return
+        answer_cb(cbid)
+        seller_state[uid] = {'step': 'bz_set_disc', 'bz_disc_kind': kind, 'bz_disc_idx': idx}
+        label = "Solo" if kind == 'solo' else "Guruh"
+        send_seller(uid,
+            f"⚙️ Yangi <b>{label}</b> chegirma foizini yozing (0-90):\n\n"
+            f"Masalan: <code>15</code> — 15%\n\n"
+            f"Bekor qilish: /cancel")
+        return
+
+    if d.startswith('billz_import_'):
+        try:
+            idx = int(d[13:])
+        except ValueError:
+            answer_cb(cbid); return
+        shops = seller_shops.get(uid, [])
+        if idx >= len(shops) or not shops[idx].get('billz_secret_token'):
+            answer_cb(cbid, "❌ Billz ulanmagan"); return
+        answer_cb(cbid, "📥 Boshlanmoqda...")
+        import_billz_products(uid, uid, idx)
         return
 
     if d.startswith('billz_connect_'):
@@ -2500,9 +2660,19 @@ def is_bot_admin_in(channel):
 MYPRODUCTS_PER_PAGE = 5
 
 def render_myproducts(uid, cid, page=0):
-    """Sotuvchining mahsulotlarini sahifalangan inline keyboard bilan ko'rsatadi."""
-    pids = [pid for pid in seller_products.get(uid, [])
-            if pid in products and products[pid].get('is_active', True)]
+    """Sotuvchining mahsulotlarini sahifalangan inline keyboard bilan ko'rsatadi.
+    Aktiv manual + Billz draft'lar (yoqilmagan) ko'rinadi. O'chirilganlar yashiriladi.
+    """
+    pids = []
+    for pid in seller_products.get(uid, []):
+        if pid not in products: continue
+        p = products[pid]
+        if p.get('status') == 'closed':
+            continue  # o'chirilgan — yashir
+        if p.get('is_active', True):
+            pids.append(pid)
+        elif p.get('source') == 'billz':
+            pids.append(pid)  # Billz draft — ko'rsat (yoqish kerak)
     if not pids:
         send_seller(cid, "📦 Sizda mahsulot yo'q.",
             {'inline_keyboard': [[{'text': "➕ Qo'shish", 'callback_data': 'menu_addproduct'}]]})
@@ -2519,16 +2689,38 @@ def render_myproducts(uid, cid, page=0):
     for pid in chunk:
         p     = products.get(pid, {})
         count = len(groups.get(pid, []))
-        st_icon = '🔥' if p.get('status') != 'closed' else '🔒'
+        is_billz = p.get('source') == 'billz'
+        is_draft = is_billz and not p.get('is_active', False)
+        if is_draft:
+            st_icon = '⚪️'
+            badge   = '🛍 Billz · ⏸ Yoqilmagan'
+        elif is_billz:
+            st_icon = '🟢'
+            badge   = '🛍 Billz · ✅ Aktiv'
+        elif p.get('status') == 'closed':
+            st_icon = '🔒'
+            badge   = "🔒 Yopilgan"
+        else:
+            st_icon = '🔥'
+            badge   = '✏️ Manual'
         name = p.get('name', '—')[:30]
-        txt += f"━━━━━━━━━━━━━━━\n{st_icon} <b>{name}</b>\n"
-        txt += f"👥 {count}/{p.get('min_group',0)} • 💰 {fmt(p.get('group_price',0))} so'm\n"
+        txt += f"━━━━━━━━━━━━━━━\n{st_icon} <b>{name}</b>  <i>{badge}</i>\n"
+        if is_draft:
+            txt += f"💰 Asl: {fmt(p.get('original_price',0))} so'm — yoqish uchun narx kerak\n"
+        else:
+            txt += f"👥 {count}/{p.get('min_group',0)} • 💰 {fmt(p.get('group_price',0))} so'm\n"
         txt += f"🆔 <code>{pid}</code>\n\n"
-        kb.append([
-            {'text': f"👁 {name[:18]}", 'callback_data': f'mp_view_{pid}'},
-            {'text': "✏️",              'callback_data': f'mp_edit_{pid}'},
-            {'text': "🗑",              'callback_data': f'mp_del_{pid}'},
-        ])
+        if is_draft:
+            kb.append([
+                {'text': f"▶️ Yoqish — {name[:14]}", 'callback_data': f'bz_activate_{pid}'},
+                {'text': "🗑",                       'callback_data': f'mp_del_{pid}'},
+            ])
+        else:
+            kb.append([
+                {'text': f"👁 {name[:18]}", 'callback_data': f'mp_view_{pid}'},
+                {'text': "✏️",              'callback_data': f'mp_edit_{pid}'},
+                {'text': "🗑",              'callback_data': f'mp_del_{pid}'},
+            ])
     nav = []
     if page > 0:
         nav.append({'text': "⬅️ Oldingi", 'callback_data': f'mp_page_{page-1}'})
@@ -2578,10 +2770,22 @@ def finalize_shop_onboarding(uid, cid, s, channel):
             [{'text': "➕ Mahsulot qo'shish"}],
             [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
             [{'text': '📊 Statistika'}, {'text': "📢 Do'konlarim"}],
+            [{'text': '🔌 Integratsiyalar'}],
         ], 'resize_keyboard': True})
 
 def gen_mod_code():
     return 'MOD-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+# ─── INTEGRATIONS REGISTRY ──────────────────────────────────────────
+# Kelajakda yangi integration qo'shish uchun shu ro'yxatga entry qo'shing.
+# 'active' bo'lsa — handler='render_billz_menu' (yoki tegishli funksiya nomi)
+# 'coming_soon' bo'lsa — bosilganda toast ko'rsatiladi.
+INTEGRATIONS = [
+    {'id': 'billz',    'name': 'Billz POS',  'icon': '🟢', 'status': 'active',      'handler': 'render_billz_menu'},
+    {'id': 'iiko',     'name': 'iiko',       'icon': '🔒', 'status': 'coming_soon', 'handler': None},
+    {'id': 'moysklad', 'name': 'MoySklad',   'icon': '🔒', 'status': 'coming_soon', 'handler': None},
+    {'id': 'smartup',  'name': 'Smartup',    'icon': '🔒', 'status': 'coming_soon', 'handler': None},
+]
 
 # ─── BILLZ INTEGRATION ──────────────────────────────────────────────
 BILLZ_BASE_URL          = 'https://api-admin.billz.ai'
@@ -2721,6 +2925,237 @@ def billz_extract_shops(products_response):
             if sid and sid not in shops_seen:
                 shops_seen[sid] = sname
     return [{'shop_id': k, 'shop_name': v} for k, v in shops_seen.items()]
+
+def _billz_extract_price_for_shop(prod, billz_shop_id):
+    """Billz mahsulot dict'idan tegishli shop uchun retail narxni topadi."""
+    for sp in prod.get('shop_prices', []) or []:
+        if str(sp.get('shop_id')) == str(billz_shop_id):
+            return int(sp.get('retail_price') or sp.get('price') or 0)
+    # Fallback — birinchi shop_price yoki retail_price
+    sps = prod.get('shop_prices', []) or []
+    if sps:
+        return int(sps[0].get('retail_price') or sps[0].get('price') or 0)
+    return int(prod.get('retail_price') or 0)
+
+def _billz_extract_stock_for_shop(prod, billz_shop_id):
+    """Billz mahsulot dict'idan tegishli shop uchun stock_value ni topadi."""
+    for smv in prod.get('shop_measurement_values', []) or []:
+        if str(smv.get('shop_id')) == str(billz_shop_id):
+            try:
+                return int(float(smv.get('active_measurement_value') or smv.get('value') or 0))
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+def _billz_make_product_dict(prod, uid, shop, channel):
+    """Billz mahsulot JSON'idan Joynshop product dict yaratadi."""
+    billz_shop_id = shop.get('billz_shop_id', '')
+    price = _billz_extract_price_for_shop(prod, billz_shop_id)
+    stock = _billz_extract_stock_for_shop(prod, billz_shop_id)
+    photo = prod.get('main_image_url') or prod.get('photo_url') or ''
+    cats  = prod.get('categories') or []
+    cat_name = cats[0].get('name', '') if cats and isinstance(cats[0], dict) else ''
+    return {
+        # Identifikatsiya
+        'billz_id':       prod.get('id') or prod.get('uuid') or '',
+        'source':         'billz',
+        # Kontent
+        'name':           (prod.get('name') or '')[:200],
+        'description':    (prod.get('description') or '')[:500],
+        'photo_id':       None,
+        'photo_ids':      [],
+        'photo_url':      photo,
+        'photo_urls':     [photo] if photo else [],
+        'barcode':        prod.get('barcode', ''),
+        'sku':            prod.get('sku', ''),
+        'brand_name':     prod.get('brand_name', '') or (prod.get('brand', {}) or {}).get('name', ''),
+        'category':       cat_name,
+        'category_name':  cat_name,
+        # Narx (faqat original — solo/group sotuvchi yoqishda kiritadi)
+        'original_price': price,
+        'group_price':    0,
+        'solo_price':     0,
+        'min_group':      0,
+        'stock':          stock if stock > 0 else 9999,
+        'stock_initial':  stock if stock > 0 else 9999,
+        'stock_value':    stock,
+        'stock_updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        # Sotuvchi va do'kon
+        'seller_id':      uid,
+        'seller_channel': channel,
+        'shop_name':      shop.get('name', ''),
+        'contact':        shop.get('phone', ''),
+        'phone2':         shop.get('phone2', ''),
+        'address':        shop.get('address', ''),
+        'social':         shop.get('social', {}),
+        'delivery_type':  shop.get('delivery', 'pickup'),
+        'variants':       [],
+        'sale_type':      'both',
+        # Holat
+        'status':         'draft',
+        'is_active':      False,
+        'solo_available': False,
+        'channel_message_id': None,
+        'channel_chat_id':    None,
+        'deadline':       '',
+        'deadline_dt':    '',
+    }
+
+def import_billz_products(uid, cid, shop_idx):
+    """Background thread'da Billz mahsulotlarini import qiladi."""
+    def worker():
+        shops = seller_shops.get(uid, [])
+        if shop_idx >= len(shops):
+            send_seller(cid, "❌ Do'kon topilmadi"); return
+        shop = shops[shop_idx]
+        channel = shop.get('channel', '')
+        send_seller(cid, "⏳ <b>Mahsulotlar yuklab olinmoqda...</b>")
+
+        existing_billz_ids = {
+            p.get('billz_id') for pid, p in products.items()
+            if p.get('seller_id') == uid and p.get('source') == 'billz'
+        }
+        imported = 0
+        skipped  = 0
+        page     = 1
+        last_progress = 0
+        max_pages = 50  # 5000 mahsulot — havfsizlik chegarasi
+
+        while page <= max_pages:
+            data, err = billz_get(uid, shop_idx, '/v2/products',
+                                  {'limit': 100, 'page': page})
+            if err:
+                send_seller(cid,
+                    f"❌ <b>Import to'xtadi (sahifa {page}):</b>\n{err}\n\n"
+                    f"Hozirgacha {imported} ta import qilindi.")
+                return
+            items = (data or {}).get('products') \
+                    or (data or {}).get('data') \
+                    or []
+            if isinstance(items, dict):
+                items = items.get('products', [])
+            if not items:
+                break  # Sahifalar tugadi
+
+            for prod in items:
+                billz_id = prod.get('id') or prod.get('uuid') or ''
+                if not billz_id:
+                    continue
+                if billz_id in existing_billz_ids:
+                    skipped += 1
+                    continue
+                pdict = _billz_make_product_dict(prod, uid, shop, channel)
+                # Joynshop pid — Billz UUID ning birinchi 12 belgisi
+                pid = 'bz' + ''.join(c for c in billz_id if c.isalnum())[:10].lower()
+                # Collision bo'lsa qo'shimcha qator
+                _i = 0
+                while pid in products and _i < 5:
+                    pid = 'bz' + ''.join(c for c in billz_id if c.isalnum())[:8].lower() + str(_i)
+                    _i += 1
+                products[pid] = pdict
+                groups.setdefault(pid, [])
+                seller_products.setdefault(uid, [])
+                if pid not in seller_products[uid]:
+                    seller_products[uid].append(pid)
+                existing_billz_ids.add(billz_id)
+                imported += 1
+
+                if imported - last_progress >= 100:
+                    send_seller(cid, f"📥 {imported} ta import qilindi...")
+                    last_progress = imported
+
+            if len(items) < 100:
+                break  # Oxirgi sahifa
+            page += 1
+
+        save_data()
+        send_seller(cid,
+            f"✅ <b>Import tugadi!</b>\n\n"
+            f"📦 Yangi: {imported} ta\n"
+            f"⏭ O'tkazib yuborilgan (allaqachon bor): {skipped} ta\n\n"
+            f"Endi /myproducts orqali har birini yoqing — narx va deadline kiritib kanalga e'lon qilasiz.",
+            {'inline_keyboard': [
+                [{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}],
+                [{'text': "🔌 Billz menyu",   'callback_data': 'billz_menu'}],
+            ]})
+    threading.Thread(target=worker, daemon=True).start()
+
+def post_to_channel(uid, pid):
+    """Mavjud product dict'ni kanalga e'lon qilib message_id'larni saqlaydi.
+    publish_product'dan farqli — yangi product yaratmaydi, mavjud pid bilan ishlaydi.
+    Returns (ok: bool, error: str | None).
+    """
+    p = products.get(pid)
+    if not p:
+        return False, "Mahsulot topilmadi"
+    channel = p.get('seller_channel') or ''
+    if not channel:
+        # Sotuvchi shop'idan kanalni olish
+        for shop in seller_shops.get(uid, []):
+            if shop.get('channel'):
+                channel = shop['channel']
+                p['seller_channel'] = channel
+                break
+    if not channel:
+        return False, "Kanal topilmadi"
+    caption = post_caption(p, pid)
+    count = len(groups.get(pid, []))
+    kb = json.dumps(join_kb(pid, count, p.get('min_group', 0),
+                            has_solo=bool(p.get('solo_price')),
+                            sale_type=p.get('sale_type', 'both')))
+    photo_ids  = p.get('photo_ids') or ([p.get('photo_id')] if p.get('photo_id') else [])
+    photo_url  = p.get('photo_url') or ''
+    try:
+        if len(photo_ids) > 1:
+            media = []
+            for i, fid in enumerate(photo_ids):
+                item = {'type': 'photo', 'media': fid}
+                if i == 0:
+                    item['caption'] = caption
+                    item['parse_mode'] = 'HTML'
+                media.append(item)
+            r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMediaGroup',
+                              json={'chat_id': channel, 'media': media}, timeout=20).json()
+            if r.get('ok') and r.get('result'):
+                p['channel_message_id'] = r['result'][0].get('message_id')
+                p['channel_chat_id']    = channel
+                requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                    'chat_id': channel, 'text': caption,
+                    'parse_mode': 'HTML', 'reply_markup': kb,
+                }, timeout=10)
+                return True, None
+            return False, f"sendMediaGroup xatosi: {r}"
+        # Bitta rasm — file_id yoki URL
+        photo_payload = photo_ids[0] if photo_ids else photo_url
+        if not photo_payload:
+            return False, "Rasm topilmadi"
+        r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto', json={
+            'chat_id': channel, 'photo': photo_payload,
+            'caption': caption, 'parse_mode': 'HTML', 'reply_markup': kb,
+        }, timeout=20).json()
+        if r.get('ok'):
+            p['channel_message_id'] = r['result'].get('message_id')
+            p['channel_chat_id']    = channel
+            return True, None
+        return False, f"sendPhoto xatosi: {r}"
+    except Exception as e:
+        return False, f"Tarmoq xatosi: {e}"
+
+def render_integrations_menu(uid, cid):
+    """Integratsiyalar ro'yxatini ko'rsatadi (active va coming_soon)."""
+    txt = (
+        "🔌 <b>Integratsiyalar</b>\n\n"
+        "Mahsulotlaringizni boshqa POS yoki ERP tizimidan avtomatik olib kelish.\n\n"
+        "🟢 — Faol  •  🔒 — Tez orada"
+    )
+    kb = []
+    for entry in INTEGRATIONS:
+        kb.append([{
+            'text': f"{entry['icon']} {entry['name']}" + ("" if entry['status'] == 'active' else " (tez orada)"),
+            'callback_data': f"integ_{entry['id']}",
+        }])
+    kb.append([{'text': "🔙 Menyu", 'callback_data': 'back_menu'}])
+    send_seller(cid, txt, {'inline_keyboard': kb})
 
 def render_billz_menu(uid, cid):
     """Sotuvchining do'konlarini va Billz holatini ko'rsatadi."""
@@ -2992,6 +3427,7 @@ def seller_handle_msg(msg):
                     [{'text': '➕ Mahsulot qo\'shish'}],
                     [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
                     [{'text': '📊 Statistika'},    {'text': "📢 Do'konlarim"}],
+                    [{'text': '🔌 Integratsiyalar'}],
                 ], 'resize_keyboard': True}
             )
         return
@@ -3086,7 +3522,12 @@ def seller_handle_msg(msg):
         send_seller(cid, f"✅ <b>{p['name']}</b> o'chirildi.")
         return
 
+    if text == '/integrations' or text == '🔌 Integratsiyalar':
+        render_integrations_menu(uid, cid)
+        return
+
     if text == '/billz' or text == '🔌 Billz':
+        # Backward compatibility — /billz to'g'ridan Billz menyuga olib boradi
         render_billz_menu(uid, cid)
         return
 
@@ -3653,6 +4094,93 @@ def seller_handle_msg(msg):
             s['variants'] = raw; s['step'] = 'prod_confirm'
             shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
             send_seller(cid, f"✅ Variantlar: {', '.join(raw)}"); show_prod_confirm(cid, s, shop)
+
+        elif step == 'bz_set_disc':
+            if text.strip() == '/cancel':
+                idx = s.get('bz_disc_idx', 0)
+                seller_state.pop(uid, None)
+                send_seller(cid, "❌ Bekor qilindi.",
+                    {'inline_keyboard': [[{'text': "⬅️ Orqaga", 'callback_data': f'billz_disc_{idx}'}]]})
+                return
+            try:
+                pct = int(text.strip().rstrip('%'))
+            except (ValueError, TypeError):
+                send_seller(cid, "❌ Butun son kiriting (0-90)"); return
+            if pct < 0 or pct > 90:
+                send_seller(cid, "❌ 0 dan 90 gacha bo'lishi kerak"); return
+            idx  = s.get('bz_disc_idx', 0)
+            kind = s.get('bz_disc_kind')
+            shops = seller_shops.get(uid, [])
+            if idx >= len(shops):
+                seller_state.pop(uid, None)
+                send_seller(cid, "❌ Do'kon topilmadi"); return
+            field = 'billz_global_solo_discount' if kind == 'solo' else 'billz_global_group_discount'
+            shops[idx][field] = pct
+            save_data()
+            seller_state.pop(uid, None)
+            label = "Solo" if kind == 'solo' else "Guruh"
+            send_seller(cid,
+                f"✅ {label} chegirma: <b>{pct}%</b>\n\n"
+                f"Bu qiymat keyingi Billz mahsulotni yoqishda tavsiya narx hisoblashda ishlatiladi.",
+                {'inline_keyboard': [[{'text': "⬅️ Sozlamalar", 'callback_data': f'billz_disc_{idx}'}]]})
+            return
+
+        elif step in ('bz_act_solo', 'bz_act_grp', 'bz_act_min'):
+            if text.strip() == '/cancel':
+                seller_state.pop(uid, None)
+                send_seller(cid, "❌ Yoqish bekor qilindi.",
+                    {'inline_keyboard': [[{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}]]})
+                return
+            pid = s.get('bz_pid')
+            p = products.get(pid)
+            if not p or p.get('seller_id') != uid:
+                seller_state.pop(uid, None)
+                send_seller(cid, "❌ Mahsulot topilmadi"); return
+            orig = int(p.get('original_price', 0) or 0)
+
+            if step == 'bz_act_solo':
+                solo = parse_price(text)
+                if solo is None or solo <= 0:
+                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
+                if solo >= orig:
+                    send_seller(cid, "❌ Yakka narx asl narxdan past bo'lishi kerak. Qayta kiriting."); return
+                s['bz_solo'] = solo
+                s['step'] = 'bz_act_grp'
+                send_seller(cid,
+                    f"✅ Yakka: {fmt(solo)} so'm\n\n"
+                    f"<b>2/4</b> Guruh narxini yozing (so'm).\n"
+                    f"💡 Tavsiya: <b>{fmt(s.get('bz_suggested_group', 0))}</b> so'm")
+                return
+
+            if step == 'bz_act_grp':
+                grp = parse_price(text)
+                if grp is None or grp <= 0:
+                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
+                if grp >= s.get('bz_solo', 0):
+                    send_seller(cid, "❌ Guruh narxi yakka narxdan past bo'lishi kerak. Qayta kiriting."); return
+                s['bz_group'] = grp
+                s['step'] = 'bz_act_min'
+                send_seller(cid,
+                    f"✅ Guruh: {fmt(grp)} so'm\n\n"
+                    f"<b>3/4</b> Minimal guruh sonini yozing (2-100):")
+                return
+
+            if step == 'bz_act_min':
+                ok, mg, err = validate_min_group_text(text)
+                if not ok:
+                    send_seller(cid, err); return
+                s['bz_min'] = mg
+                s['step'] = 'bz_act_deadline'
+                send_seller(cid,
+                    f"✅ Min guruh: {mg} kishi\n\n"
+                    f"<b>4/4</b> Muddatni tanlang:",
+                    {'inline_keyboard': [
+                        [{'text': "24 soat",  'callback_data': 'bz_deadline_24'},
+                         {'text': "2 kun",   'callback_data': 'bz_deadline_48'}],
+                        [{'text': "3 kun",   'callback_data': 'bz_deadline_72'},
+                         {'text': "1 hafta",'callback_data': 'bz_deadline_168'}],
+                    ]})
+                return
 
         elif step == 'billz_secret_token':
             if text.strip() == '/cancel':
