@@ -2791,10 +2791,9 @@ def finalize_shop_onboarding(uid, cid, s, channel):
         f"{social_lines}\n📢 {channel}\n\n"
         "Endi mahsulot qo'sha olasiz!",
         {'keyboard': [
-            [{'text': "➕ Mahsulot qo'shish"}],
-            [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
-            [{'text': '📊 Statistika'}, {'text': "📢 Do'konlarim"}],
-            [{'text': '🔌 Integratsiyalar'}],
+            [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
+            [{'text': "➕ Mahsulot qo'shish"},  {'text': "📢 Do'konlarim"}],
+            [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
         ], 'resize_keyboard': True})
 
 def gen_mod_code():
@@ -3523,10 +3522,9 @@ def seller_handle_msg(msg):
                 f"{'🏬 ' + shop_names + chr(10) if shop_names else ''}"
                 f"Guruh savdosi orqali ko'proq soting!",
                 {'keyboard': [
-                    [{'text': '➕ Mahsulot qo\'shish'}],
-                    [{'text': '📦 Mahsulotlarim'}, {'text': '📋 Buyurtmalar'}],
-                    [{'text': '📊 Statistika'},    {'text': "📢 Do'konlarim"}],
-                    [{'text': '🔌 Integratsiyalar'}],
+                    [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
+                    [{'text': '➕ Mahsulot qo\'shish'}, {'text': "📢 Do'konlarim"}],
+                    [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
                 ], 'resize_keyboard': True}
             )
         return
