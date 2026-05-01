@@ -4717,13 +4717,42 @@ def seller_handle_msg(msg):
         if step == 'ob_shop_name':
             s['ob_shop_name'] = text; s['step'] = 'ob_phone'
             s.pop('ob_msg_id', None)
-            send_or_edit_seller(cid,
-                "📞 Asosiy telefon raqam:\n<i>+998XXXXXXXXX</i>",
-                state=s)
+            send_seller(cid,
+                "📞 Asosiy telefon raqamingizni yuboring.\n\n"
+                "Pastdagi tugma orqali raqamni avtomatik ulashing yoki qo'lda yozing.\n"
+                "<i>+998XXXXXXXXX</i>",
+                {
+                    'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
+                                   'request_contact': True}]],
+                    'one_time_keyboard': True,
+                    'resize_keyboard': True,
+                })
 
         elif step == 'ob_phone':
-            s['ob_phone'] = text.strip(); s['step'] = 'ob_phone2'
+            contact = msg.get('contact')
+            if contact:
+                phone = contact.get('phone_number', '').strip()
+                if phone and not phone.startswith('+'):
+                    phone = '+' + phone
+            else:
+                phone = text.strip()
+
+            if not phone.startswith('+998') or len(phone) < 12:
+                send_seller(cid,
+                    "❌ Noto'g'ri format. <b>+998XXXXXXXXX</b> shaklida yuboring "
+                    "yoki pastdagi tugmani bosing.",
+                    {
+                        'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
+                                       'request_contact': True}]],
+                        'one_time_keyboard': True,
+                        'resize_keyboard': True,
+                    })
+                return
+
+            s['ob_phone'] = phone; s['step'] = 'ob_phone2'
             s.pop('ob_msg_id', None)
+            send_seller(cid, f"✅ Qabul qilindi: <code>{phone}</code>",
+                        {'remove_keyboard': True})
             send_or_edit_seller(cid,
                 "📱 Qo'shimcha telefon (ixtiyoriy):\n<i>+998XXXXXXXXX</i>",
                 {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_phone2'}]]},
