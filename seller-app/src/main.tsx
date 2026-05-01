@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppRoot } from '@telegram-apps/telegram-ui';
 import { App } from './App';
 import { tgWebApp } from './lib/telegram';
 import './index.css';
@@ -23,18 +22,10 @@ const queryClient = new QueryClient({
   },
 });
 
-const colorScheme = tg?.colorScheme || 'light';
-const platform = tg?.platform || 'base';
-
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AppRoot
-        appearance={colorScheme}
-        platform={platform === 'ios' ? 'ios' : 'base'}
-      >
-        <App />
-      </AppRoot>
+      <App />
     </QueryClientProvider>
   </React.StrictMode>,
 );
