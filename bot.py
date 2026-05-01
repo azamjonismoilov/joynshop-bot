@@ -7646,6 +7646,7 @@ def api_seller_me():
                 gmv_week += o.get('amount', 0)
         except (ValueError, TypeError):
             pass
+    customers_count = len(customers.get(str(uid), {}) or customers.get(uid, {}))
     return jsonify({
         'uid':             uid,
         'first_name':      user.get('first_name', ''),
@@ -7657,6 +7658,7 @@ def api_seller_me():
         'billz_connected': bool(seller_billz_connected_shops(uid)),
         'products_count':  products_count,
         'orders_pending':  orders_pending,
+        'customers_count': customers_count,
         'stats_summary': {
             'gmv_today': gmv_today,
             'gmv_week':  gmv_week,

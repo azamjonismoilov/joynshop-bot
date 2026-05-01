@@ -20,6 +20,7 @@ export interface MeResponse {
   billz_connected: boolean;
   products_count: number;
   orders_pending: number;
+  customers_count?: number;   // optional — older clients may not see this
   stats_summary: {
     gmv_today: number;
     gmv_week: number;
