@@ -468,6 +468,13 @@ def invoice_description(p, pid):
     return "\n".join(lines)[:255]
 
 def post_caption(p, pid):
+    if p.get('status') == 'closed':
+        cnt   = len(groups.get(pid, []))
+        min_g = p.get('min_group', 0)
+        name  = p.get('name', '')
+        if cnt >= min_g:
+            return f"<s>{name}</s>\n\n✅ Sotuv yakunlandi — guruh to'ldi"
+        return f"<s>{name}</s>\n\n\U0001f614 Sotuv yakunlandi — guruh to'lmadi"
     count     = len(groups.get(pid, []))
     min_g     = p['min_group']
     orig      = p['original_price']
@@ -654,19 +661,19 @@ def notify_group_filled(pid):
                 f"\U0001f4ca Komissiya: <b>{fmt(commission)} so'm</b>"
             )
 
-    # 4. Kanal postini yangilash
+    # 4. Kanal postini yangilash \u2014 tugma olib tashlanadi, caption "Sotuv yakunlandi"ga o'tadi
+    products[pid]['status'] = 'closed'
     channel_cid = p.get('channel_chat_id')
     channel_mid = p.get('channel_message_id')
     if channel_cid and channel_mid:
         try:
             edit_caption(channel_cid, channel_mid,
                 post_caption(p, pid),
-                {'inline_keyboard': [[
-                    {'text': "\u2705 Guruh to'ldi!",
-                     'url': f'https://t.me/{BUYER_BOT_USERNAME}'}
-                ]]}
+                {'inline_keyboard': []},
+                token=SELLER_TOKEN
             )
         except: pass
+    save_data()
 
 
 def expire_product(pid):
@@ -704,6 +711,18 @@ def expire_product(pid):
                 f"Yangi mahsulot qo'shib ko'ring.",
                 {'inline_keyboard': [[{'text': "➕ Yangi mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
             )
+            # Kanal postini yangilash — tugma olib tashlanadi, caption "Sotuv yakunlandi"ga o'tadi
+            channel_cid = p.get('channel_chat_id')
+            channel_mid = p.get('channel_message_id')
+            if channel_cid and channel_mid:
+                try:
+                    edit_caption(channel_cid, channel_mid,
+                        post_caption(p, pid),
+                        {'inline_keyboard': []},
+                        token=SELLER_TOKEN
+                    )
+                except: pass
+    save_data()
 
 # ─── REMINDER & LIVE UPDATE ──────────────────────────────────────────
 def reminder_loop():
