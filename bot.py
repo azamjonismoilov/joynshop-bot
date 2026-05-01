@@ -473,8 +473,8 @@ def post_caption(p, pid):
         min_g = p.get('min_group', 0)
         name  = p.get('name', '')
         if cnt >= min_g:
-            return f"<s>{name}</s>\n\n✅ Sotuv yakunlandi — guruh to'ldi"
-        return f"<s>{name}</s>\n\n\U0001f614 Sotuv yakunlandi — guruh to'lmadi"
+            return f"<s>{name}</s>\n\nSotuv tugadi — guruh to'ldi"
+        return f"<s>{name}</s>\n\nSotuv yakunlandi"
     count     = len(groups.get(pid, []))
     min_g     = p['min_group']
     orig      = p['original_price']
@@ -482,36 +482,35 @@ def post_caption(p, pid):
     group     = p['group_price']
     solo_disc = round((orig - solo) / orig * 100) if solo and orig else 0
     grp_disc  = round((orig - group) / orig * 100) if orig else 0
-    status    = '\U0001f525' if count < min_g else '\u2705'
     sale_type = p.get('sale_type', 'both')
 
     lines = [f"<b>{p['name']}</b>\n"]
 
     if sale_type == 'solo':
         if orig and orig != solo:
-            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
-        lines.append(f"\U0001f6d2 <b>{fmt(solo)} so'm</b>")
+            lines.append(f"Asl narx: <s>{fmt(orig)} so'm</s>")
+        lines.append(f"Narx: <b>{fmt(solo)} so'm</b>")
     elif sale_type == 'group':
         if orig and orig != group:
-            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
-        lines.append(f"\U0001f465 Guruh narxi: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
-        lines.append(f"\U0001f465 Guruh: {count}/{min_g} {status}")
-        lines.append(f"\u23f3 Kerak: {max(0, min_g - count)} kishi")
+            lines.append(f"Asl narx: <s>{fmt(orig)} so'm</s>")
+        lines.append(f"Guruh narxi: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
+        lines.append(f"\U0001f465 Guruh: {count}/{min_g}")
+        lines.append(f"Kerak: {max(0, min_g - count)} kishi")
     else:
         if orig:
-            lines.append(f"\U0001f4b0 Asl narx: <s>{fmt(orig)} so'm</s>")
+            lines.append(f"Asl narx: <s>{fmt(orig)} so'm</s>")
         if solo:
-            lines.append(f"\U0001f464 Yakka: <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
-        lines.append(f"\U0001f465 Guruh: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
-        lines.append(f"\U0001f465 Guruh: {count}/{min_g} {status}")
-        lines.append(f"\u23f3 Kerak: {max(0, min_g - count)} kishi")
+            lines.append(f"Yakka: <b>{fmt(solo)} so'm</b>  <i>(-{solo_disc}%)</i>")
+        lines.append(f"Guruh: <b>{fmt(group)} so'm</b>  <i>(-{grp_disc}%)</i>")
+        lines.append(f"\U0001f465 Guruh: {count}/{min_g}")
+        lines.append(f"Kerak: {max(0, min_g - count)} kishi")
 
     if sale_type != 'solo':
-        lines.append(f"\U0001f550 {p.get('deadline','')}")
+        lines.append(f"Tugaydi: {p.get('deadline','')}")
     if p.get('description'):
-        lines.append(f"\n📝 {p['description']}")
+        lines.append(f"\nTavsif: {p['description']}")
     if p.get('variants'):
-        lines.append(f"🎨 {', '.join(p['variants'])}")
+        lines.append(f"Variantlar: {', '.join(p['variants'])}")
 
     contact = p.get('contact', '')
     phone2  = p.get('phone2', '')
@@ -609,11 +608,11 @@ def notify_group_filled(pid):
     for wuid in groups.get(pid, []):
         try:
             send_buyer(wuid,
-                f"\U0001f525 <b>GURUH TO'LDI!</b>\n\n"
+                f"<b>GURUH TO'LDI!</b>\n\n"
                 f"\U0001f3ea {shop}\n"
                 f"\U0001f4e6 {name}\n"
                 f"\U0001f4de Sotuvchi: {contact}\n\n"
-                f"\u2705 Buyurtmangiz tasdiqlandi! Sotuvchi siz bilan bog'lanadi.",
+                f"Buyurtmangiz tasdiqlandi. Sotuvchi siz bilan bog'lanadi.",
                 {'inline_keyboard': [[
                     {'text': '\u2b50 Baho bering', 'callback_data': f'rate_start_{pid}'},
                     {'text': '\u21a9\ufe0f Qaytarish', 'callback_data': f'refund_{pid}'},
@@ -627,7 +626,7 @@ def notify_group_filled(pid):
         if pid in wl and wl_uid not in group_members:
             try:
                 send_buyer(wl_uid,
-                    f"\U0001f614 <b>Siz qiziqgan guruh to'ldi!</b>\n\n"
+                    f"<b>Siz qiziqgan guruh to'ldi.</b>\n\n"
                     f"\U0001f4e6 {name}\n"
                     f"\U0001f3ea {shop}\n\n"
                     f"Keyingi guruhga qo'shilish uchun kuzatib boring:",
@@ -641,24 +640,24 @@ def notify_group_filled(pid):
     # 3. Sotuvchiga moliyaviy xabar
     if sid:
         send_seller(sid,
-            f"\U0001f389 <b>GURUH TO'LDI!</b>\n\n"
+            f"<b>GURUH TO'LDI!</b>\n\n"
             f"\U0001f4e6 {name}\n"
-            f"\U0001f465 {count}/{min_g} kishi qo'shildi!\n\n"
+            f"\U0001f465 {count}/{min_g} kishi qo'shildi.\n\n"
             f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
-            f"\U0001f4b0 Jami sotuv: <b>{fmt(total)} so'm</b>\n"
-            f"\U0001f4ca Komissiya (5%): <b>{fmt(commission)} so'm</b>\n"
-            f"\u2705 Sizga to'lanadi: <b>{fmt(payout)} so'm</b>\n"
+            f"Jami sotuv: <b>{fmt(total)} so'm</b>\n"
+            f"Komissiya (5%): <b>{fmt(commission)} so'm</b>\n"
+            f"Sizga to'lanadi: <b>{fmt(payout)} so'm</b>\n"
             f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n"
-            f"\U0001f4b3 Karta raqamingizni yuboring,\n"
+            f"Karta raqamingizni yuboring,\n"
             f"pul 24 soat ichida o'tkaziladi."
         )
         if ADMIN_ID:
             send_seller(ADMIN_ID,
-                f"\U0001f4b0 <b>To'lov kerak!</b>\n\n"
+                f"<b>To'lov kerak!</b>\n\n"
                 f"\U0001f4e6 {name}\n"
                 f"\U0001f464 Sotuvchi ID: <code>{sid}</code>\n"
-                f"\U0001f4b5 O'tkazish kerak: <b>{fmt(payout)} so'm</b>\n"
-                f"\U0001f4ca Komissiya: <b>{fmt(commission)} so'm</b>"
+                f"O'tkazish kerak: <b>{fmt(payout)} so'm</b>\n"
+                f"Komissiya: <b>{fmt(commission)} so'm</b>"
             )
 
     # 4. Kanal postini yangilash \u2014 tugma olib tashlanadi, caption "Sotuv yakunlandi"ga o'tadi
@@ -687,15 +686,15 @@ def expire_product(pid):
         try:
             if count >= p['min_group']:
                 send_buyer(uid,
-                    f"🎉 <b>Guruh to'ldi!</b>\n\n"
+                    f"<b>Guruh to'ldi.</b>\n\n"
                     f"<b>{p['name']}</b>\n"
                     f"📞 Sotuvchi: {p.get('contact')}"
                 )
             else:
                 send_buyer(uid,
-                    f"😔 <b>Guruh to'lmadi</b>\n\n"
+                    f"<b>Guruh to'lmadi.</b>\n\n"
                     f"<b>{p['name']}</b>\n"
-                    f"💰 To'lovingiz 24 soat ichida qaytariladi."
+                    f"To'lovingiz 24 soat ichida qaytariladi."
                 )
         except: pass
 
@@ -705,7 +704,7 @@ def expire_product(pid):
             notify_group_filled(pid)
         else:
             send_seller(sid,
-                f"😔 <b>Guruh to'lmadi</b>\n\n"
+                f"<b>Guruh to'lmadi.</b>\n\n"
                 f"<b>{p['name']}</b>\n"
                 f"👥 {count}/{p['min_group']} kishi\n\n"
                 f"Yangi mahsulot qo'shib ko'ring.",
