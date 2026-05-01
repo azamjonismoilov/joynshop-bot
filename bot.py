@@ -407,20 +407,20 @@ def send_or_edit_seller(cid, text, kb=None, state=None):
         r = edit_message(cid, mid, text, kb)
         if r and r.get('ok'):
             return r
-    r = send(cid, text, kb)
+    r = send_seller(cid, text, kb)
     if r and state is not None:
         result = r.get('result', {})
         if result.get('message_id'):
             state['ob_msg_id'] = result['message_id']
     return r
 
-def edit_caption(cid, mid, caption, kb=None):
+def edit_caption(cid, mid, caption, kb=None, token=None):
     d = {'chat_id': cid, 'message_id': mid, 'caption': caption, 'parse_mode': 'HTML'}
     if kb: d['reply_markup'] = json.dumps(kb)
-    api('editMessageCaption', d)
+    api('editMessageCaption', d, token or SELLER_TOKEN)
 
 def answer_cb(cbid, text='', alert=False, token=None):
-    api('answerCallbackQuery', {'callback_query_id': cbid, 'text': text, 'show_alert': alert}, token)
+    api('answerCallbackQuery', {'callback_query_id': cbid, 'text': text, 'show_alert': alert}, token or SELLER_TOKEN)
 
 def fmt(n):
     return f"{int(n):,}"
@@ -5677,7 +5677,7 @@ def buyer_handle_cb(cb):
     d    = cb['data']
 
     if d == 'noop':
-        answer_cb(cbid); return
+        answer_cb(cbid, token=BUYER_TOKEN); return
 
     # ── OPEN SHOP ──
     if d == 'settings_toggle_notif':
@@ -5685,7 +5685,7 @@ def buyer_handle_cb(cb):
         prof['notifications'] = not prof.get('notifications', True)
         save_data()
         notif_on = prof['notifications']
-        answer_cb(cbid, ("🔔 Yoqildi" if notif_on else "🔕 O'chirildi"))
+        answer_cb(cbid, ("🔔 Yoqildi" if notif_on else "🔕 O'chirildi"), token=BUYER_TOKEN)
         send_buyer(uid,
             "⚙️ <b>Sozlamalar</b>\n\n"
             f"🔔 Bildirishnomalar: {'Yoqilgan ✅' if notif_on else 'O‘chirilgan ❌'}",
@@ -5697,7 +5697,7 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'open_shop':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         if APP_URL:
             send_buyer(uid,
                 "🛍 <b>Joynshop do'koni</b>\n\nMahsulotlarni ko'rish uchun:",
@@ -5732,7 +5732,7 @@ def buyer_handle_cb(cb):
         )
 
     if d == 'buyer_mystatus':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         my = {k:v for k,v in orders.items() if v['user_id']==uid}
         if not my:
             send_buyer(uid, "📋 Buyurtma yo'q.",
@@ -5749,7 +5749,7 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'buyer_myprofile':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         p      = get_profile(uid)
         ref_d  = referrals.get(str(uid), {'count': 0, 'cashback': 0})
         ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{uid}"
@@ -5772,7 +5772,7 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'buyer_mywishlist':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         wl = wishlists.get(uid, [])
         if not wl:
             send_buyer(uid, "🤍 Wishlist bo'sh.",
@@ -5788,7 +5788,7 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'buyer_refund':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         my = {k:v for k,v in orders.items() if v['user_id']==uid and v['status']=='confirmed'}
         if not my:
             send_buyer(uid, "Qaytarish uchun tasdiqlangan buyurtma yo'q.",
@@ -5803,7 +5803,7 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'buyer_help':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         send_buyer(uid,
             "ℹ️ <b>Yordam</b>\n\n"
             "/mystatus   — Buyurtmalarim\n"
@@ -5816,18 +5816,18 @@ def buyer_handle_cb(cb):
         return
 
     if d == 'buyer_back':
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         buyer_main_menu()
         return
 
     if d.startswith('choose_'):
         pid = d[7:]
         if pid not in products:
-            answer_cb(cbid, '❌ Mahsulot topilmadi!'); return
+            answer_cb(cbid, '❌ Mahsulot topilmadi!', token=BUYER_TOKEN); return
         p = products[pid]
         if p.get('status') == 'closed':
-            answer_cb(cbid, '⛔️ Yopilgan!'); return
-        answer_cb(cbid)
+            answer_cb(cbid, '⛔️ Yopilgan!', token=BUYER_TOKEN); return
+        answer_cb(cbid, token=BUYER_TOKEN)
         count    = len(groups.get(pid, []))
         min_g    = p['min_group']
         has_solo = p.get('solo_price')
@@ -5846,17 +5846,17 @@ def buyer_handle_cb(cb):
     if d.startswith('join_'):
         pid = d[5:]
         if pid not in products:
-            answer_cb(cbid, '❌ Mahsulot topilmadi!'); return
+            answer_cb(cbid, '❌ Mahsulot topilmadi!', token=BUYER_TOKEN); return
         p = products[pid]
         if p.get('status') == 'closed':
-            answer_cb(cbid, '⛔️ Guruh yopilgan!'); return
+            answer_cb(cbid, '⛔️ Guruh yopilgan!', token=BUYER_TOKEN); return
         if pid not in groups: groups[pid] = []
         if uid in groups[pid]:
-            answer_cb(cbid, '✅ Allaqachon guruhdasiz!'); return
+            answer_cb(cbid, '✅ Allaqachon guruhdasiz!', token=BUYER_TOKEN); return
 
         variants = p.get('variants', [])
         if variants:
-            answer_cb(cbid)
+            answer_cb(cbid, token=BUYER_TOKEN)
             btns = [[{'text': v, 'callback_data': f'variant_{pid}_{v}'}] for v in variants]
             send_buyer(uid,
                 f"📦 <b>{p['name']}</b>\n\nVariantni tanlang:",
@@ -5873,7 +5873,7 @@ def buyer_handle_cb(cb):
             'created':    datetime.now().strftime('%d.%m.%Y %H:%M')
         }
         save_data()
-        answer_cb(cbid, "To'lov sahifasi ochilmoqda...")
+        answer_cb(cbid, "To'lov sahifasi ochilmoqda...", token=BUYER_TOKEN)
         # Click invoice yuborish
         if CLICK_TOKEN:
             photo = p.get('photos', [None])[0]
@@ -5910,13 +5910,13 @@ def buyer_handle_cb(cb):
     if d.startswith('paid_'):
         code = d[5:]
         if code not in orders:
-            answer_cb(cbid, '❌ Buyurtma topilmadi!'); return
+            answer_cb(cbid, '❌ Buyurtma topilmadi!', token=BUYER_TOKEN); return
         o = orders[code]
         if o['status'] != 'pending':
-            answer_cb(cbid, '⚠️ Allaqachon yuborilgan!'); return
+            answer_cb(cbid, '⚠️ Allaqachon yuborilgan!', token=BUYER_TOKEN); return
         orders[code]['status'] = 'confirming'
         save_data()
-        answer_cb(cbid, '⏳ Sotuvchi tasdiqlamoqda...')
+        answer_cb(cbid, '⏳ Sotuvchi tasdiqlamoqda...', token=BUYER_TOKEN)
         p_auto = products.get(orders[code]['product_id'], {})
         auto_check(code, orders[code], p_auto)
         p   = products.get(o['product_id'], {})
@@ -5940,13 +5940,13 @@ def buyer_handle_cb(cb):
         if code in orders:
             orders[code]['status'] = 'cancelled'
             save_data()
-        answer_cb(cbid, '❌ Bekor qilindi')
+        answer_cb(cbid, '❌ Bekor qilindi', token=BUYER_TOKEN)
         send_buyer(uid, f"❌ #{code} bekor qilindi.")
         return
 
     if d.startswith('rate_start_'):
         pid = d[11:]
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         send_buyer(uid, "⭐ Sotuvchiga baho bering:",
             {'inline_keyboard': [[
                 {'text': '⭐',         'callback_data': f'rate_{pid}_1'},
@@ -5962,7 +5962,7 @@ def buyer_handle_cb(cb):
         parts  = d.split('_')
         pid    = parts[1]
         rating = int(parts[2])
-        answer_cb(cbid, f"{'⭐'*rating} Baho berildi!")
+        answer_cb(cbid, f"{'⭐'*rating} Baho berildi!", token=BUYER_TOKEN)
         p   = products.get(pid, {})
         uname = cb['from'].get('first_name', 'Xaridor')
         sid = p.get('seller_id')
@@ -5977,9 +5977,9 @@ def buyer_handle_cb(cb):
         if uid not in wishlists: wishlists[uid] = []
         if pid not in wishlists[uid]:
             wishlists[uid].append(pid)
-            answer_cb(cbid, '✅ Wishlistga saqlandi!')
+            answer_cb(cbid, '✅ Wishlistga saqlandi!', token=BUYER_TOKEN)
         else:
-            answer_cb(cbid, '✅ Allaqachon saqlangan!')
+            answer_cb(cbid, '✅ Allaqachon saqlangan!', token=BUYER_TOKEN)
         return
 
     if d.startswith('variant_'):
@@ -5987,14 +5987,14 @@ def buyer_handle_cb(cb):
         pid     = parts[1]
         variant = parts[2] if len(parts) > 2 else ''
         if pid not in products:
-            answer_cb(cbid, '❌ Topilmadi!'); return
+            answer_cb(cbid, '❌ Topilmadi!', token=BUYER_TOKEN); return
         p = products[pid]
         if p.get('status') == 'closed':
-            answer_cb(cbid, '⛔️ Yopilgan!'); return
+            answer_cb(cbid, '⛔️ Yopilgan!', token=BUYER_TOKEN); return
         if pid not in groups: groups[pid] = []
         if uid in groups[pid]:
-            answer_cb(cbid, '✅ Allaqachon guruhdasiz!'); return
-        answer_cb(cbid, f"✅ {variant} tanlandi!")
+            answer_cb(cbid, '✅ Allaqachon guruhdasiz!', token=BUYER_TOKEN); return
+        answer_cb(cbid, f"✅ {variant} tanlandi!", token=BUYER_TOKEN)
         code = gen_code()
         orders[code] = {
             'product_id': pid, 'user_id': uid,
@@ -6025,7 +6025,7 @@ def buyer_handle_cb(cb):
 
     if d.startswith('refund_') and not d.startswith('refund_reason_'):
         code = d[7:]
-        answer_cb(cbid)
+        answer_cb(cbid, token=BUYER_TOKEN)
         send_buyer(uid, "↩️ <b>Qaytarish sababi:</b>",
             {'inline_keyboard': [
                 [{'text': '📦 Mahsulot kelmadi', 'callback_data': f'refund_reason_notarrived_{code}'}],
@@ -6043,7 +6043,7 @@ def buyer_handle_cb(cb):
         reason     = reason_map.get(reason_key, 'Boshqa')
         refund_requests[code] = {'user_id': uid, 'reason': reason, 'status': 'pending'}
         save_data()
-        answer_cb(cbid, "✅ Qaytarish so'rovi yuborildi!")
+        answer_cb(cbid, "✅ Qaytarish so'rovi yuborildi!", token=BUYER_TOKEN)
         send_buyer(uid,
             f"✅ <b>Qaytarish so'rovi yuborildi</b>\n\n#{code}\nSabab: {reason}\n\nSotuvchi 24 soat ichida ko'rib chiqadi."
         )
