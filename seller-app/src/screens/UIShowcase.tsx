@@ -33,7 +33,7 @@ import {
   RiUserFill,
   RiWalletFill,
 } from '@remixicon/react';
-import { Button, Badge, Input, Card } from '@/components/ui';
+import { Button, Badge, Input, Card, Skeleton, SkeletonCard, SkeletonListItem, SkeletonStats } from '@/components/ui';
 import type { ButtonVariant, ButtonSize, BadgeVariant, BadgeSize, InputSize } from '@/components/ui';
 
 const BUTTON_VARIANTS: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'outline', 'danger', 'success'];
@@ -309,6 +309,44 @@ export function UIShowcase() {
               <p className="text-xs text-fg-3">padding=lg (24px)</p>
             </Card>
           </div>
+        </Section>
+
+        {/* ─── Skeletons ─── */}
+        <Section title="Skeletons (loading shimmer)">
+          <Card padding="md">
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-fg-3 mb-2">Skeleton (base) — width/height/rounded</p>
+                <div className="space-y-2">
+                  <Skeleton height={16} width="100%" />
+                  <Skeleton height={16} width="70%" />
+                  <Skeleton height={20} width="40%" rounded="full" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-fg-3 mb-2">SkeletonStats</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <SkeletonStats />
+                  <SkeletonStats />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-fg-3 mb-2">SkeletonListItem</p>
+                <div className="divide-y divide-border">
+                  <SkeletonListItem />
+                  <SkeletonListItem />
+                  <SkeletonListItem />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-fg-3 mb-2">SkeletonCard</p>
+                <div className="space-y-2">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+              </div>
+            </div>
+          </Card>
         </Section>
 
         {/* ─── Color tokens preview ─── */}

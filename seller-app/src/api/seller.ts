@@ -1,6 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiGet } from './client';
-import type { MeResponse, ProductsResponse, ProductsQuery } from './types';
+import type {
+  MeResponse,
+  ProductsResponse,
+  ProductsQuery,
+  StatsResponse,
+  StatsRange,
+  StatsChartResponse,
+  ChartDays,
+} from './types';
+
+const FIVE_MIN = 5 * 60 * 1000;
 
 export function useSellerMe() {
   return useQuery({
@@ -19,7 +29,25 @@ export function useSellerProducts(query: ProductsQuery = {}) {
       filter: query.filter,
       search: query.search,
     }),
-    staleTime: 30_000, // 30 soniya cache
-    placeholderData: (prev) => prev, // Keep previous page during pagination
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ─── Stats ───
+export function useSellerStats(range: StatsRange = 'week') {
+  return useQuery({
+    queryKey: ['seller', 'stats', range],
+    queryFn: () => apiGet<StatsResponse>('/seller/stats', { range }),
+    staleTime: FIVE_MIN,
+  });
+}
+
+export function useSellerStatsChart(days: ChartDays = 7) {
+  return useQuery({
+    queryKey: ['seller', 'stats', 'chart', days],
+    queryFn: () => apiGet<StatsChartResponse>('/seller/stats/chart', { days }),
+    staleTime: FIVE_MIN,
+    placeholderData: (prev) => prev,
   });
 }

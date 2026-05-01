@@ -68,3 +68,54 @@ export interface ApiError {
   error: string;
   reason?: string;
 }
+
+// ─── Stats ───
+export type StatsRange = 'today' | 'week' | 'month' | 'all';
+
+export interface TopProduct {
+  id: string;
+  name: string;
+  sold: number;
+  revenue: number;
+}
+
+export interface TopCustomer {
+  cuid: string;
+  name: string;
+  spent: number;
+  orders: number;
+}
+
+export interface StatsResponse {
+  range: StatsRange;
+  gmv: number;
+  commission: number;
+  net_income: number;
+  orders_total: number;
+  orders_confirmed: number;
+  orders_pending: number;
+  conversion_rate: number;
+  products_total: number;
+  products_active: number;
+  products_archived: number;
+  groups_filled: number;
+  buyers_unique: number;
+  avg_check: number;
+  top_products: TopProduct[];
+  top_customers: TopCustomer[];
+}
+
+export type ChartDays = 7 | 14 | 30 | 60 | 90;
+
+export interface ChartDataPoint {
+  date: string;       // "2026-04-30"
+  gmv: number;
+  orders: number;
+}
+
+export interface StatsChartResponse {
+  days: number;
+  data: ChartDataPoint[];
+  total_gmv: number;
+  avg_daily: number;
+}
