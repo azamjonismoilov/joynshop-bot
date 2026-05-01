@@ -91,6 +91,7 @@ export function DashboardScreen() {
             value={String(profile.orders_pending)}
             valueSuffix={profile.orders_pending ? 'kutilmoqda' : ''}
             highlight={profile.orders_pending > 0}
+            linkTo="/orders?filter=confirming"
           />
           <StatCard
             icon={<RiBox3Fill size={20} />}
@@ -158,11 +159,18 @@ interface StatCardProps {
   valueSuffix?: string;
   trend?: number; // +/-% (kelajakda)
   highlight?: boolean;
+  linkTo?: string;
 }
 
-function StatCard({ icon, iconBg, iconColor, label, value, valueSuffix, trend, highlight }: StatCardProps) {
-  return (
-    <Card padding="md" className={cn(highlight && 'ring-2 ring-warning ring-offset-2 ring-offset-bg-2')}>
+function StatCard({ icon, iconBg, iconColor, label, value, valueSuffix, trend, highlight, linkTo }: StatCardProps) {
+  const inner = (
+    <Card
+      padding="md"
+      className={cn(
+        highlight && 'ring-2 ring-warning ring-offset-2 ring-offset-bg-2',
+        linkTo && 'cursor-pointer hover:border-border-strong transition-colors duration-base',
+      )}
+    >
       <div className="flex items-start justify-between">
         <div className={cn('inline-flex items-center justify-center w-9 h-9 rounded-lg', iconBg, iconColor)}>
           {icon}
@@ -176,6 +184,7 @@ function StatCard({ icon, iconBg, iconColor, label, value, valueSuffix, trend, h
       </div>
     </Card>
   );
+  return linkTo ? <Link to={linkTo} className="block">{inner}</Link> : inner;
 }
 
 function TrendBadge({ value }: { value: number }) {

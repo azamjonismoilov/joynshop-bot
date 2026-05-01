@@ -119,3 +119,92 @@ export interface StatsChartResponse {
   total_gmv: number;
   avg_daily: number;
 }
+
+// ─── Orders ───
+export type OrderStatus = 'pending' | 'confirming' | 'confirmed' | 'rejected' | 'cancelled';
+export type OrderFilter = OrderStatus | 'all';
+
+export interface OrderBuyer {
+  user_id: number;
+  name:    string;
+  phone:   string;
+  username: string;
+}
+
+export interface OrderItem {
+  code:           string;          // "JS-AB12CD"
+  product_id:     string;
+  product_name:   string;
+  product_photo:  string;
+  buyer:          OrderBuyer;
+  amount:         number;
+  type:           'group' | 'solo';
+  type_label:     string;
+  variant:        string;
+  delivery:       'pickup' | 'deliver';
+  delivery_label: string;
+  address:        string;
+  status:         OrderStatus;
+  status_emoji:   string;
+  status_label:   string;
+  payment_method: string;
+  created:        string;          // "01.05.2026 14:30"
+}
+
+export interface OrdersSummary {
+  pending: number;
+  confirming: number;
+  confirmed: number;
+  rejected: number;
+}
+
+export interface OrdersResponse {
+  items:    OrderItem[];
+  total:    number;
+  page:     number;
+  pages:    number;
+  has_next: boolean;
+  summary:  OrdersSummary;
+}
+
+export interface OrdersQuery {
+  status?: OrderFilter;
+  page?:   number;
+  limit?:  number;
+  search?: string;
+}
+
+export interface OrderTimelineEvent {
+  event: 'created' | 'payment' | 'confirmed' | 'rejected' | 'cancelled';
+  at:    string;
+  meta:  Record<string, string>;
+}
+
+export interface OrderProductSubset {
+  id:             string;
+  name:           string;
+  photo_url:      string;
+  original_price: number;
+  group_price:    number;
+  solo_price:     number;
+  min_group:      number;
+  count:          number;
+  status:         string;
+  status_label:   string;
+  shop_name:      string;
+  channel:        string;
+}
+
+export interface OrderBuyerExtended extends OrderBuyer {
+  total_orders:   number;
+  lifetime_value: number;
+  tags:           string[];
+  first_order:    string;
+  last_order:     string;
+}
+
+export interface OrderDetailResponse extends Omit<OrderItem, 'buyer'> {
+  product:  OrderProductSubset;
+  buyer:    OrderBuyerExtended;
+  timeline: OrderTimelineEvent[];
+}
