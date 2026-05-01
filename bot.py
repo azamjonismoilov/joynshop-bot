@@ -7115,6 +7115,67 @@ def setup_menu_route():
     results['miniapp_url']=miniapp_url; results['APP_URL']=APP_URL; results['BACKEND_URL']=BACKEND_URL
     return jsonify({'ok':True,'results':results})
 
+@app.route('/admin/backfill-expired', methods=['POST'])
+def backfill_expired():
+    """One-shot: mark expired products as closed and clean up channel posts.
+    Does NOT call expire_product (which would re-send "guruh to'lmadi" to buyers).
+    Header: X-Admin-Token: $ADMIN_BACKFILL_TOKEN
+    """
+    expected = os.getenv('ADMIN_BACKFILL_TOKEN')
+    if not expected:
+        return jsonify({'error': 'ADMIN_BACKFILL_TOKEN not configured'}), 500
+    if request.headers.get('X-Admin-Token') != expected:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    now    = datetime.now()
+    closed = 0
+    captions_updated = 0
+    skipped_no_channel = 0
+    errors = []
+
+    for pid, p in list(products.items()):
+        if p.get('status') == 'closed':
+            continue
+        ddt = p.get('deadline_dt')
+        if not ddt:
+            continue
+        try:
+            deadline = datetime.strptime(ddt, '%Y-%m-%d %H:%M')
+        except (ValueError, TypeError):
+            continue
+        if deadline >= now:
+            continue
+
+        try:
+            products[pid]['status'] = 'closed'
+            closed += 1
+            channel_cid = p.get('channel_chat_id')
+            channel_mid = p.get('channel_message_id')
+            if channel_cid and channel_mid:
+                try:
+                    edit_caption(channel_cid, channel_mid,
+                        post_caption(p, pid),
+                        {'inline_keyboard': []},
+                        token=SELLER_TOKEN)
+                    captions_updated += 1
+                except Exception as e:
+                    errors.append(f'{pid}: caption {e}')
+            else:
+                skipped_no_channel += 1
+        except Exception as e:
+            errors.append(f'{pid}: {e}')
+
+    if closed > 0:
+        save_data()
+
+    return jsonify({
+        'closed_count':       closed,
+        'captions_updated':   captions_updated,
+        'skipped_no_channel': skipped_no_channel,
+        'total_products':     len(products),
+        'errors':             errors[:20],
+    })
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from flask import Response
