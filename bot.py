@@ -7120,6 +7120,7 @@ def backfill_expired():
     """One-shot: mark expired products as closed and clean up channel posts.
     Does NOT call expire_product (which would re-send "guruh to'lmadi" to buyers).
     Header: X-Admin-Token: $ADMIN_BACKFILL_TOKEN
+    Query: ?dry_run=1 — diagnose only, no mutations.
     """
     expected = os.getenv('ADMIN_BACKFILL_TOKEN')
     if not expected:
@@ -7127,26 +7128,69 @@ def backfill_expired():
     if request.headers.get('X-Admin-Token') != expected:
         return jsonify({'error': 'unauthorized'}), 401
 
-    now    = datetime.now()
-    closed = 0
-    captions_updated = 0
+    dry_run = request.args.get('dry_run') == '1'
+    now     = datetime.now()
+    closed             = 0
+    captions_updated   = 0
     skipped_no_channel = 0
-    errors = []
+    migrated           = 0
+    errors             = []
+    diag               = []
 
     for pid, p in list(products.items()):
         if p.get('status') == 'closed':
+            if dry_run:
+                diag.append({
+                    'pid': pid, 'name': p.get('name', ''),
+                    'status': 'closed', 'expired': True, 'would_close': False,
+                })
             continue
-        ddt = p.get('deadline_dt')
-        if not ddt:
+
+        ddt = p.get('deadline_dt') or ''
+        d   = p.get('deadline') or ''
+        deadline_obj            = None
+        deadline_dt_parsed      = False
+        deadline_fallback_parsed = False
+
+        if ddt:
+            try:
+                deadline_obj = datetime.strptime(ddt, '%Y-%m-%d %H:%M')
+                deadline_dt_parsed = True
+            except (ValueError, TypeError):
+                pass
+
+        if deadline_obj is None and d:
+            try:
+                deadline_obj = datetime.strptime(d, '%d.%m.%Y %H:%M')
+                deadline_fallback_parsed = True
+            except (ValueError, TypeError):
+                pass
+
+        expired     = deadline_obj is not None and deadline_obj < now
+        would_close = expired
+
+        if dry_run:
+            diag.append({
+                'pid': pid, 'name': p.get('name', ''),
+                'deadline':                  d,
+                'deadline_dt':               ddt,
+                'deadline_dt_present':       bool(ddt),
+                'deadline_dt_parsed':        deadline_dt_parsed,
+                'deadline_fallback_parsed':  deadline_fallback_parsed,
+                'expired':                   expired,
+                'would_close':               would_close,
+            })
             continue
-        try:
-            deadline = datetime.strptime(ddt, '%Y-%m-%d %H:%M')
-        except (ValueError, TypeError):
-            continue
-        if deadline >= now:
+
+        if not expired:
             continue
 
         try:
+            # Migration: backfill deadline_dt if it was missing/unparseable
+            if deadline_fallback_parsed:
+                products[pid]['deadline_dt'] = deadline_obj.strftime('%Y-%m-%d %H:%M')
+                migrated += 1
+
             products[pid]['status'] = 'closed'
             closed += 1
             channel_cid = p.get('channel_chat_id')
@@ -7165,13 +7209,21 @@ def backfill_expired():
         except Exception as e:
             errors.append(f'{pid}: {e}')
 
-    if closed > 0:
+    if dry_run:
+        return jsonify({
+            'dry_run':        True,
+            'total_products': len(products),
+            'products':       diag,
+        })
+
+    if closed > 0 or migrated > 0:
         save_data()
 
     return jsonify({
         'closed_count':       closed,
         'captions_updated':   captions_updated,
         'skipped_no_channel': skipped_no_channel,
+        'migrated_dt_count':  migrated,
         'total_products':     len(products),
         'errors':             errors[:20],
     })
