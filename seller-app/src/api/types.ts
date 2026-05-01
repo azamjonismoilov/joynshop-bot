@@ -208,3 +208,97 @@ export interface OrderDetailResponse extends Omit<OrderItem, 'buyer'> {
   buyer:    OrderBuyerExtended;
   timeline: OrderTimelineEvent[];
 }
+
+// ─── Customers ───
+export type CustomerActivity = 'active' | 'average' | 'lost';
+export type CustomerFilter   = 'all' | 'vip' | 'active' | 'lost' | 'new' | 'repeat';
+
+export interface CustomerBrief {
+  cuid:            string;
+  user_id:         number;
+  name:            string;
+  phone:           string;
+  username:        string;
+  total_orders:    number;
+  total_spent:     number;
+  first_order:     string;
+  last_order:      string;
+  days_since_last: number;
+  activity:        CustomerActivity;
+  activity_emoji:  string;
+  activity_label:  string;
+  tags:            string[];
+  rank:            number | null;
+  medal:           string | null;   // "🥇" | "🥈" | "🥉" | null
+}
+
+export interface CustomersSummary {
+  total:         number;
+  vip:           number;
+  active:        number;
+  lost:          number;
+  new:           number;
+  repeat:        number;
+  total_revenue: number;
+}
+
+export interface CustomersResponse {
+  items:    CustomerBrief[];
+  total:    number;
+  page:     number;
+  pages:    number;
+  has_next: boolean;
+  filter:   CustomerFilter;
+  summary:  CustomersSummary;
+}
+
+export interface CustomersQuery {
+  filter?: CustomerFilter;
+  page?:   number;
+  limit?:  number;
+  search?: string;
+}
+
+export interface CustomerTagOption {
+  id:    string;
+  label: string;
+}
+
+export interface CustomerDetail {
+  cuid:            string;
+  user_id:         number;
+  name:            string;
+  phone:           string;
+  username:        string;
+  total_orders:    number;
+  total_spent:     number;
+  avg_check:       number;
+  first_order:     string;
+  last_order:      string;
+  activity:        CustomerActivity;
+  activity_emoji:  string;
+  activity_label:  string;
+  tags:            string[];
+  note:            string;
+  source:          string;
+  available_tags:  CustomerTagOption[];
+}
+
+export interface CustomerHistoryItem {
+  code:    string;   // "" for legacy entries created before the field was added
+  product: string;
+  amount:  number;
+  date:    string;
+  type:    string;
+  status:  string;
+}
+
+export interface CustomerHistoryResponse {
+  items:       CustomerHistoryItem[];
+  total:       number;
+  page:        number;
+  pages:       number;
+  has_next:    boolean;
+  total_spent: number;
+  note:        string | null;
+}

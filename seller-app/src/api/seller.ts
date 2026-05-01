@@ -11,6 +11,10 @@ import type {
   OrdersResponse,
   OrdersQuery,
   OrderDetailResponse,
+  CustomersResponse,
+  CustomersQuery,
+  CustomerDetail,
+  CustomerHistoryResponse,
 } from './types';
 
 const FIVE_MIN = 5 * 60 * 1000;
@@ -78,5 +82,41 @@ export function useSellerOrderDetail(code: string | undefined) {
     queryFn: () => apiGet<OrderDetailResponse>(`/seller/orders/${code}`),
     staleTime: THREE_MIN,
     enabled: Boolean(code),
+  });
+}
+
+// ─── Customers ───
+export function useSellerCustomers(query: CustomersQuery = {}) {
+  return useQuery({
+    queryKey: ['seller', 'customers', query],
+    queryFn: () => apiGet<CustomersResponse>('/seller/customers', {
+      filter: query.filter,
+      page:   query.page,
+      limit:  query.limit,
+      search: query.search,
+    }),
+    staleTime: THREE_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useSellerCustomerDetail(cuid: string | undefined) {
+  return useQuery({
+    queryKey: ['seller', 'customers', 'detail', cuid],
+    queryFn: () => apiGet<CustomerDetail>(`/seller/customers/${cuid}`),
+    staleTime: THREE_MIN,
+    enabled: Boolean(cuid),
+  });
+}
+
+export function useSellerCustomerHistory(cuid: string | undefined, page = 0, limit = 20) {
+  return useQuery({
+    queryKey: ['seller', 'customers', 'history', cuid, page, limit],
+    queryFn: () => apiGet<CustomerHistoryResponse>(`/seller/customers/${cuid}/history`, {
+      page, limit,
+    }),
+    staleTime: THREE_MIN,
+    enabled: Boolean(cuid),
+    placeholderData: (prev) => prev,
   });
 }

@@ -336,7 +336,7 @@ def answer_pre_checkout(query_id, ok=True, error=None, token=None):
 
 # ─── CRM HELPER ─────────────────────────────────────────────────────
 def update_customer(seller_id, user_id, user_name, amount, product_name,
-                    source='order', phone='', username=''):
+                    source='order', phone='', username='', code=''):
     """Sotuvchining CRM bazasini yangilash.
     phone/username — yangi mijozlarda saqlanadi. Eski mijozlar uchun bo'sh string
     bo'lsa, mavjud qiymat saqlanadi.
@@ -370,6 +370,7 @@ def update_customer(seller_id, user_id, user_name, amount, product_name,
     if username:
         cust['username'] = username.lstrip('@')
     cust['orders'].append({
+        'code':    code,
         'product': product_name,
         'amount':  amount,
         'date':    datetime.now().strftime('%d.%m.%Y %H:%M')
@@ -2823,7 +2824,8 @@ def seller_handle_cb(cb):
         seller_id = p.get('seller_id')
         if seller_id:
             update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''),
-                            phone=o.get('user_phone',''), username=o.get('username',''))
+                            phone=o.get('user_phone',''), username=o.get('username',''),
+                            code=code)
 
         # ─── INVENTAR: stock kamaytirish ───
         if pid in products and products[pid].get('stock', 9999) < 9999:
@@ -5633,7 +5635,8 @@ def handle_successful_payment(msg):
         if uid not in groups[pid]: groups[pid].append(uid)
         sid = p.get('seller_id')
         update_customer(sid, uid, uname, amount, p.get('name',''),
-                        username=msg['from'].get('username',''))
+                        username=msg['from'].get('username',''),
+                        code=code)
         save_data()
         # Sotuvchiga xabar
         if sid:
@@ -8353,11 +8356,12 @@ def api_seller_customer_history(cuid):
     items = []
     for o in chunk:
         items.append({
+            'code':     o.get('code', ''),    # eski yozuvlarda yo'q — frontend graceful fallback
             'product':  o.get('product', '—'),
             'amount':   o.get('amount', 0),
             'date':     o.get('date', ''),
-            'type':     o.get('type', ''),    # bo'sh bo'lishi mumkin (eski yozuvlarda yo'q)
-            'status':   o.get('status', ''),  # bo'sh bo'lishi mumkin
+            'type':     o.get('type', ''),
+            'status':   o.get('status', ''),
         })
 
     return jsonify({
