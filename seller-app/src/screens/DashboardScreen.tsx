@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  RiAddFill,
   RiArrowDownSFill,
   RiArrowRightSFill,
   RiArrowUpSFill,
@@ -22,7 +23,7 @@ import {
 import { Card, Button, Skeleton, SkeletonStats, SkeletonListItem } from '@/components/ui';
 import { useSellerMe, useSellerStats, useSellerStatsChart } from '@/api/seller';
 import { ErrorState } from '@/components/ErrorState';
-import { EmptyState } from '@/components/EmptyState';
+import { openSellerBotDeeplink } from '@/lib/telegram';
 import { cn } from '@/lib/cn';
 import {
   colorFromName,
@@ -46,13 +47,6 @@ export function DashboardScreen() {
   if (!me.data)    return <ErrorState error={new Error("Ma'lumot yo'q")} onRetry={() => me.refetch()} />;
 
   const profile = me.data;
-
-  // Empty state — sotuvchi mahsulotsiz va buyurtmasiz
-  const isCompletelyEmpty = profile.products_count === 0 && profile.orders_pending === 0
-    && (stats.data?.gmv ?? 0) === 0;
-  if (isCompletelyEmpty && !stats.isLoading) {
-    return <EmptyState />;
-  }
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
@@ -133,6 +127,34 @@ export function DashboardScreen() {
             disabledNote="Tez orada"
           />
         </section>
+
+        {/* ─── B3. No-products banner ─── */}
+        {profile.products_count === 0 && (
+          <Card padding="md">
+            <div className="flex items-start gap-3">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-subtle text-brand shrink-0">
+                <RiBox3Fill size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-sm font-semibold text-fg-1">
+                  Hali mahsulot yo'q
+                </p>
+                <p className="text-xs text-fg-3 font-body mt-0.5">
+                  Mahsulot qo'shish uchun botga qayting.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="mt-3"
+                  iconLeft={<RiAddFill size={16} />}
+                  onClick={() => openSellerBotDeeplink('addproduct')}
+                >
+                  Botda mahsulot qo'shish
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* ─── C. Chart ─── */}
         <Card padding="md">
