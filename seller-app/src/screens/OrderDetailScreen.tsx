@@ -11,7 +11,6 @@ import {
   RiWalletFill,
 } from '@remixicon/react';
 import { Card, Button, Badge, Skeleton } from '@/components/ui';
-import type { BadgeVariant } from '@/components/ui';
 import { useSellerOrderDetail } from '@/api/seller';
 import type {
   OrderDetailResponse,
@@ -21,14 +20,6 @@ import type {
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { colorFromName, formatPrice, getInitials } from '@/lib/format';
-
-const STATUS_BADGE: Record<OrderStatus, BadgeVariant> = {
-  pending:    'gray',
-  confirming: 'yellow',
-  confirmed:  'green',
-  rejected:   'red',
-  cancelled:  'gray',
-};
 
 const STATUS_BANNER_BG: Record<OrderStatus, string> = {
   pending:    'bg-bg-3 text-fg-2',

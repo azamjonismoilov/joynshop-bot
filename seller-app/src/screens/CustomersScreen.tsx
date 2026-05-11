@@ -277,7 +277,7 @@ function CustomerCard({ customer: c }: { customer: CustomerBrief }) {
                 {c.name || '—'}
               </span>
               {isVip && (
-                <Badge variant="brand" size="sm">
+                <Badge variant="orange" size="sm">
                   <RiVipCrownFill size={10} className="mr-0.5" />
                   VIP
                 </Badge>

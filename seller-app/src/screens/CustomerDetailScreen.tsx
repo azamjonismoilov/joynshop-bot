@@ -83,7 +83,7 @@ function ProfileHeader({ data }: { data: CustomerDetail }) {
               {data.name || '—'}
             </h2>
             {isVip && (
-              <Badge variant="brand" size="sm">
+              <Badge variant="orange" size="sm">
                 <RiVipCrownFill size={10} className="mr-0.5" />
                 VIP
               </Badge>
@@ -136,7 +136,7 @@ function TagsCard({ data }: { data: CustomerDetail }) {
       <p className="text-xs text-fg-3 font-body mb-2">Teglar</p>
       <div className="flex gap-1 flex-wrap">
         {data.tags.map((t) => (
-          <Badge key={t} variant={t === 'vip' ? 'brand' : 'gray'} size="sm">
+          <Badge key={t} variant={t === 'vip' ? 'orange' : 'gray'} size="sm">
             {TAG_LABEL[t] || t}
           </Badge>
         ))}
