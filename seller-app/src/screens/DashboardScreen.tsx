@@ -101,7 +101,7 @@ export function DashboardScreen() {
         </section>
 
         {/* ─── B2. Quick actions ─── */}
-        <section className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <section className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           <QuickAction
             icon={<RiBox3Fill size={22} />}
             label="Mahsulotlar"
@@ -120,6 +120,11 @@ export function DashboardScreen() {
             label="Mijozlar"
             count={profile.customers_count ?? 0}
             to="/customers"
+          />
+          <QuickAction
+            icon={<RiBarChart2Fill size={22} />}
+            label="Tahlil"
+            to="/stats"
           />
           <QuickAction
             icon={<RiSettings3Fill size={22} />}
