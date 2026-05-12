@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   RiArrowLeftSFill,
   RiArrowRightSFill,
-  RiBox3Fill,
   RiErrorWarningFill,
   RiFireFill,
   RiLockFill,
@@ -32,20 +31,9 @@ export function ProductsScreen() {
   if (!data || data.total === 0) return <EmptyState />;
 
   return (
-    <div className="min-h-screen bg-bg-2 pb-6">
-      {/* Header */}
-      <div className="px-4 pt-5 pb-3">
-        <h1 className="font-display text-2xl font-semibold text-fg-1 flex items-center gap-2">
-          <RiBox3Fill size={24} className="text-brand" />
-          Mening mahsulotlarim
-        </h1>
-        <p className="text-sm text-fg-3 mt-1 font-body">
-          {data.total} ta · Sahifa {data.page + 1}/{data.pages}
-        </p>
-      </div>
-
+    <div className="min-h-screen bg-bg-2 pt-3 pb-6">
       {/* List */}
-      <div className="px-4 space-y-2">
+      <div className="px-4 mt-4 space-y-2">
         {data.items.map((item) => (
           <ProductCard key={item.id} item={item} />
         ))}

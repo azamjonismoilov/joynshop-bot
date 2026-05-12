@@ -35,7 +35,7 @@ export function BottomNav() {
       aria-label="Asosiy navigatsiya"
       className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-full p-2 px-3 backdrop-blur-xl shadow-xl"
       style={{
-        bottom:     'calc(12px + env(safe-area-inset-bottom))',
+        bottom:     'calc(8px + env(safe-area-inset-bottom))',
         background: 'rgba(28, 28, 28, 0.92)',
       }}
     >

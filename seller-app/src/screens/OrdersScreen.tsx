@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiArrowRightSFill,
@@ -43,7 +43,6 @@ const STATUS_BADGE: Record<OrderStatus, BadgeVariant> = {
 };
 
 export function OrdersScreen() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilter = (searchParams.get('filter') as OrderFilter) || 'all';
 
@@ -77,23 +76,7 @@ export function OrdersScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-2 pb-8">
-      {/* Header */}
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <h1 className="font-display text-xl font-semibold text-fg-1">
-            Buyurtmalar
-          </h1>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-bg-2 pt-3 pb-8">
       <div className="px-4 mt-4 space-y-3">
         {/* Filter tabs (segmented, scrollable) */}
         <FilterBar

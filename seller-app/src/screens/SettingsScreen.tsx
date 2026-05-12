@@ -1,6 +1,5 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
   RiArrowRightSFill,
   RiFileTextFill,
   RiPlugFill,
@@ -17,7 +16,6 @@ interface SettingItem {
 }
 
 export function SettingsScreen() {
-  const navigate = useNavigate();
   const me = useSellerMe();
   const shopsCount = me.data?.shops?.length ?? 0;
 
@@ -43,22 +41,7 @@ export function SettingsScreen() {
   ];
 
   return (
-    <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <h1 className="font-display text-xl font-semibold text-fg-1">
-            Sozlamalar
-          </h1>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-bg-2 pt-3 pb-8">
       <main className="px-4 mt-4 space-y-2.5">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="block">
