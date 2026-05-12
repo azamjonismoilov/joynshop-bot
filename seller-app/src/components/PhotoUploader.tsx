@@ -1,5 +1,12 @@
 import { useRef, useState } from 'react';
-import { RiAddLine, RiCloseFill, RiErrorWarningFill, RiImageAddFill } from '@remixicon/react';
+import { ReactSortable } from 'react-sortablejs';
+import {
+  RiAddLine,
+  RiCloseFill,
+  RiErrorWarningFill,
+  RiImageAddFill,
+  RiStarFill,
+} from '@remixicon/react';
 import { useUploadProductPhoto } from '@/api/seller';
 import { cn } from '@/lib/cn';
 
@@ -44,7 +51,6 @@ export function PhotoUploader({ urls, onChange }: Props) {
     }));
     const merged = [...items, ...newItems];
     setItems(merged);
-    // Upload one-by-one
     for (let i = 0; i < list.length; i++) {
       const file = list[i];
       const localItem = newItems[i];
@@ -81,58 +87,92 @@ export function PhotoUploader({ urls, onChange }: Props) {
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2">
-        {items.map((it) => (
-          <div
-            key={it.id}
-            className="relative aspect-square rounded-md overflow-hidden bg-bg-3"
+      {items.length > 0 && (
+        <>
+          <p className="text-[10px] text-fg-4 font-body mb-2">
+            Birinchi rasm asosiy bo'ladi · ushlab surib tartibni o'zgartiring
+          </p>
+          <ReactSortable
+            tag="div"
+            className="grid grid-cols-3 gap-2"
+            list={items}
+            setList={sync}
+            animation={150}
+            delay={150}
+            delayOnTouchOnly
+            touchStartThreshold={5}
+            filter=".no-drag"
+            preventOnFilter={false}
           >
-            <img src={it.preview} alt="" className="w-full h-full object-cover" />
-            {it.status === 'uploading' && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            {items.map((it, i) => (
+              <div
+                key={it.id}
+                className="relative aspect-square rounded-md overflow-hidden bg-bg-3 cursor-grab active:cursor-grabbing"
+              >
+                <img
+                  src={it.preview}
+                  alt=""
+                  draggable={false}
+                  className="w-full h-full object-cover pointer-events-none select-none"
+                />
+                {i === 0 && it.status === 'done' && (
+                  <div className="absolute top-1 left-1 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-brand text-white text-[9px] font-medium font-display pointer-events-none">
+                    <RiStarFill size={10} />
+                    Asosiy
+                  </div>
+                )}
+                {it.status === 'uploading' && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
+                    <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+                {it.status === 'error' && (
+                  <div className="absolute inset-0 bg-danger/80 flex flex-col items-center justify-center text-white text-[10px] text-center px-1 pointer-events-none">
+                    <RiErrorWarningFill size={20} />
+                    <span className="mt-0.5">{it.errorMsg}</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); remove(it.id); }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  aria-label="O'chirish"
+                  className="no-drag absolute top-1 right-1 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/60 text-white hover:bg-black/80"
+                >
+                  <RiCloseFill size={14} />
+                </button>
               </div>
-            )}
-            {it.status === 'error' && (
-              <div className="absolute inset-0 bg-danger/80 flex flex-col items-center justify-center text-white text-[10px] text-center px-1">
-                <RiErrorWarningFill size={20} />
-                <span className="mt-0.5">{it.errorMsg}</span>
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => remove(it.id)}
-              aria-label="O'chirish"
-              className="absolute top-1 right-1 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/60 text-white hover:bg-black/80"
-            >
-              <RiCloseFill size={14} />
-            </button>
-          </div>
-        ))}
-        {canAdd && (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            className={cn(
-              'aspect-square rounded-md border-2 border-dashed border-border',
-              'flex flex-col items-center justify-center gap-1 text-fg-3',
-              'hover:border-brand hover:text-brand transition-colors duration-base',
-            )}
-          >
-            {items.length === 0 ? (
-              <>
-                <RiImageAddFill size={28} />
-                <span className="text-[10px] font-body">Rasm qo'shish</span>
-              </>
-            ) : (
-              <>
-                <RiAddLine size={24} />
-                <span className="text-[10px] font-mono">{items.length}/{MAX_PHOTOS}</span>
-              </>
-            )}
-          </button>
-        )}
-      </div>
+            ))}
+          </ReactSortable>
+        </>
+      )}
+      {canAdd && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className={cn(
+            'flex items-center justify-center gap-1 text-fg-3 border-2 border-dashed border-border',
+            'hover:border-brand hover:text-brand transition-colors duration-base',
+            items.length === 0
+              ? 'w-full aspect-square rounded-md flex-col'
+              : 'mt-2 w-full h-14 rounded-md',
+          )}
+        >
+          {items.length === 0 ? (
+            <>
+              <RiImageAddFill size={28} />
+              <span className="text-[10px] font-body">Rasm qo'shish</span>
+            </>
+          ) : (
+            <>
+              <RiAddLine size={18} />
+              <span className="text-xs font-body">
+                Yana qo'shish ({items.length}/{MAX_PHOTOS})
+              </span>
+            </>
+          )}
+        </button>
+      )}
       <input
         ref={inputRef}
         type="file"

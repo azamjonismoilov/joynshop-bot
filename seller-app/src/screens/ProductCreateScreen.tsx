@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RiAddFill,
   RiCloseFill,
+  RiFileTextLine,
   RiSearchLine,
 } from '@remixicon/react';
 import {
@@ -14,11 +15,13 @@ import {
 import { AppHeader } from '@/components/AppHeader';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { MxikSearchModal } from '@/components/MxikSearchModal';
+import { ProductPreviewModal } from '@/components/ProductPreviewModal';
 import {
   ApiValidationError,
   useCreateProduct,
   useSellerCategories,
   useSellerMe,
+  useSellerShops,
 } from '@/api/seller';
 import type {
   CategoryItem,
@@ -42,10 +45,40 @@ const DEADLINES: Array<{ hours: number; label: string }> = [
   { hours: 168, label: '1 hafta' },
 ];
 
+const DRAFT_KEY = 'joynshop:product-draft';
+const DRAFT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 kun
+
+interface DraftSnapshot {
+  name:          string;
+  category:      string;
+  saleType:      ProductSaleType;
+  shopIdx:       number;
+  origPrice:     string;
+  groupPrice:    string;
+  soloPrice:     string;
+  minGroup:      string;
+  photoUrls:     string[];
+  description:   string;
+  variants:      string[];
+  mxik:          MxikItem | null;
+  deadlineHours: number;
+  savedAt:       number;
+  version:       number;
+}
+
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return 'hozir';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} daqiqa avval`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} soat avval`;
+  return `${Math.floor(diff / 86_400_000)} kun avval`;
+}
+
 export function ProductCreateScreen() {
   const navigate = useNavigate();
   const me       = useSellerMe();
   const cats     = useSellerCategories();
+  const shopsQ   = useSellerShops();
   const mutation = useCreateProduct();
   const errors   = mutation.error instanceof ApiValidationError ? mutation.error.errors : null;
 
@@ -78,6 +111,90 @@ export function ProductCreateScreen() {
   // Section 6 (collapse)
   const [deadlineHours, setDeadlineHours] = useState(48);
 
+  // Draft + preview
+  const [draftMeta, setDraftMeta]     = useState<{ savedAt: number } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [hydrated, setHydrated]       = useState(false);
+
+  // Mount — draft mavjudligini tekshirish, lekin avtomatik restore qilmaymiz
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) { setHydrated(true); return; }
+      const parsed = JSON.parse(raw) as DraftSnapshot | null;
+      if (!parsed?.savedAt) { setHydrated(true); return; }
+      if (Date.now() - parsed.savedAt > DRAFT_MAX_AGE_MS) {
+        localStorage.removeItem(DRAFT_KEY);
+        setHydrated(true);
+        return;
+      }
+      setDraftMeta({ savedAt: parsed.savedAt });
+    } catch {
+      // ignore
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist — sotuvchi formada hech narsa kiritmagan bo'lsa saqlamaymiz
+  useEffect(() => {
+    if (!hydrated) return;
+    const empty =
+      !name && !category && !origPrice && !groupPrice && !soloPrice &&
+      !description && photoUrls.length === 0 && variants.length === 0 && !mxik;
+    if (empty) return;
+    const snapshot: DraftSnapshot = {
+      name, category, saleType, shopIdx,
+      origPrice, groupPrice, soloPrice, minGroup,
+      photoUrls,
+      description, variants,
+      mxik: mxik ? { code: mxik.code, name: mxik.name } : null,
+      deadlineHours,
+      savedAt: Date.now(),
+      version: 1,
+    };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot));
+    } catch {
+      // quota exceeded — silently skip
+    }
+  }, [
+    hydrated, name, category, saleType, shopIdx,
+    origPrice, groupPrice, soloPrice, minGroup,
+    photoUrls, description, variants, mxik, deadlineHours,
+  ]);
+
+  const restoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as DraftSnapshot;
+      setName(d.name ?? '');
+      setCategory(d.category ?? '');
+      setSaleType(d.saleType ?? 'both');
+      setShopIdx(d.shopIdx ?? 0);
+      setOrigPrice(d.origPrice ?? '');
+      setGroupPrice(d.groupPrice ?? '');
+      setSoloPrice(d.soloPrice ?? '');
+      setMinGroup(d.minGroup ?? '5');
+      setPhotoUrls(d.photoUrls ?? []);
+      setDescription(d.description ?? '');
+      setVariants(d.variants ?? []);
+      setMxik(d.mxik ?? null);
+      setDeadlineHours(d.deadlineHours ?? 48);
+    } finally {
+      setDraftMeta(null);
+    }
+  };
+
+  const discardDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    setDraftMeta(null);
+  };
+
+  const clearDraft = () => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  };
+
   const parsePrice = (v: string) => Number(v.replace(/\D/g, '')) || 0;
   const orig  = parsePrice(origPrice);
   const grp   = parsePrice(groupPrice);
@@ -94,25 +211,30 @@ export function ProductCreateScreen() {
     (saleType === 'solo' || grp > 0) &&
     !mutation.isPending;
 
-  const submit = () => {
-    const body: ProductCreateBody = {
-      name:           name.trim(),
-      category,
-      sale_type:      saleType,
-      original_price: orig,
-      group_price:    needsGroup ? grp : undefined,
-      solo_price:     needsSolo ? solo : undefined,
-      min_group:      needsGroup ? Number(minGroup) || 0 : undefined,
-      description:    description.trim() || undefined,
-      variants:       variants.length ? variants : undefined,
-      mxik_code:      mxik?.code || undefined,
-      mxik_name:      mxik?.name || undefined,
-      deadline_hours: deadlineHours,
-      photo_urls:     photoUrls,
-      shop_idx:       shopIdx,
-    };
-    mutation.mutate(body, {
-      onSuccess: (res) => navigate(`/products/${res.pid}`),
+  const buildBody = (): ProductCreateBody => ({
+    name:           name.trim(),
+    category,
+    sale_type:      saleType,
+    original_price: orig,
+    group_price:    needsGroup ? grp : undefined,
+    solo_price:     needsSolo ? solo : undefined,
+    min_group:      needsGroup ? Number(minGroup) || 0 : undefined,
+    description:    description.trim() || undefined,
+    variants:       variants.length ? variants : undefined,
+    mxik_code:      mxik?.code || undefined,
+    mxik_name:      mxik?.name || undefined,
+    deadline_hours: deadlineHours,
+    photo_urls:     photoUrls,
+    shop_idx:       shopIdx,
+  });
+
+  const submitFromPreview = () => {
+    mutation.mutate(buildBody(), {
+      onSuccess: (res) => {
+        clearDraft();
+        setShowPreview(false);
+        navigate(`/products/${res.pid}`);
+      },
     });
   };
 
@@ -121,6 +243,33 @@ export function ProductCreateScreen() {
       <AppHeader tagline="Yangi mahsulot" showBack />
 
       <main className="px-4 mt-4 space-y-3">
+        {/* ─── Draft restore banner ─── */}
+        {draftMeta && (
+          <Card padding="md" className="bg-brand-subtle border border-brand">
+            <div className="flex items-start gap-3">
+              <div className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-brand text-white shrink-0">
+                <RiFileTextLine size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display text-sm font-semibold text-fg-1">
+                  Avval boshlagan mahsulotingiz bor
+                </p>
+                <p className="text-xs text-fg-3 font-body mt-0.5">
+                  {relativeTime(draftMeta.savedAt)}
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button variant="primary" size="sm" onClick={restoreDraft}>
+                    Davom etish
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={discardDraft}>
+                    Yangi boshlash
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* ─── Shop picker (1 dan ko'p do'kon bo'lganda) ─── */}
         {shops.length > 1 && (
           <Card padding="md">
@@ -433,9 +582,9 @@ export function ProductCreateScreen() {
           size="lg"
           fullWidth
           disabled={!canSubmit}
-          onClick={submit}
+          onClick={() => setShowPreview(true)}
         >
-          {mutation.isPending ? "E'lon qilinmoqda..." : "🚀 E'lon qilish"}
+          {mutation.isPending ? "E'lon qilinmoqda..." : "🚀 Oldindan ko'rish"}
         </Button>
       </div>
 
@@ -443,6 +592,31 @@ export function ProductCreateScreen() {
         isOpen={showMxik}
         onClose={() => setShowMxik(false)}
         onPick={(item) => setMxik(item)}
+      />
+
+      <ProductPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        onConfirm={submitFromPreview}
+        isSubmitting={mutation.isPending}
+        data={{
+          name,
+          category,
+          saleType,
+          originalPrice: orig,
+          groupPrice:    grp,
+          soloPrice:     solo,
+          minGroup:      Number(minGroup) || 0,
+          description,
+          variants,
+          mxik,
+          deadlineHours,
+          photoUrls,
+          shop:          shopsQ.data?.shops[shopIdx] || (shops[shopIdx]
+            ? { name: shops[shopIdx].name, phone: '', phone2: '', address: '' }
+            : null),
+          categories:    cats.data?.categories,
+        }}
       />
     </div>
   );
