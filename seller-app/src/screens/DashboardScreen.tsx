@@ -33,7 +33,6 @@ import { cn } from '@/lib/cn';
 import {
   colorFromName,
   formatChartDate,
-  formatDateUz,
   formatPrice,
   formatPriceShort,
   getInitials,
@@ -74,13 +73,13 @@ export function DashboardScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      {/* Compact greeting */}
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
-        <p className="text-sm font-body text-fg-2">
-          Salom, <span className="font-semibold text-fg-1">{profile.first_name || 'sotuvchi'}</span> 👋
-        </p>
-        <p className="text-xs text-fg-3 mt-0.5 font-body">
-          {formatDateUz(new Date())}
+      {/* Brand header */}
+      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border">
+        <h1 className="font-display text-2xl font-semibold text-fg-1">
+          Joynshop
+        </h1>
+        <p className="text-sm text-fg-3 mt-0.5 font-body">
+          Sotuvchi paneli
         </p>
       </header>
 
