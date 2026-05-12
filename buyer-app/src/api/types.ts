@@ -74,20 +74,34 @@ export interface BuyerStatsResponse {
 /** /api/wishlist?uid=… */
 export interface WishlistItem extends ProductListItem {}
 
+export type OrderStatus = 'pending' | 'confirming' | 'confirmed' | 'rejected' | 'cancelled';
+
 /** /api/user/<uid>/orders */
 export interface BuyerOrderItem {
-  code:        string;
-  name:        string;
-  shop_name:   string;
-  amount:      number;
-  type:        'solo' | 'group';
-  status:      'pending' | 'confirming' | 'confirmed' | 'rejected' | 'cancelled';
-  status_text: string;
-  status_icon: string;
-  created:     string;
-  address:     string;
-  photo_id:    string;
-  delivery:    'pickup' | 'deliver';
+  code:          string;
+  name:          string;
+  shop_name:     string;
+  amount:        number;
+  type:          'solo' | 'group';
+  status:        OrderStatus;
+  status_text:   string;
+  status_icon:   string;
+  created:       string;
+  cancelled_at?: string;
+  address:       string;
+  variant?:      string;
+  photo_id:      string;
+  photo_url?:    string;
+  delivery:      'pickup' | 'deliver';
+  seller_id?:    number;
+  contact?:      string;
+  shop_phone?:   string;
+}
+
+export interface CancelOrderResponse {
+  ok:     boolean;
+  code?:  string;
+  error?: string;
 }
 
 /** /api/user/<uid>/profile */

@@ -1,0 +1,402 @@
+import { useEffect, useRef, useState } from 'react';
+import {
+  RiCloseFill,
+  RiFileCopyLine,
+  RiMapPinFill,
+  RiPhoneFill,
+  RiPriceTag3Fill,
+  RiShoppingBag3Fill,
+  RiStore3Fill,
+  RiTelegramFill,
+  RiTimeFill,
+  RiTruckFill,
+  RiWalletFill,
+} from '@remixicon/react';
+import { Badge, Button } from '@/components/ui';
+import type { BuyerOrderItem, OrderStatus } from '@/api/types';
+import { Modal } from '@/components/ui/Modal';
+import { useCancelOrder } from '@/api/buyer';
+import { cn } from '@/lib/cn';
+import { formatPrice } from '@/lib/format';
+import { useMainButton } from '@/lib/useMainButton';
+import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
+import { hapticImpact, hapticNotify } from '@/lib/haptic';
+import { isInTelegram, tgWebApp } from '@/lib/telegram';
+
+interface Props {
+  isOpen:  boolean;
+  order:   BuyerOrderItem | null;
+  uid:     number | null;
+  onClose: () => void;
+}
+
+const STATUS_BANNER_BG: Record<OrderStatus, string> = {
+  pending:    'bg-bg-3 text-fg-2',
+  confirming: 'bg-warning-subtle text-warning',
+  confirmed:  'bg-success-subtle text-success',
+  rejected:   'bg-danger-subtle text-danger',
+  cancelled:  'bg-bg-3 text-fg-2',
+};
+
+const STATUS_HINT: Record<OrderStatus, string> = {
+  pending:    "To'lov tizimi tez orada ulanadi — sotuvchi bilan bog'lanib oling.",
+  confirming: 'Sotuvchi buyurtmangizni ko\'rib chiqmoqda.',
+  confirmed:  "Sotuvchi tasdiqlandi! Yetkazib berish/olib ketish bo'yicha kelishasiz.",
+  rejected:   'Sotuvchi buyurtmani rad etdi. Boshqa mahsulot tanlashingiz mumkin.',
+  cancelled:  "Buyurtma bekor qilindi.",
+};
+
+export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
+  const [showCancelConfirm, setCancelConfirm] = useState(false);
+  const cancelMut = useCancelOrder(uid);
+
+  // Body scroll lock + ESC
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen, onClose]);
+
+  // Reset cancel state when sheet opens
+  useEffect(() => {
+    if (isOpen) { setCancelConfirm(false); cancelMut.reset(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  useTelegramBackButton(onClose, isOpen);
+
+  useMainButton({
+    text:    'Yopish',
+    enabled: isOpen && !showCancelConfirm,
+    loading: false,
+    onClick: onClose,
+  });
+
+  if (!isOpen || !order) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <Sheet onSwipeDown={onClose}>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Yopish"
+          className="absolute top-2 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bg-3 text-fg-2 hover:bg-bg-muted z-10"
+        >
+          <RiCloseFill size={18} />
+        </button>
+
+        <StatusBanner order={order} />
+
+        <div className="px-5 pb-5 space-y-4">
+          <ProductInfo order={order} />
+          <DetailsCard order={order} />
+          {(order.contact || order.shop_phone) && <SellerCard order={order} />}
+          <ActionsBlock
+            order={order}
+            onCancel={() => { hapticImpact('light'); setCancelConfirm(true); }}
+            onClose={onClose}
+            error={cancelMut.isError ? cancelMut.error : null}
+          />
+        </div>
+      </Sheet>
+
+      <Modal
+        isOpen={showCancelConfirm}
+        onClose={() => !cancelMut.isPending && setCancelConfirm(false)}
+        title="Buyurtmani bekor qilasizmi?"
+      >
+        <p className="text-sm text-fg-3 font-body mb-4">
+          Bu amalni qaytarib bo'lmaydi. Sotuvchiga avtomatik xabar yuboriladi.
+        </p>
+        {cancelMut.isError && (
+          <p className="text-xs text-danger font-body mb-2">
+            {cancelMut.error instanceof Error ? cancelMut.error.message : 'Xato yuz berdi'}
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setCancelConfirm(false)}
+            disabled={cancelMut.isPending}
+          >
+            Yo'q
+          </Button>
+          <Button
+            variant="danger"
+            size="lg"
+            disabled={cancelMut.isPending}
+            onClick={() => {
+              if (!uid) return;
+              cancelMut.mutate(
+                { code: order.code },
+                {
+                  onSuccess: () => {
+                    hapticNotify('success');
+                    setCancelConfirm(false);
+                    onClose();
+                  },
+                  onError: () => hapticNotify('error'),
+                },
+              );
+            }}
+          >
+            {cancelMut.isPending ? 'Bekor qilinmoqda...' : 'Ha, bekor qilish'}
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Sheet surface
+// ═══════════════════════════════════════════════════════════════
+function Sheet({ onSwipeDown, children }: { onSwipeDown: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ start: number; current: number } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (!target.closest('[data-sheet-handle]')) return;
+    drag.current = { start: e.touches[0].clientY, current: 0 };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!drag.current) return;
+    const dy = e.touches[0].clientY - drag.current.start;
+    if (dy <= 0) return;
+    drag.current.current = dy;
+    if (ref.current) ref.current.style.transform = `translateY(${dy}px)`;
+  };
+  const onTouchEnd = () => {
+    if (!drag.current) return;
+    const dy = drag.current.current;
+    if (ref.current) ref.current.style.transform = '';
+    if (dy > 120) onSwipeDown();
+    drag.current = null;
+  };
+
+  return (
+    <div
+      ref={ref}
+      className="relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col animate-[slideUp_240ms_ease-out] overflow-hidden"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <div data-sheet-handle className="pt-2.5 pb-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing">
+        <div className="w-10 h-1 rounded-full bg-neutral-300" />
+      </div>
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Sub-components
+// ═══════════════════════════════════════════════════════════════
+function StatusBanner({ order }: { order: BuyerOrderItem }) {
+  const cls = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
+  const hint = STATUS_HINT[order.status] || '';
+  return (
+    <div className={cn('mx-5 mt-1 mb-4 rounded-card p-4', cls)}>
+      <div className="flex items-center gap-3">
+        <div className="text-3xl shrink-0 select-none">{order.status_icon}</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-display text-base font-bold leading-tight">{order.status_text}</p>
+          <p className="text-xs opacity-80 font-body mt-0.5">
+            {order.cancelled_at && order.status === 'cancelled' ? `Bekor qilindi: ${order.cancelled_at}` : order.created}
+          </p>
+        </div>
+      </div>
+      {hint && (
+        <p className="text-xs opacity-80 font-body mt-2.5 leading-snug">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function ProductInfo({ order }: { order: BuyerOrderItem }) {
+  const photo = order.photo_url || (order.photo_id ? `/api/photo/${order.photo_id}` : '');
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        className="shrink-0 bg-bg-3 rounded-lg overflow-hidden flex items-center justify-center"
+        style={{ width: 80, height: 80 }}
+      >
+        {photo ? (
+          <img
+            src={photo}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <RiPriceTag3Fill size={36} className="text-fg-4" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0 pt-0.5">
+        <h2 className="font-display text-base font-bold text-fg-1 leading-tight">{order.name}</h2>
+        {order.shop_name && (
+          <p className="text-xs text-fg-3 font-body inline-flex items-center gap-1 mt-1">
+            <RiStore3Fill size={12} className="text-fg-4" />
+            {order.shop_name}
+          </p>
+        )}
+        <div className="flex items-center gap-1.5 mt-1.5">
+          <Badge variant="orange" size="sm">
+            {order.type === 'solo' ? '👤 Yakka' : '👥 Guruh'}
+          </Badge>
+          <Badge variant="gray" size="sm">
+            {order.delivery === 'deliver' ? '🚚 Yetkazish' : '🏪 Olib ketish'}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailsCard({ order }: { order: BuyerOrderItem }) {
+  const copy = () => {
+    try { navigator.clipboard.writeText(order.code); hapticImpact('light'); } catch { /* ignore */ }
+  };
+  return (
+    <div className="bg-bg-2 rounded-card p-3 space-y-2">
+      <Row
+        icon={<RiFileCopyLine size={14} />}
+        label="Kod"
+        value={
+          <button
+            type="button"
+            onClick={copy}
+            className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-fg-1 hover:text-brand"
+          >
+            #{order.code}
+          </button>
+        }
+      />
+      <Row
+        icon={<RiTimeFill size={14} />}
+        label="Sana"
+        value={<span className="font-mono text-sm">{order.created}</span>}
+      />
+      {order.variant && (
+        <Row
+          icon={<RiShoppingBag3Fill size={14} />}
+          label="Variant"
+          value={<span className="font-body text-sm font-medium">{order.variant}</span>}
+        />
+      )}
+      <Row
+        icon={order.delivery === 'deliver' ? <RiTruckFill size={14} /> : <RiMapPinFill size={14} />}
+        label="Yetkazib berish"
+        value={<span className="font-body text-sm">{order.delivery === 'deliver' ? 'Yetkazib berish' : 'Olib ketish'}</span>}
+      />
+      {order.delivery === 'deliver' && order.address && (
+        <Row
+          icon={<RiMapPinFill size={14} />}
+          label="Manzil"
+          value={<span className="font-body text-sm break-words">{order.address}</span>}
+        />
+      )}
+      <div className="border-t border-border mt-1 pt-2 flex items-baseline justify-between">
+        <span className="inline-flex items-center gap-1.5 text-xs text-fg-2 font-body">
+          <RiWalletFill size={14} className="text-fg-3" />
+          Jami
+        </span>
+        <span>
+          <span className="font-mono text-xl font-bold text-brand">{formatPrice(order.amount)}</span>
+          <span className="text-xs text-fg-3 font-body ml-1">so'm</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="inline-flex items-center gap-1.5 text-xs text-fg-3 font-body shrink-0">
+        <span className="text-fg-4">{icon}</span>
+        {label}
+      </span>
+      <span className="text-right min-w-0">{value}</span>
+    </div>
+  );
+}
+
+function SellerCard({ order }: { order: BuyerOrderItem }) {
+  const contact = (order.contact || order.shop_phone || '').trim();
+  const handleClick = () => {
+    if (!contact) return;
+    hapticImpact('light');
+    if (contact.startsWith('@')) {
+      const tg = tgWebApp();
+      const url = `https://t.me/${contact.slice(1)}`;
+      if (tg?.openTelegramLink) tg.openTelegramLink(url);
+      else window.open(url, '_blank');
+    } else {
+      window.location.href = `tel:${contact.replace(/[^+\d]/g, '')}`;
+    }
+  };
+
+  const isTelegram = contact.startsWith('@');
+  return (
+    <div className="bg-bg-1 border border-border rounded-card p-3">
+      <p className="text-xs text-fg-3 font-body mb-2 inline-flex items-center gap-1.5">
+        <RiStore3Fill size={12} className="text-fg-4" />
+        Sotuvchi
+      </p>
+      <p className="font-display text-sm font-semibold text-fg-1 mb-2">{order.shop_name || '—'}</p>
+      <Button
+        variant="outline"
+        size="md"
+        fullWidth
+        iconLeft={isTelegram ? <RiTelegramFill size={16} /> : <RiPhoneFill size={16} />}
+        onClick={handleClick}
+        disabled={!contact}
+      >
+        {contact ? (isTelegram ? `Telegram: ${contact}` : contact) : 'Aloqa yo\'q'}
+      </Button>
+    </div>
+  );
+}
+
+function ActionsBlock({
+  order, onCancel, onClose, error,
+}: { order: BuyerOrderItem; onCancel: () => void; onClose: () => void; error: unknown }) {
+  const canCancel = order.status === 'pending' || order.status === 'confirming';
+  const inTelegram = isInTelegram();
+  const msg = error instanceof Error ? error.message : null;
+  return (
+    <div className="space-y-2">
+      {canCancel && (
+        <Button variant="danger" size="lg" fullWidth onClick={onCancel}>
+          🚫 Buyurtmani bekor qilish
+        </Button>
+      )}
+      {!inTelegram && (
+        <Button variant="ghost" size="md" fullWidth onClick={onClose}>
+          Yopish
+        </Button>
+      )}
+      {msg && (
+        <p className="text-xs text-danger font-body">{msg}</p>
+      )}
+    </div>
+  );
+}

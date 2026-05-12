@@ -6478,9 +6478,16 @@ def api_user_orders(uid):
             'status_text': st.get(o.get('status',''), ''),
             'status_icon': em.get(o.get('status',''), '?'),
             'created':     o.get('created',''),
+            'cancelled_at': o.get('cancelled_at',''),
             'address':     o.get('address',''),
+            'variant':     o.get('variant',''),
             'photo_id':    p.get('photo_id',''),
-            'delivery':    p.get('delivery_type','pickup'),
+            'photo_url':   p.get('photo_url',''),
+            # Order'ning o'z delivery'si afzal; eski order'lar uchun mahsulot'dan fallback
+            'delivery':    o.get('delivery') or p.get('delivery_type','pickup'),
+            'seller_id':   p.get('seller_id'),
+            'contact':     p.get('contact', ''),
+            'shop_phone':  p.get('phone', '') or p.get('contact',''),
         })
     return jsonify(result)
 
@@ -6498,6 +6505,51 @@ def api_user_profile(uid):
         'referral_count':  ref_d.get('count', 0),
         'confirmed_orders': len(my_ords),
     })
+
+@app.route('/api/order/<code>/cancel', methods=['POST'])
+def api_buyer_cancel_order(code):
+    """Xaridor o'z buyurtmasini bekor qiladi. Ownership shart;
+    faqat pending/confirming holatda bekor qila oladi."""
+    from flask import jsonify
+    data = request.get_json(silent=True) or {}
+    uid  = data.get('uid')
+    if not uid:
+        return jsonify({'ok': False, 'error': 'uid kerak'}), 400
+
+    order = orders.get(code)
+    if not order:
+        return jsonify({'ok': False, 'error': 'Buyurtma topilmadi'}), 404
+
+    # Ownership check
+    try:
+        if int(order.get('user_id', 0)) != int(uid):
+            return jsonify({'ok': False, 'error': "Ruxsat yo'q"}), 403
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'uid noto\'g\'ri'}), 400
+
+    if order.get('status') not in ('pending', 'confirming'):
+        return jsonify({'ok': False, 'error': 'Bu buyurtmani bekor qila olmaysiz'}), 409
+
+    order['status']       = 'cancelled'
+    order['cancelled_at'] = datetime.now().strftime('%d.%m.%Y %H:%M')
+    save_data()
+
+    # Sotuvchiga xabar — best-effort
+    pid = order.get('product_id', '')
+    p   = products.get(pid, {})
+    sid = p.get('seller_id')
+    if sid:
+        try:
+            send_seller(sid,
+                f"🚫 <b>Buyurtma bekor qilindi</b>\n\n"
+                f"📦 {p.get('name','—')}\n"
+                f"🆔 <code>{code}</code>\n"
+                f"💰 {fmt(order.get('amount',0))} so'm"
+            )
+        except Exception:
+            pass
+
+    return jsonify({'ok': True, 'code': code})
 
 @app.route('/api/photo/<file_id>', methods=['GET'])
 def api_photo(file_id):

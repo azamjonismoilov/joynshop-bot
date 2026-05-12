@@ -6,6 +6,7 @@ import type {
   BuyerOrderItem,
   BuyerProfileResponse,
   BuyerStatsResponse,
+  CancelOrderResponse,
   Category,
   CheckoutBody,
   CheckoutResponse,
@@ -146,6 +147,44 @@ export function useRemoveWishlist() {
     onSettled: (_data, _err, { uid }) => {
       qc.invalidateQueries({ queryKey: ['buyer', 'wishlist-ids', uid] });
       qc.invalidateQueries({ queryKey: ['buyer', 'wishlist', uid] });
+    },
+  });
+}
+
+/** POST /api/order/:code/cancel — optimistic */
+export function useCancelOrder(uid: number | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code }: { code: string }) =>
+      apiPost<CancelOrderResponse>(`/order/${code}/cancel`, { uid }),
+    onMutate: async ({ code }) => {
+      if (!uid) return { prev: undefined };
+      const key = ['buyer', 'orders', uid] as const;
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<BuyerOrderItem[]>(key);
+      if (prev) {
+        qc.setQueryData<BuyerOrderItem[]>(key, prev.map((o) =>
+          o.code === code
+            ? {
+                ...o,
+                status:       'cancelled' as const,
+                status_text:  'Bekor qilindi',
+                status_icon:  '🚫',
+                cancelled_at: new Date().toLocaleString('en-GB', {
+                  day: '2-digit', month: '2-digit', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                }).replace(',', ''),
+              }
+            : o,
+        ));
+      }
+      return { prev, key };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev && ctx.key) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: () => {
+      if (uid) qc.invalidateQueries({ queryKey: ['buyer', 'orders', uid] });
     },
   });
 }
