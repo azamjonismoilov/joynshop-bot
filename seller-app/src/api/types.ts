@@ -9,6 +9,14 @@ export interface ShopInfo {
   onboarding_status: string;
 }
 
+export interface OnboardingSteps {
+  shop_name: boolean;
+  phone:     boolean;
+  address:   boolean;
+  social:    boolean;
+  delivery:  boolean;
+}
+
 export interface MeResponse {
   uid: number;
   first_name: string;
@@ -21,6 +29,8 @@ export interface MeResponse {
   products_count: number;
   orders_pending: number;
   customers_count?: number;   // optional — older clients may not see this
+  is_onboarded?: boolean;     // optional — older backends did not return this
+  onboarding_steps?: OnboardingSteps;
   stats_summary: {
     gmv_today: number;
     gmv_week: number;

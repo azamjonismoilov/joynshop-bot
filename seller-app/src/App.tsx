@@ -7,22 +7,62 @@ import { CustomersScreen } from './screens/CustomersScreen';
 import { CustomerDetailScreen } from './screens/CustomerDetailScreen';
 import { CustomerHistoryScreen } from './screens/CustomerHistoryScreen';
 import { UIShowcase } from './screens/UIShowcase';
+import { OnboardingGate } from './components/OnboardingGate';
+import { ErrorState } from './components/ErrorState';
+import { Skeleton, SkeletonStats } from './components/ui';
+import { useSellerMe } from './api/seller';
+
+function AppShell() {
+  const me = useSellerMe();
+
+  if (me.isLoading) return <FullScreenLoader />;
+  if (me.isError)   return <ErrorState error={me.error} onRetry={() => me.refetch()} />;
+  if (!me.data)     return <ErrorState error={new Error("Ma'lumot yo'q")} onRetry={() => me.refetch()} />;
+
+  if (me.data.is_onboarded === false) {
+    return <OnboardingGate me={me.data} />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/"                          element={<DashboardScreen />} />
+      <Route path="/products"                  element={<ProductsScreen />} />
+      <Route path="/orders"                    element={<OrdersScreen />} />
+      <Route path="/orders/:code"              element={<OrderDetailScreen />} />
+      <Route path="/customers"                 element={<CustomersScreen />} />
+      <Route path="/customers/:id"             element={<CustomerDetailScreen />} />
+      <Route path="/customers/:id/history"     element={<CustomerHistoryScreen />} />
+      <Route path="/showcase"                  element={<UIShowcase />} />
+      {/* Default fallback */}
+      <Route path="*"                          element={<DashboardScreen />} />
+    </Routes>
+  );
+}
+
+function FullScreenLoader() {
+  return (
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border space-y-2">
+        <Skeleton height={28} width="60%" />
+        <Skeleton height={14} width="35%" />
+      </header>
+      <main className="px-4 mt-4 space-y-4">
+        <section className="grid grid-cols-2 gap-3">
+          <SkeletonStats />
+          <SkeletonStats />
+          <SkeletonStats />
+          <SkeletonStats />
+        </section>
+        <Skeleton height={220} rounded="xl" />
+      </main>
+    </div>
+  );
+}
 
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/"                          element={<DashboardScreen />} />
-        <Route path="/products"                  element={<ProductsScreen />} />
-        <Route path="/orders"                    element={<OrdersScreen />} />
-        <Route path="/orders/:code"              element={<OrderDetailScreen />} />
-        <Route path="/customers"                 element={<CustomersScreen />} />
-        <Route path="/customers/:id"             element={<CustomerDetailScreen />} />
-        <Route path="/customers/:id/history"     element={<CustomerHistoryScreen />} />
-        <Route path="/showcase"                  element={<UIShowcase />} />
-        {/* Default fallback */}
-        <Route path="*"                          element={<DashboardScreen />} />
-      </Routes>
+      <AppShell />
     </BrowserRouter>
   );
 }

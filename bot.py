@@ -7647,6 +7647,15 @@ def api_seller_me():
         except (ValueError, TypeError):
             pass
     customers_count = len(customers.get(str(uid), {}) or customers.get(uid, {}))
+    # Onboarding completeness — based on the first shop's required fields.
+    # is_onboarded gates Mini App access: shop_name + phone + address must be filled.
+    first_shop      = shops[0] if shops else {}
+    step_shop_name  = bool((first_shop.get('name')     or '').strip())
+    step_phone      = bool((first_shop.get('phone')    or '').strip())
+    step_address    = bool((first_shop.get('address')  or '').strip())
+    step_social     = bool(first_shop.get('social'))
+    step_delivery   = bool((first_shop.get('delivery') or '').strip())
+    is_onboarded    = step_shop_name and step_phone and step_address
     return jsonify({
         'uid':             uid,
         'first_name':      user.get('first_name', ''),
@@ -7659,6 +7668,14 @@ def api_seller_me():
         'products_count':  products_count,
         'orders_pending':  orders_pending,
         'customers_count': customers_count,
+        'is_onboarded':    is_onboarded,
+        'onboarding_steps': {
+            'shop_name': step_shop_name,
+            'phone':     step_phone,
+            'address':   step_address,
+            'social':    step_social,
+            'delivery':  step_delivery,
+        },
         'stats_summary': {
             'gmv_today': gmv_today,
             'gmv_week':  gmv_week,
