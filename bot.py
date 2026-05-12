@@ -8582,6 +8582,40 @@ def api_seller_integration_billz(shop_idx):
         },
     })
 
+@app.route('/api/v1/seller/integrations/billz', methods=['GET'])
+@require_seller
+def api_seller_integration_billz_aggregate():
+    """Billz integration aggregate — all shops' billz status."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    shop_list = []
+    connected_count = 0
+    for i, sh in enumerate(shops):
+        is_connected = bool(sh.get('billz_secret_token'))
+        if is_connected:
+            connected_count += 1
+        shop_list.append({
+            'shop_idx':        i,
+            'shop_name':       sh.get('name', ''),
+            'connected':       is_connected,
+            'billz_shop_id':   sh.get('billz_shop_id', '') if is_connected else '',
+            'billz_shop_name': sh.get('billz_shop_name', '') if is_connected else '',
+            'connected_at':    sh.get('billz_connected_at', '') if is_connected else '',
+        })
+    imported_count = 0
+    if connected_count:
+        for pid in _seller_get_pids(uid):
+            p = products.get(pid)
+            if p and p.get('source') == 'billz':
+                imported_count += 1
+    return jsonify({
+        'any_connected':   connected_count > 0,
+        'shops_total':     len(shops),
+        'shops_connected': connected_count,
+        'imported_count':  imported_count,
+        'shops':           shop_list,
+    })
+
 @app.route('/api/v1/seller/mxik/search', methods=['GET'])
 @require_seller
 def api_seller_mxik_search():

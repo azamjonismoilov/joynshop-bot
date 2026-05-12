@@ -16,6 +16,7 @@ import {
   RiBarChart2Fill,
   RiBox3Fill,
   RiClipboardFill,
+  RiSettings3Fill,
   RiShoppingBag3Fill,
   RiTeamFill,
   RiWalletFill,
@@ -121,10 +122,9 @@ export function DashboardScreen() {
             to="/customers"
           />
           <QuickAction
-            icon={<RiBarChart2Fill size={22} />}
-            label="Tahlil"
-            disabled
-            disabledNote="Tez orada"
+            icon={<RiSettings3Fill size={22} />}
+            label="Sozlamalar"
+            to="/settings"
           />
         </section>
 

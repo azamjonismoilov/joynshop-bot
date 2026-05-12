@@ -313,3 +313,90 @@ export interface CustomerHistoryResponse {
   total_spent: number;
   note:        string | null;
 }
+
+// ─── Settings: Legal ───
+export type LegalStatus = 'yatt' | 'mchj';
+
+export interface LegalInfo {
+  completed:              boolean;
+  completed_at:           string | null;
+  legal_status:           LegalStatus | null;
+  legal_status_label:     string | null;
+  stir:                   string | null;
+  bank_name:              string | null;
+  bank_account:           string | null;
+  bank_account_formatted: string | null;
+  bank_mfo:               string | null;
+  director_name:          string | null;
+}
+
+// ─── Settings: Shops ───
+export type DeliveryType = 'pickup' | 'deliver' | 'both';
+
+export interface ShopBrief {
+  idx:               number;
+  name:              string;
+  phone:             string;
+  phone2:            string;
+  address:           string;
+  social:            Record<string, string>;
+  delivery:          DeliveryType;
+  delivery_label:    string;
+  channel:           string;
+  channel_verified:  boolean;
+  verified:          boolean;
+  onboarding_status: string;
+  products_count:    number;
+  billz_connected:   boolean;
+  billz_shop_name:   string;
+}
+
+export interface ShopsResponse {
+  shops: ShopBrief[];
+}
+
+export interface ShopDetail extends ShopBrief {
+  orders_total:     number;
+  orders_confirmed: number;
+  revenue:          number;
+  last_order:       string;
+}
+
+// ─── Settings: Integrations ───
+export interface BillzShopStatus {
+  shop_idx:        number;
+  shop_name:       string;
+  connected:       boolean;
+  billz_shop_name: string;
+}
+
+export interface IntegrationItem {
+  id:               string;
+  name:             string;
+  icon:             string;
+  status:           'active' | 'coming_soon';
+  connected_shops?: number;
+  total_shops?:     number;
+  shop_statuses?:   BillzShopStatus[];
+}
+
+export interface IntegrationsResponse {
+  integrations: IntegrationItem[];
+}
+
+export interface BillzShopDetail {
+  shop_idx:        number;
+  shop_name:       string;
+  connected:       boolean;
+  billz_shop_id:   string;
+  billz_shop_name: string;
+  connected_at:    string;
+}
+
+export interface BillzIntegration {
+  any_connected:   boolean;
+  shops_total:     number;
+  shops_connected: number;
+  imported_count:  number;
+  shops:           BillzShopDetail[];
+}

@@ -6,6 +6,12 @@ import { OrderDetailScreen } from './screens/OrderDetailScreen';
 import { CustomersScreen } from './screens/CustomersScreen';
 import { CustomerDetailScreen } from './screens/CustomerDetailScreen';
 import { CustomerHistoryScreen } from './screens/CustomerHistoryScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
+import { LegalScreen } from './screens/LegalScreen';
+import { ShopsScreen } from './screens/ShopsScreen';
+import { ShopDetailScreen } from './screens/ShopDetailScreen';
+import { IntegrationsScreen } from './screens/IntegrationsScreen';
+import { BillzIntegrationScreen } from './screens/BillzIntegrationScreen';
 import { UIShowcase } from './screens/UIShowcase';
 import { OnboardingGate } from './components/OnboardingGate';
 import { ErrorState } from './components/ErrorState';
@@ -32,6 +38,12 @@ function AppShell() {
       <Route path="/customers"                 element={<CustomersScreen />} />
       <Route path="/customers/:id"             element={<CustomerDetailScreen />} />
       <Route path="/customers/:id/history"     element={<CustomerHistoryScreen />} />
+      <Route path="/settings"                          element={<SettingsScreen />} />
+      <Route path="/settings/legal"                    element={<LegalScreen />} />
+      <Route path="/settings/shops"                    element={<ShopsScreen />} />
+      <Route path="/settings/shops/:id"                element={<ShopDetailScreen />} />
+      <Route path="/settings/integrations"             element={<IntegrationsScreen />} />
+      <Route path="/settings/integrations/billz"       element={<BillzIntegrationScreen />} />
       <Route path="/showcase"                  element={<UIShowcase />} />
       {/* Default fallback */}
       <Route path="*"                          element={<DashboardScreen />} />

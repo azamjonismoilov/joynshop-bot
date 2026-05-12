@@ -15,6 +15,11 @@ import type {
   CustomersQuery,
   CustomerDetail,
   CustomerHistoryResponse,
+  LegalInfo,
+  ShopsResponse,
+  ShopDetail,
+  IntegrationsResponse,
+  BillzIntegration,
 } from './types';
 
 const FIVE_MIN = 5 * 60 * 1000;
@@ -118,5 +123,47 @@ export function useSellerCustomerHistory(cuid: string | undefined, page = 0, lim
     staleTime: THREE_MIN,
     enabled: Boolean(cuid),
     placeholderData: (prev) => prev,
+  });
+}
+
+// ─── Settings ───
+export function useSellerLegal() {
+  return useQuery({
+    queryKey: ['seller', 'legal'],
+    queryFn: () => apiGet<LegalInfo>('/seller/legal'),
+    staleTime: THREE_MIN,
+  });
+}
+
+export function useSellerShops() {
+  return useQuery({
+    queryKey: ['seller', 'shops'],
+    queryFn: () => apiGet<ShopsResponse>('/seller/shops'),
+    staleTime: THREE_MIN,
+  });
+}
+
+export function useSellerShopDetail(idx: number | undefined) {
+  return useQuery({
+    queryKey: ['seller', 'shops', 'detail', idx],
+    queryFn: () => apiGet<ShopDetail>(`/seller/shops/${idx}`),
+    staleTime: THREE_MIN,
+    enabled: idx !== undefined && Number.isFinite(idx),
+  });
+}
+
+export function useSellerIntegrations() {
+  return useQuery({
+    queryKey: ['seller', 'integrations'],
+    queryFn: () => apiGet<IntegrationsResponse>('/seller/integrations'),
+    staleTime: THREE_MIN,
+  });
+}
+
+export function useSellerBillzIntegration() {
+  return useQuery({
+    queryKey: ['seller', 'integrations', 'billz'],
+    queryFn: () => apiGet<BillzIntegration>('/seller/integrations/billz'),
+    staleTime: THREE_MIN,
   });
 }
