@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import {
   RiCloseFill,
   RiFileCopyLine,
-  RiMapPinFill,
-  RiPhoneFill,
+  RiMapPinLine,
+  RiPhoneLine,
   RiShoppingBag3Fill,
   RiStore3Fill,
   RiTelegramFill,
-  RiTimeFill,
-  RiTruckFill,
-  RiWalletFill,
+  RiTimeLine,
+  RiTruckLine,
+  RiWalletLine,
 } from '@remixicon/react';
 import { Badge, Button, Modal } from '@/components/ui';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
@@ -302,7 +302,7 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
         }
       />
       <Row
-        icon={<RiTimeFill size={14} />}
+        icon={<RiTimeLine size={14} />}
         label="Sana"
         value={<span className="font-mono text-sm">{order.created}</span>}
       />
@@ -314,25 +314,27 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
         />
       )}
       <Row
-        icon={order.delivery === 'deliver' ? <RiTruckFill size={14} /> : <RiMapPinFill size={14} />}
+        icon={order.delivery === 'deliver' ? <RiTruckLine size={14} /> : <RiMapPinLine size={14} />}
         label="Yetkazib berish"
         value={<span className="font-body text-sm">{order.delivery === 'deliver' ? 'Yetkazib berish' : 'Olib ketish'}</span>}
       />
       {order.delivery === 'deliver' && order.address && (
         <Row
-          icon={<RiMapPinFill size={14} />}
+          icon={<RiMapPinLine size={14} />}
           label="Manzil"
           value={<span className="font-body text-sm break-words">{order.address}</span>}
         />
       )}
-      <div className="border-t border-border mt-1 pt-2 flex items-baseline justify-between">
+      <div className="border-t border-border mt-2 pt-3 flex items-baseline justify-between">
         <span className="inline-flex items-center gap-1.5 text-xs text-fg-2 font-body">
-          <RiWalletFill size={14} className="text-fg-3" />
+          <RiWalletLine size={14} className="text-fg-3" />
           Jami
         </span>
-        <span>
-          <span className="font-mono text-xl font-bold text-brand">{formatPrice(order.amount)}</span>
-          <span className="text-xs text-fg-3 font-body ml-1">so'm</span>
+        <span className="flex items-baseline gap-1">
+          <span className="font-mono text-3xl font-bold tabular-nums text-brand leading-none">
+            {formatPrice(order.amount)}
+          </span>
+          <span className="text-sm text-fg-3 font-body">so'm</span>
         </span>
       </div>
     </div>
@@ -378,7 +380,7 @@ function SellerCard({ order }: { order: BuyerOrderItem }) {
         variant="outline"
         size="md"
         fullWidth
-        iconLeft={isTelegram ? <RiTelegramFill size={16} /> : <RiPhoneFill size={16} />}
+        iconLeft={isTelegram ? <RiTelegramFill size={16} /> : <RiPhoneLine size={16} />}
         onClick={handleClick}
         disabled={!contact}
       >

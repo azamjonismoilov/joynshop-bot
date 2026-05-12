@@ -1,4 +1,5 @@
 import { RiTeamFill } from '@remixicon/react';
+import { Card } from '@/components/ui';
 import { formatPrice, discountPct } from '@/lib/format';
 import { photoUrl, type ProductListItem } from '@/api/types';
 import { WishlistButton } from './WishlistButton';
@@ -19,10 +20,12 @@ export function ProductCard({ item, onClick, showWishlist = true }: Props) {
   const pct            = item.min_group > 0 ? Math.min(100, Math.round((item.count / item.min_group) * 100)) : 0;
 
   return (
-    <button
-      type="button"
+    <Card
+      padding="none"
+      interactive
       onClick={onClick}
-      className="text-left bg-bg-1 border border-border rounded-card overflow-hidden hover:border-border-strong active:scale-[0.98] transition-all duration-base"
+      aria-label={item.name}
+      className="overflow-hidden text-left"
     >
       {/* Photo */}
       <div className="relative bg-bg-3" style={{ aspectRatio: '1 / 1' }}>
@@ -47,20 +50,20 @@ export function ProductCard({ item, onClick, showWishlist = true }: Props) {
       </div>
 
       {/* Body */}
-      <div className="p-2.5 space-y-1.5">
+      <div className="p-3 space-y-1.5">
         <h3 className="font-display text-sm font-medium text-fg-1 line-clamp-2 leading-snug min-h-[2.5em]">
           {item.name || '—'}
         </h3>
 
         <div className="flex items-baseline gap-1.5">
-          <span className="font-mono text-base font-bold text-brand leading-none">
+          <span className="font-mono text-base font-bold tabular-nums text-brand leading-none">
             {formatPrice(finalPrice)}
           </span>
           <span className="text-[10px] text-fg-3 font-body">so'm</span>
         </div>
 
         {item.original_price > finalPrice && (
-          <p className="text-[11px] text-fg-4 font-mono line-through leading-tight">
+          <p className="text-[11px] text-fg-4 font-mono tabular-nums line-through leading-tight">
             {formatPrice(item.original_price)}
           </p>
         )}
@@ -81,6 +84,6 @@ export function ProductCard({ item, onClick, showWishlist = true }: Props) {
           </>
         )}
       </div>
-    </button>
+    </Card>
   );
 }

@@ -59,7 +59,7 @@ export function ProfileScreen() {
           <div className="flex items-center gap-3">
             <Avatar name={name} photoUrl={user.photo_url} size={64} />
             <div className="flex-1 min-w-0">
-              <h2 className="font-display text-lg font-bold text-fg-1 truncate">{name}</h2>
+              <h2 className="font-display text-xl font-bold text-fg-1 truncate">{name}</h2>
               {user.username
                 ? <p className="text-sm text-fg-3 font-mono">@{user.username}</p>
                 : <p className="text-xs text-fg-4 font-mono">ID: {user.id}</p>}
@@ -192,11 +192,11 @@ function StatCard({
 }: { icon: React.ReactNode; value: string; label: string; valueClass?: string }) {
   return (
     <Card padding="sm" className="text-center">
-      <div className="inline-flex items-center justify-center mb-0.5">{icon}</div>
-      <p className={cn('font-mono text-base font-bold leading-tight', valueClass || 'text-fg-1')}>
-        {value === '—' ? <Skeleton width={32} height={16} className="mx-auto" /> : value}
+      <div className="inline-flex items-center justify-center mb-1">{icon}</div>
+      <p className={cn('font-mono text-2xl font-bold tabular-nums leading-none', valueClass || 'text-fg-1')}>
+        {value === '—' ? <Skeleton width={40} height={24} className="mx-auto" /> : value}
       </p>
-      <p className="text-[10px] text-fg-3 font-body leading-tight mt-0.5">{label}</p>
+      <p className="text-[11px] text-fg-3 font-body leading-tight mt-1">{label}</p>
     </Card>
   );
 }

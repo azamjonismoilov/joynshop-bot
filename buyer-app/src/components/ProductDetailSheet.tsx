@@ -268,16 +268,18 @@ function PriceBlock({ data, disc }: { data: ProductDetail; disc: number }) {
         </p>
       )}
       {showGroup && data.group_price > 0 && (
-        <p className="font-body text-base">
-          Guruh narxi:{' '}
-          <span className="font-mono font-bold text-brand text-xl">
-            {formatPrice(data.group_price)}
-          </span>{' '}
-          <span className="text-fg-3 text-sm">so'm</span>
-          {disc > 0 && (
-            <Badge variant="green" size="sm" className="ml-2">−{disc}%</Badge>
-          )}
-        </p>
+        <div>
+          <p className="text-xs text-fg-3 font-body font-medium uppercase tracking-wide mb-1">
+            Guruh narxi
+          </p>
+          <p className="flex items-baseline gap-2 flex-wrap">
+            <span className="font-mono text-3xl font-bold tabular-nums text-brand leading-none">
+              {formatPrice(data.group_price)}
+            </span>
+            <span className="text-sm text-fg-3 font-body">so'm</span>
+            {disc > 0 && <Badge variant="green" size="sm">−{disc}%</Badge>}
+          </p>
+        </div>
       )}
       {showSolo && data.solo_price > 0 && (
         <p className="font-body text-sm text-fg-2">

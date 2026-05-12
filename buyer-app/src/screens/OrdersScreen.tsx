@@ -131,7 +131,7 @@ export function OrdersScreen() {
               description="Boshqa filtrni tanlab ko'ring."
             />
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {filtered.map((o) => (
                 <OrderCard
                   key={o.code}
@@ -156,7 +156,7 @@ export function OrdersScreen() {
 
 function ListSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {Array.from({ length: 4 }).map((_, i) => (
         <Card key={i} padding="sm">
           <div className="flex items-start gap-3">

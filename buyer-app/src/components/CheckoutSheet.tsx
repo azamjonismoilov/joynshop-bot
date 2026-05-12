@@ -467,11 +467,13 @@ function ConfirmStep({
           </div>
         ))}
       </div>
-      <div className="rounded-card bg-brand-subtle px-3 py-3 flex items-baseline justify-between">
+      <div className="rounded-card bg-brand-subtle px-4 py-4 flex items-baseline justify-between">
         <span className="text-sm font-display font-medium text-fg-2">Jami</span>
-        <span>
-          <span className="font-mono text-2xl font-bold text-brand">{formatPrice(amount)}</span>
-          <span className="text-sm text-fg-3 font-body ml-1">so'm</span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="font-mono text-4xl font-bold tabular-nums text-brand leading-none">
+            {formatPrice(amount)}
+          </span>
+          <span className="text-sm text-fg-3 font-body">so'm</span>
         </span>
       </div>
       <p className="text-xs text-fg-3 font-body inline-flex items-start gap-1.5">

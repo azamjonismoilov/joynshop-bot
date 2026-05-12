@@ -1,7 +1,7 @@
 import {
-  RiMapPinFill,
+  RiMapPinLine,
   RiStore3Fill,
-  RiTruckFill,
+  RiTruckLine,
 } from '@remixicon/react';
 import { Badge, Card } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
@@ -28,11 +28,8 @@ export function OrderCard({ order, onClick }: Props) {
   const photo   = order.photo_url || (order.photo_id ? `/api/photo/${order.photo_id}` : '');
 
   return (
-    <Card
-      padding="sm"
-      className="cursor-pointer hover:border-border-strong transition-colors duration-base"
-      onClick={onClick}
-    >
+    <Card padding="sm" interactive onClick={onClick} aria-label={`Buyurtma ${order.code}`}>
+
       <div className="flex items-start gap-3">
         {/* Photo */}
         <div
@@ -73,8 +70,8 @@ export function OrderCard({ order, onClick }: Props) {
             order.delivery === 'deliver' ? 'text-fg-2' : 'text-fg-3',
           )}>
             {order.delivery === 'deliver'
-              ? <RiTruckFill   size={11} className="text-brand shrink-0" />
-              : <RiMapPinFill  size={11} className="text-fg-4 shrink-0" />}
+              ? <RiTruckLine   size={11} className="text-brand shrink-0" />
+              : <RiMapPinLine  size={11} className="text-fg-4 shrink-0" />}
             <span className="truncate">
               {order.delivery === 'deliver'
                 ? (order.address || 'Yetkazib berish')
@@ -83,10 +80,10 @@ export function OrderCard({ order, onClick }: Props) {
           </p>
 
           {/* Bottom row: created + amount */}
-          <div className="flex items-baseline justify-between mt-1.5 gap-2">
+          <div className="flex items-baseline justify-between mt-2 gap-2">
             <span className="text-[11px] text-fg-4 font-mono">{order.created}</span>
             <span>
-              <span className="font-mono text-base font-bold text-brand">{formatPrice(order.amount)}</span>
+              <span className="font-mono text-lg font-bold tabular-nums text-brand">{formatPrice(order.amount)}</span>
               <span className="text-xs text-fg-3 font-body ml-1">so'm</span>
             </span>
           </div>

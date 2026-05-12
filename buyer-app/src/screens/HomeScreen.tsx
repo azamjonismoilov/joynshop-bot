@@ -114,8 +114,6 @@ export function HomeScreen() {
     <div className="min-h-screen bg-bg-2 pb-28">
       <HomeHeader search={search} onSearch={setSearch} />
 
-      <Banner />
-
       <FilterBar
         value={filter}
         onChange={(f) => { hapticSelection(); setFilter(f); }}
@@ -131,7 +129,7 @@ export function HomeScreen() {
       <StatsRow active={stats.active} ending={stats.ending} avgDisc={stats.avgDisc} isLoading={products.isLoading} />
 
       {/* Body */}
-      <section className="px-4 mt-3">
+      <section className="px-4 mt-5">
         <h2 className="font-display text-base font-semibold text-fg-1 mb-3">
           {SECTION_TITLES[filter]}
         </h2>
@@ -211,36 +209,13 @@ function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  Banner — gradient
-// ═══════════════════════════════════════════════════════════════
-function Banner() {
-  return (
-    <div className="mx-4 mt-3 rounded-2xl overflow-hidden relative bg-gradient-to-br from-brand to-brand-active text-white px-4 py-3.5 flex items-center justify-between">
-      <div className="relative z-10 pr-2">
-        <p className="font-display text-base font-bold leading-tight">
-          Birgalikda — arzon!
-        </p>
-        <p className="text-[11px] text-white/85 font-body mt-0.5">
-          Do'stlaringiz bilan xarid qiling — 40% gacha tejang
-        </p>
-      </div>
-      <div className="text-3xl select-none relative z-10">🛍</div>
-      <div
-        aria-hidden
-        className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10"
-      />
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
 //  Filter bar (4 chips)
 // ═══════════════════════════════════════════════════════════════
 function FilterBar({
   value, onChange,
 }: { value: Filter; onChange: (v: Filter) => void }) {
   return (
-    <div className="flex gap-1.5 px-4 mt-3 overflow-x-auto no-scrollbar">
+    <div className="flex gap-1.5 px-4 mt-4 overflow-x-auto no-scrollbar">
       {FILTERS.map((f) => {
         const active = value === f.key;
         return (
@@ -331,7 +306,7 @@ function StatsRow({
 }: { active: number; ending: number; avgDisc: number; isLoading: boolean }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-2 px-4 mt-3">
+      <div className="grid grid-cols-3 gap-3 px-4 mt-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} height={70} rounded="xl" />
         ))}
@@ -339,7 +314,7 @@ function StatsRow({
     );
   }
   return (
-    <section className="grid grid-cols-3 gap-2 px-4 mt-3">
+    <section className="grid grid-cols-3 gap-3 px-4 mt-4">
       <StatCard
         icon={<RiFireFill size={18} className="text-brand" />}
         value={active}
@@ -361,10 +336,10 @@ function StatsRow({
 
 function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number | string; label: string }) {
   return (
-    <div className="bg-bg-1 border border-border rounded-xl p-2.5 text-center">
-      <div className="inline-flex items-center justify-center mb-0.5">{icon}</div>
-      <p className="font-mono text-base font-bold text-fg-1 leading-tight">{value}</p>
-      <p className="text-[10px] text-fg-3 font-body leading-tight mt-0.5">{label}</p>
+    <div className="bg-bg-1 border border-border/60 shadow-xs rounded-xl p-3 text-center">
+      <div className="inline-flex items-center justify-center mb-1">{icon}</div>
+      <p className="font-mono text-2xl font-bold tabular-nums text-fg-1 leading-none">{value}</p>
+      <p className="text-[11px] text-fg-3 font-body leading-tight mt-1">{label}</p>
     </div>
   );
 }
