@@ -10,8 +10,11 @@ const tg = tgWebApp();
 if (tg) {
   try { tg.ready(); } catch { /* ignore */ }
   try { tg.expand(); } catch { /* ignore */ }
-  // Brand color sync — Telegram chrome ham orange bo'ladi (immersive UI)
-  try { tg.setHeaderColor?.('#FA7319'); } catch { /* ignore */ }   // brand
+  // Telegram chrome rangini moslashtirish — close va menu ikonlari kontrasti
+  // muhim. secondary_bg_color light theme'da oq/neutral, dark'da qoramtir;
+  // Telegram avtomatik ikon ranglarini moslashtiradi. AppHeader o'zining
+  // brand orange'ini ichkarida saqlaydi.
+  try { tg.setHeaderColor?.('secondary_bg_color'); } catch { /* ignore */ }
   try { tg.setBackgroundColor?.('#F5F5F4'); } catch { /* ignore */ } // bg-bg-2
   try { tg.setBottomBarColor?.('#FFFFFF'); } catch { /* ignore */ }  // Bot API 7.10+
 }
