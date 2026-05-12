@@ -10,15 +10,22 @@ import {
 } from 'recharts';
 import {
   RiAddFill,
-  RiArrowDownSFill,
   RiArrowRightSFill,
-  RiArrowUpSFill,
   RiBarChart2Fill,
   RiBox3Fill,
+  RiCheckboxCircleFill,
   RiClipboardFill,
+  RiShoppingBag3Fill,
+  RiTeamFill,
   RiWalletFill,
 } from '@remixicon/react';
-import { Card, Button, Skeleton, SkeletonStats, SkeletonListItem } from '@/components/ui';
+import {
+  Button,
+  Card,
+  Skeleton,
+  SkeletonListItem,
+  SkeletonStats,
+} from '@/components/ui';
 import { useSellerMe, useSellerStats, useSellerStatsChart } from '@/api/seller';
 import { ErrorState } from '@/components/ErrorState';
 import { openSellerBotDeeplink } from '@/lib/telegram';
@@ -31,15 +38,34 @@ import {
   formatPriceShort,
   getInitials,
 } from '@/lib/format';
-import type { ChartDays } from '@/api/types';
+import type {
+  ChartDays,
+  StatsRange,
+  StatsResponse,
+  TopCustomer,
+  TopProduct,
+} from '@/api/types';
+
+interface PeriodOption {
+  key:   StatsRange;
+  label: string;
+  days:  ChartDays;
+}
+
+const PERIODS: PeriodOption[] = [
+  { key: 'today', label: 'Bugun',  days: 7  },
+  { key: 'week',  label: '7 kun',  days: 7  },
+  { key: 'month', label: '30 kun', days: 30 },
+  { key: 'all',   label: '90 kun', days: 90 },
+];
 
 export function DashboardScreen() {
-  const [chartDays, setChartDays] = useState<ChartDays>(7);
+  const [period, setPeriod] = useState<PeriodOption>(PERIODS[1]); // 7 kun
   const me    = useSellerMe();
-  const stats = useSellerStats('week');
-  const chart = useSellerStatsChart(chartDays);
+  const stats = useSellerStats(period.key);
+  const chart = useSellerStatsChart(period.days);
 
-  // me — bu critical, agar fail bo'lsa butun screen ErrorState
+  // me — critical, full-screen error/loading
   if (me.isLoading) return <DashboardSkeleton />;
   if (me.isError)  return <ErrorState error={me.error} onRetry={() => me.refetch()} />;
   if (!me.data)    return <ErrorState error={new Error("Ma'lumot yo'q")} onRetry={() => me.refetch()} />;
@@ -48,56 +74,37 @@ export function DashboardScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      {/* ─── A. Header ─── */}
-      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border">
-        <h1 className="font-display text-2xl font-semibold text-fg-1">
-          Salom, {profile.first_name || 'sotuvchi'} 👋
-        </h1>
-        <p className="text-sm text-fg-3 mt-0.5 font-body">
+      {/* Compact greeting */}
+      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
+        <p className="text-sm font-body text-fg-2">
+          Salom, <span className="font-semibold text-fg-1">{profile.first_name || 'sotuvchi'}</span> 👋
+        </p>
+        <p className="text-xs text-fg-3 mt-0.5 font-body">
           {formatDateUz(new Date())}
         </p>
       </header>
 
       <main className="px-4 mt-4 space-y-4">
-        {/* ─── B. Stats grid 2x2 ─── */}
-        <section className="grid grid-cols-2 gap-3">
-          <StatCard
-            icon={<RiWalletFill size={20} />}
-            iconBg="bg-brand-subtle"
-            iconColor="text-brand"
-            label="GMV bugun"
-            value={formatPriceShort(profile.stats_summary.gmv_today)}
-            valueSuffix="so'm"
-          />
-          <StatCard
-            icon={<RiBarChart2Fill size={20} />}
-            iconBg="bg-secondary-subtle"
-            iconColor="text-secondary"
-            label="GMV hafta"
-            value={formatPriceShort(profile.stats_summary.gmv_week)}
-            valueSuffix="so'm"
-          />
-          <StatCard
-            icon={<RiClipboardFill size={20} />}
-            iconBg="bg-warning-subtle"
-            iconColor="text-warning"
-            label="Buyurtmalar"
-            value={String(profile.orders_pending)}
-            valueSuffix={profile.orders_pending ? 'kutilmoqda' : ''}
-            highlight={profile.orders_pending > 0}
-            linkTo="/orders?filter=confirming"
-          />
-          <StatCard
-            icon={<RiBox3Fill size={20} />}
-            iconBg="bg-success-subtle"
-            iconColor="text-success"
-            label="Faol mahsulotlar"
-            value={String(profile.products_count)}
-            linkTo="/products"
-          />
-        </section>
+        {/* Period filter */}
+        <PeriodFilter value={period} onChange={setPeriod} />
 
-        {/* ─── B2. No-products banner ─── */}
+        {/* Stats grid (period-aware) */}
+        {stats.isLoading ? (
+          <StatsGridSkeleton />
+        ) : stats.isError || !stats.data ? (
+          <Card padding="md">
+            <div className="text-center py-4">
+              <p className="text-sm text-fg-3 font-body mb-2">Statistika yuklanmadi</p>
+              <Button variant="ghost" size="sm" onClick={() => stats.refetch()}>
+                Qayta urinish
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <StatsGrid data={stats.data} />
+        )}
+
+        {/* No-products banner */}
         {profile.products_count === 0 && (
           <Card padding="md">
             <div className="flex items-start gap-3">
@@ -125,51 +132,39 @@ export function DashboardScreen() {
           </Card>
         )}
 
-        {/* ─── C. Chart ─── */}
+        {/* Chart (period-aware) */}
         <Card padding="md">
-          <div className="flex items-start justify-between mb-3 gap-3">
-            <div className="min-w-0">
-              <h2 className="font-display text-base font-semibold text-fg-1">
-                Daromad grafigi
-              </h2>
-              {chart.data && (
-                <p className="text-xs text-fg-3 mt-0.5 font-body">
-                  Jami: <span className="font-mono font-medium text-fg-2">
-                    {formatPrice(chart.data.total_gmv)}
-                  </span> so'm
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <Link
-                to="/stats"
-                className="inline-flex items-center gap-0.5 text-xs font-medium text-brand hover:text-brand-hover"
-              >
-                Batafsil
-                <RiArrowRightSFill size={14} />
-              </Link>
-              <RangeTabs value={chartDays} onChange={setChartDays} />
-            </div>
+          <div className="mb-3">
+            <h2 className="font-display text-base font-semibold text-fg-1">
+              Daromad grafigi
+            </h2>
+            {chart.data && (
+              <p className="text-xs text-fg-3 mt-0.5 font-body">
+                Jami: <span className="font-mono font-medium text-fg-2">
+                  {formatPrice(chart.data.total_gmv)}
+                </span> so'm
+              </p>
+            )}
           </div>
           <ChartBody chart={chart} />
         </Card>
 
-        {/* ─── D. Top mahsulotlar ─── */}
+        {/* Top products */}
         <Card padding="md">
           <SectionHeader
             title="Top mahsulotlar"
-            subtitle="Hafta bo'yicha daromad bo'yicha"
+            subtitle="Davr bo'yicha daromad"
             linkTo="/products"
             linkLabel="Hammasi"
           />
           <TopProductsList stats={stats} />
         </Card>
 
-        {/* ─── E. Top mijozlar ─── */}
+        {/* Top customers */}
         <Card padding="md">
           <SectionHeader
             title="Top mijozlar"
-            subtitle="Hafta bo'yicha xarajatlar bo'yicha"
+            subtitle="Davr bo'yicha xarajatlar"
             linkTo="/customers"
             linkLabel="Hammasi"
           />
@@ -181,79 +176,135 @@ export function DashboardScreen() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-//  Subcomponents
+//  Period filter
 // ════════════════════════════════════════════════════════════════════
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  label: string;
-  value: string;
-  valueSuffix?: string;
-  trend?: number; // +/-% (kelajakda)
-  highlight?: boolean;
-  linkTo?: string;
-}
-
-function StatCard({ icon, iconBg, iconColor, label, value, valueSuffix, trend, highlight, linkTo }: StatCardProps) {
-  const inner = (
-    <Card
-      padding="md"
-      className={cn(
-        highlight && 'ring-2 ring-warning ring-offset-2 ring-offset-bg-2',
-        linkTo && 'cursor-pointer hover:border-border-strong transition-colors duration-base',
-      )}
-    >
-      <div className="flex items-start justify-between">
-        <div className={cn('inline-flex items-center justify-center w-9 h-9 rounded-lg', iconBg, iconColor)}>
-          {icon}
-        </div>
-        {trend !== undefined && <TrendBadge value={trend} />}
-      </div>
-      <p className="text-xs text-fg-3 mt-3 font-body">{label}</p>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className="font-mono text-2xl font-bold text-fg-1 leading-none">{value}</span>
-        {valueSuffix && <span className="text-xs text-fg-3 font-body">{valueSuffix}</span>}
-      </div>
-    </Card>
-  );
-  return linkTo ? <Link to={linkTo} className="block">{inner}</Link> : inner;
-}
-
-function TrendBadge({ value }: { value: number }) {
-  const positive = value >= 0;
-  const Icon = positive ? RiArrowUpSFill : RiArrowDownSFill;
+function PeriodFilter({
+  value, onChange,
+}: { value: PeriodOption; onChange: (p: PeriodOption) => void }) {
   return (
-    <span className={cn(
-      'inline-flex items-center gap-0.5 text-xs font-medium font-mono',
-      positive ? 'text-success' : 'text-danger',
-    )}>
-      <Icon size={14} />
-      {Math.abs(value)}%
-    </span>
-  );
-}
-
-function RangeTabs({ value, onChange }: { value: ChartDays; onChange: (v: ChartDays) => void }) {
-  const opts: ChartDays[] = [7, 30, 90];
-  return (
-    <div className="flex gap-1 bg-bg-3 rounded-md p-0.5">
-      {opts.map((d) => (
+    <div className="flex gap-1 bg-bg-3 rounded-md p-0.5 overflow-x-auto">
+      {PERIODS.map((p) => (
         <button
-          key={d}
-          onClick={() => onChange(d)}
+          key={p.key}
+          onClick={() => onChange(p)}
           className={cn(
-            'px-2.5 py-1 text-xs font-medium font-display rounded-sm transition-colors duration-base',
-            value === d ? 'bg-bg-1 text-fg-1 shadow-xs' : 'text-fg-3 hover:text-fg-2',
+            'flex-1 px-3 py-1.5 text-xs font-medium font-display rounded-sm transition-colors duration-base whitespace-nowrap',
+            value.key === p.key ? 'bg-bg-1 text-fg-1 shadow-xs' : 'text-fg-3 hover:text-fg-2',
           )}
         >
-          {d}d
+          {p.label}
         </button>
       ))}
     </div>
   );
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  Stats grid — 6 cards (2x3 mobile, 3x2 sm+)
+// ════════════════════════════════════════════════════════════════════
+
+function StatsGrid({ data }: { data: StatsResponse }) {
+  const conversionPct = Math.round(data.conversion_rate * 100);
+  return (
+    <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <StatCard
+        icon={<RiWalletFill size={20} />}
+        iconBg="bg-brand-subtle"
+        iconColor="text-brand"
+        label="GMV"
+        value={formatPriceShort(data.gmv)}
+        valueSuffix="so'm"
+        valueColor="text-brand"
+      />
+      <StatCard
+        icon={<RiClipboardFill size={20} />}
+        iconBg="bg-secondary-subtle"
+        iconColor="text-secondary"
+        label="Buyurtmalar"
+        value={String(data.orders_confirmed)}
+      />
+      <StatCard
+        icon={<RiBarChart2Fill size={20} />}
+        iconBg="bg-success-subtle"
+        iconColor="text-success"
+        label="O'rtacha chek"
+        value={formatPriceShort(data.avg_check)}
+        valueSuffix="so'm"
+      />
+      <StatCard
+        icon={<RiTeamFill size={20} />}
+        iconBg="bg-purple-subtle"
+        iconColor="text-purple"
+        label="Mijozlar"
+        value={String(data.buyers_unique)}
+      />
+      <StatCard
+        icon={<RiShoppingBag3Fill size={20} />}
+        iconBg="bg-warning-subtle"
+        iconColor="text-warning"
+        label="Sotilgan mahsulot"
+        value={String(data.groups_filled)}
+      />
+      <StatCard
+        icon={<RiCheckboxCircleFill size={20} />}
+        iconBg="bg-success-subtle"
+        iconColor="text-success"
+        label="Tasdiqlangan"
+        value={`${conversionPct}%`}
+      />
+    </section>
+  );
+}
+
+function StatsGridSkeleton() {
+  return (
+    <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <SkeletonStats /><SkeletonStats /><SkeletonStats />
+      <SkeletonStats /><SkeletonStats /><SkeletonStats />
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  Stat card
+// ════════════════════════════════════════════════════════════════════
+
+interface StatCardProps {
+  icon:        React.ReactNode;
+  iconBg:      string;
+  iconColor:   string;
+  label:       string;
+  value:       string;
+  valueSuffix?: string;
+  valueColor?: string;
+}
+
+function StatCard({
+  icon, iconBg, iconColor, label, value, valueSuffix, valueColor,
+}: StatCardProps) {
+  return (
+    <Card padding="md">
+      <div className={cn('inline-flex items-center justify-center w-9 h-9 rounded-lg', iconBg, iconColor)}>
+        {icon}
+      </div>
+      <p className="text-xs text-fg-3 mt-3 font-body">{label}</p>
+      <div className="mt-1 flex items-baseline gap-1">
+        <span className={cn(
+          'font-mono text-2xl font-bold leading-none',
+          valueColor || 'text-fg-1',
+        )}>
+          {value}
+        </span>
+        {valueSuffix && <span className="text-xs text-fg-3 font-body">{valueSuffix}</span>}
+      </div>
+    </Card>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  Chart
+// ════════════════════════════════════════════════════════════════════
 
 function ChartBody({ chart }: { chart: ReturnType<typeof useSellerStatsChart> }) {
   if (chart.isLoading || !chart.data) {
@@ -327,6 +378,10 @@ function ChartBody({ chart }: { chart: ReturnType<typeof useSellerStatsChart> })
   );
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  Top lists
+// ════════════════════════════════════════════════════════════════════
+
 function SectionHeader({
   title, subtitle, linkTo, linkLabel,
 }: { title: string; subtitle?: string; linkTo?: string; linkLabel?: string }) {
@@ -360,22 +415,24 @@ function TopProductsList({ stats }: { stats: ReturnType<typeof useSellerStats> }
   if (stats.isError || !stats.data) {
     return <p className="text-sm text-fg-3 py-4 text-center">Ma'lumot yo'q</p>;
   }
-  const top = stats.data.top_products;
+  const top: TopProduct[] = stats.data.top_products;
   if (top.length === 0) {
     return (
       <div className="text-center py-6">
-        <p className="text-sm text-fg-3 font-body">Hali sotilgan mahsulot yo'q</p>
+        <p className="text-sm text-fg-3 font-body">Bu davrda sotuv yo'q</p>
       </div>
     );
   }
   return (
     <ul className="divide-y divide-border">
-      {top.map((p, i) => (
+      {top.slice(0, 5).map((p, i) => (
         <li key={p.id} className="flex items-center gap-3 py-2.5">
           <Rank n={i + 1} />
           <div className="flex-1 min-w-0">
             <p className="font-display text-sm font-medium text-fg-1 truncate">{p.name}</p>
-            <p className="text-xs text-fg-3 font-body">{p.sold} ta sotildi</p>
+            <p className="text-xs text-fg-3 font-body">
+              <span className="font-mono">{p.sold}</span> ta sotildi
+            </p>
           </div>
           <span className="font-mono text-sm font-semibold text-brand whitespace-nowrap">
             {formatPriceShort(p.revenue)}
@@ -397,22 +454,24 @@ function TopCustomersList({ stats }: { stats: ReturnType<typeof useSellerStats> 
   if (stats.isError || !stats.data) {
     return <p className="text-sm text-fg-3 py-4 text-center">Ma'lumot yo'q</p>;
   }
-  const top = stats.data.top_customers;
+  const top: TopCustomer[] = stats.data.top_customers;
   if (top.length === 0) {
     return (
       <div className="text-center py-6">
-        <p className="text-sm text-fg-3 font-body">Hali mijoz yo'q</p>
+        <p className="text-sm text-fg-3 font-body">Bu davrda mijoz yo'q</p>
       </div>
     );
   }
   return (
     <ul className="divide-y divide-border">
-      {top.map((c) => (
+      {top.slice(0, 5).map((c) => (
         <li key={c.cuid} className="flex items-center gap-3 py-2.5">
           <Avatar name={c.name} size={36} />
           <div className="flex-1 min-w-0">
             <p className="font-display text-sm font-medium text-fg-1 truncate">{c.name}</p>
-            <p className="text-xs text-fg-3 font-body">{c.orders} ta xarid</p>
+            <p className="text-xs text-fg-3 font-body">
+              <span className="font-mono">{c.orders}</span> ta xarid
+            </p>
           </div>
           <span className="font-mono text-sm font-semibold text-brand whitespace-nowrap">
             {formatPriceShort(c.spent)}
@@ -461,16 +520,15 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border space-y-2">
-        <Skeleton height={28} width="60%" />
-        <Skeleton height={14} width="35%" />
+      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border space-y-2">
+        <Skeleton height={16} width="50%" />
+        <Skeleton height={12} width="30%" />
       </header>
       <main className="px-4 mt-4 space-y-4">
-        <section className="grid grid-cols-2 gap-3">
-          <SkeletonStats />
-          <SkeletonStats />
-          <SkeletonStats />
-          <SkeletonStats />
+        <Skeleton height={32} rounded="md" />
+        <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <SkeletonStats /><SkeletonStats /><SkeletonStats />
+          <SkeletonStats /><SkeletonStats /><SkeletonStats />
         </section>
         <Skeleton height={220} rounded="xl" />
         <Skeleton height={280} rounded="xl" />

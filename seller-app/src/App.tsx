@@ -6,7 +6,6 @@ import { OrderDetailScreen } from './screens/OrderDetailScreen';
 import { CustomersScreen } from './screens/CustomersScreen';
 import { CustomerDetailScreen } from './screens/CustomerDetailScreen';
 import { CustomerHistoryScreen } from './screens/CustomerHistoryScreen';
-import { StatsScreen } from './screens/StatsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LegalScreen } from './screens/LegalScreen';
 import { ShopsScreen } from './screens/ShopsScreen';
@@ -55,7 +54,6 @@ function AppShell() {
           <Route path="/customers"                 element={<CustomersScreen />} />
           <Route path="/customers/:id"             element={<CustomerDetailScreen />} />
           <Route path="/customers/:id/history"     element={<CustomerHistoryScreen />} />
-          <Route path="/stats"                             element={<StatsScreen />} />
           <Route path="/settings"                          element={<SettingsScreen />} />
           <Route path="/settings/legal"                    element={<LegalScreen />} />
           <Route path="/settings/shops"                    element={<ShopsScreen />} />
