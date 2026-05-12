@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   RiBox3Fill,
   RiFireFill,
@@ -13,8 +13,10 @@ import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailSheet } from '@/components/ProductDetailSheet';
+import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { cn } from '@/lib/cn';
 import { hapticSelection } from '@/lib/haptic';
+import { tgWebApp } from '@/lib/telegram';
 
 type Filter = 'all' | 'hot' | 'almost' | 'new';
 
@@ -33,6 +35,50 @@ export function HomeScreen() {
   const [category, setCategory] = useState<string>('all');
   const [search,   setSearch]   = useState('');
   const [openPid,  setOpenPid]  = useState<string | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutType, setCheckoutType] = useState<'group' | 'solo'>('group');
+
+  // Deep link parsing — mount paytida bir marta
+  const deepLinkProcessed = useRef(false);
+  useEffect(() => {
+    if (deepLinkProcessed.current) return;
+    deepLinkProcessed.current = true;
+
+    let pid: string | null = null;
+    let type: 'group' | 'solo' = 'group';
+    let autoCheckout = false;
+
+    // 1. Telegram start_param: buy_PID_TYPE
+    const startParam = tgWebApp()?.initDataUnsafe?.start_param || '';
+    if (startParam.startsWith('buy_')) {
+      const parts = startParam.slice(4).split('_');
+      pid  = parts[0] || null;
+      type = parts[1] === 'solo' ? 'solo' : 'group';
+      autoCheckout = true;
+    }
+
+    // 2. URL query — bot.py kanal post URL'lari shu format'da
+    if (!pid) {
+      const params = new URLSearchParams(window.location.search);
+      const qpid   = params.get('pid');
+      if (params.get('action') === 'buy' && qpid) {
+        pid  = qpid;
+        type = params.get('type') === 'solo' ? 'solo' : 'group';
+        autoCheckout = true;
+      }
+    }
+
+    if (pid) {
+      setOpenPid(pid);
+      if (autoCheckout) {
+        // Detail sheet birinchi ko'rinsin, keyin checkout
+        setTimeout(() => {
+          setCheckoutType(type);
+          setShowCheckout(true);
+        }, 400);
+      }
+    }
+  }, []);
 
   // Stats — products dan derive
   const stats = useMemo(() => {
@@ -112,11 +158,18 @@ export function HomeScreen() {
         )}
       </section>
 
-      {/* Bottom sheet */}
+      {/* Modal stack — Detail birinchi, Checkout ustida */}
       <ProductDetailSheet
-        isOpen={!!openPid}
+        isOpen={!!openPid && !showCheckout}
         pid={openPid}
         onClose={() => setOpenPid(null)}
+        onBuyClick={(t) => { setCheckoutType(t); setShowCheckout(true); }}
+      />
+      <CheckoutSheet
+        isOpen={showCheckout}
+        pid={openPid}
+        defaultType={checkoutType}
+        onClose={() => setShowCheckout(false)}
       />
     </div>
   );

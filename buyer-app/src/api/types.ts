@@ -100,12 +100,26 @@ export interface BuyerProfileResponse {
   confirmed_orders: number;
 }
 
-/** /api/checkout javobi */
+/** /api/checkout payload */
+export interface CheckoutBody {
+  product_id: string;
+  user_id:    number;
+  user_name?: string;
+  type:       'group' | 'solo';
+  variant?:   string;
+  delivery:   'pickup' | 'deliver';
+  address?:   string;
+}
+
+/** /api/checkout javobi — Paylov uchun strategik ochiq tuzilma */
+export type PaymentProvider = 'mock' | 'paylov' | 'click' | 'payme' | 'uzum';
+
 export interface CheckoutResponse {
-  ok:            boolean;
-  code?:         string;
-  error?:        string;
-  invoice_link?: string;
+  ok:               true;
+  code:             string;
+  amount:           number;
+  payment_url:      string;
+  payment_provider: PaymentProvider;
 }
 
 /** Photo URL'ni file_id dan yasash — server-side proxy */

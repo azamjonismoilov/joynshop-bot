@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
-  RiHeart3Fill,
   RiShoppingBag3Fill,
   RiUser3Fill,
 } from '@remixicon/react';
 import { HomeScreen } from './screens/HomeScreen';
+import { WishlistScreen } from './screens/WishlistScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { BottomNav } from './components/BottomNav';
 
@@ -13,17 +13,7 @@ function AppShell() {
     <>
       <Routes>
         <Route path="/"          element={<HomeScreen />} />
-        <Route
-          path="/wishlist"
-          element={
-            <PlaceholderScreen
-              tagline="Saqlanganlar"
-              icon={<RiHeart3Fill size={36} />}
-              title="Saqlangan mahsulotlar"
-              hint="Sprint 3'da ulanadi — yoqtirgan mahsulotlaringiz ro'yxati."
-            />
-          }
-        />
+        <Route path="/wishlist" element={<WishlistScreen />} />
         <Route
           path="/orders"
           element={

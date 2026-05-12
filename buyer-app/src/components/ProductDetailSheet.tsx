@@ -15,13 +15,17 @@ import type { ProductDetail } from '@/api/types';
 import { cn } from '@/lib/cn';
 import { discountPct, formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
-import { hapticImpact, hapticNotify } from '@/lib/haptic';
+import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
+import { hapticImpact } from '@/lib/haptic';
 import { isInTelegram } from '@/lib/telegram';
 
 interface Props {
-  isOpen:  boolean;
-  pid:     string | null;
-  onClose: () => void;
+  isOpen:     boolean;
+  pid:        string | null;
+  onClose:    () => void;
+  /** Buyurtma berish tugmasi bosilganda — parent CheckoutSheet'ni ochadi.
+   * Sale type ham uzatiladi (product.sale_type asosida). */
+  onBuyClick?: (type: 'group' | 'solo') => void;
 }
 
 /**
@@ -32,7 +36,7 @@ interface Props {
  * - Telegram MainButton — "Guruhga qo'shilish" / "Sotib olish"
  *   (Sprint 2 da checkout flow ulanadi)
  */
-export function ProductDetailSheet({ isOpen, pid, onClose }: Props) {
+export function ProductDetailSheet({ isOpen, pid, onClose, onBuyClick }: Props) {
   const { data, isLoading, isError, error } = useProduct(pid);
 
   // Scroll lock + ESC
@@ -50,23 +54,26 @@ export function ProductDetailSheet({ isOpen, pid, onClose }: Props) {
     };
   }, [isOpen, onClose]);
 
-  // MainButton — Sprint 1 da placeholder action
+  useTelegramBackButton(onClose, isOpen);
+
   const ctaText = data
     ? data.sale_type === 'solo'
       ? `Sotib olish — ${formatPrice(data.solo_price)} so'm`
       : `Guruhga qo'shilish — ${formatPrice(data.group_price)} so'm`
     : 'Yuklanmoqda...';
 
+  const triggerBuy = () => {
+    if (!data) return;
+    hapticImpact('medium');
+    const type: 'group' | 'solo' = data.sale_type === 'solo' ? 'solo' : 'group';
+    if (onBuyClick) onBuyClick(type);
+  };
+
   useMainButton({
     text:    ctaText,
     enabled: isOpen && !!data && !isLoading,
     loading: false,
-    onClick: () => {
-      hapticImpact('medium');
-      // Sprint 2 — checkout flow shu yerga ulanadi
-      hapticNotify('warning');
-      alert("Checkout Sprint 2'da ulanadi. Hozircha buni sinab ko'rish uchun eski miniapp.html ishlatiladi.");
-    },
+    onClick: triggerBuy,
   });
 
   const inTelegram = isInTelegram();
@@ -89,7 +96,7 @@ export function ProductDetailSheet({ isOpen, pid, onClose }: Props) {
         ) : isLoading || !data ? (
           <LoadingBody />
         ) : (
-          <DetailBody data={data} inTelegram={inTelegram} onClose={onClose} />
+          <DetailBody data={data} inTelegram={inTelegram} onBuy={triggerBuy} />
         )}
       </SheetSurface>
     </div>
@@ -169,8 +176,8 @@ function SheetSurface({
 //  Body — to'liq mahsulot detail
 // ═══════════════════════════════════════════════════════════════
 function DetailBody({
-  data, inTelegram, onClose,
-}: { data: ProductDetail; inTelegram: boolean; onClose: () => void }) {
+  data, inTelegram, onBuy,
+}: { data: ProductDetail; inTelegram: boolean; onBuy: () => void }) {
   const disc = discountPct(data.original_price, data.group_price);
 
   return (
@@ -238,7 +245,7 @@ function DetailBody({
 
         {/* Brauzer fallback — HTML CTA. Telegram'da MainButton bor */}
         {!inTelegram && (
-          <Button variant="primary" size="lg" fullWidth onClick={onClose}>
+          <Button variant="primary" size="lg" fullWidth onClick={onBuy}>
             {data.sale_type === 'solo'
               ? `Sotib olish — ${formatPrice(data.solo_price)} so'm`
               : `Guruhga qo'shilish — ${formatPrice(data.group_price)} so'm`}

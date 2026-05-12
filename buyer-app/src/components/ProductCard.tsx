@@ -1,17 +1,16 @@
-import { RiHeart3Fill, RiHeart3Line, RiPriceTag3Fill, RiTeamFill } from '@remixicon/react';
-import { cn } from '@/lib/cn';
+import { RiPriceTag3Fill, RiTeamFill } from '@remixicon/react';
 import { formatPrice, discountPct } from '@/lib/format';
 import { photoUrl, type ProductListItem } from '@/api/types';
+import { WishlistButton } from './WishlistButton';
 
 interface Props {
-  item:       ProductListItem;
-  saved?:     boolean;
-  onClick:    () => void;
-  onToggleSave?: () => void;
+  item:        ProductListItem;
+  onClick:     () => void;
+  showWishlist?: boolean; // default true
 }
 
 /** Mahsulot grid card — 2-column layout */
-export function ProductCard({ item, saved, onClick, onToggleSave }: Props) {
+export function ProductCard({ item, onClick, showWishlist = true }: Props) {
   const src = photoUrl(item);
   const showGroupPrice = item.sale_type !== 'solo';
   const finalPrice     = showGroupPrice ? item.group_price : item.solo_price;
@@ -49,18 +48,10 @@ export function ProductCard({ item, saved, onClick, onToggleSave }: Props) {
           </span>
         )}
 
-        {onToggleSave && (
-          <button
-            type="button"
-            aria-label={saved ? 'Saqlangandan olib tashlash' : 'Saqlash'}
-            onClick={(e) => { e.stopPropagation(); onToggleSave(); }}
-            className={cn(
-              'absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full backdrop-blur-sm transition-colors duration-base',
-              saved ? 'bg-white/95 text-danger' : 'bg-black/40 text-white hover:bg-black/55',
-            )}
-          >
-            {saved ? <RiHeart3Fill size={16} /> : <RiHeart3Line size={16} />}
-          </button>
+        {showWishlist && (
+          <div className="absolute top-2 right-2 z-10">
+            <WishlistButton pid={item.id} />
+          </div>
         )}
       </div>
 

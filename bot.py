@@ -5980,9 +5980,34 @@ def buyer_handle_msg(msg):
     uid  = msg['from']['id']
     text = msg.get('text', '')
 
-    # Deep link: /start join_xxx  /start solo_xxx  /start ref_uid
+    # Deep link: /start join_xxx  /start solo_xxx  /start ref_uid  /start pay_<code>
     if text.startswith('/start ') or text.startswith('/start\n'):
         param = text.split(None, 1)[1].strip() if len(text.split(None, 1)) > 1 else ''
+
+        # pay_<code> — Mini App'dan kelgan buyurtmaga to'lov ko'rsatma.
+        # Mock — kelajakda Paylov hosted page yoki provider callback.
+        if param.startswith('pay_'):
+            code = param[4:].strip()
+            order = orders.get(code)
+            if not order:
+                send_buyer(cid, "❌ Buyurtma topilmadi yoki muddati o'tgan.")
+                return
+            p   = products.get(order.get('product_id', ''), {})
+            amt = order.get('amount', 0)
+            send_buyer(cid,
+                f"💳 <b>To'lov ma'lumotlari</b>\n\n"
+                f"📦 {p.get('name','—')}\n"
+                f"🆔 Buyurtma: <code>{code}</code>\n"
+                f"💰 Summa: <b>{fmt(amt)}</b> so'm\n\n"
+                f"💡 To'lov tizimi tez orada ulanadi.\n"
+                f"Iltimos sotuvchi bilan bog'laning yoki "
+                f"kutib turing — to'lov havolasi tayyor bo'lishi bilan yuboriladi.",
+                {'inline_keyboard': [
+                    [{'text': "📞 Sotuvchi bilan bog'lanish",
+                      'url': f"https://t.me/{(p.get('contact') or '').lstrip('@')}" if p.get('contact','').startswith('@') else f"tel:{p.get('contact','')}"}],
+                ]} if p.get('contact') else None,
+            )
+            return
 
         # buy_PID_TYPE — kanaldan kelgan, to'g'ri Mini App ga yo'naltirish
         if param.startswith('buy_'):
@@ -7184,6 +7209,24 @@ def api_categories():
     return jsonify(result)
 
 
+# ─── To'lov provider stub'i ──────────────────────────────────────────
+# Mock — hozircha bot deeplink (xaridor /start pay_<code> handler'iga
+# tushadi va ko'rsatma ko'radi). Kelajakda Paylov Merchant API ulanganda
+# shu funksiya Paylov hosted page URL'ini qaytaradi:
+#
+#   r = requests.post('https://api.paylov.uz/...', json=payload).json()
+#   return r['data']['pay_url'], 'paylov'
+#
+# Frontend hech narsa o'zgartirmaydi — payment_url'ga `window.open` /
+# `tg.openLink` orqali yo'naltiradi.
+def initiate_paylov_payment(code: str, amount: int):
+    """Returns (payment_url, payment_provider). `amount` argumenti
+    kelajakda Paylov ga uzatish uchun saqlanadi (hozircha foydalanilmaydi)."""
+    _ = amount  # unused — Paylov ulanganda payload'da uzatiladi
+    bot = (BUYER_BOT_USERNAME or 'joynshop_bot').lstrip('@')
+    return f"https://t.me/{bot}?start=pay_{code}", 'mock'
+
+
 @app.route('/api/web_checkout', methods=['POST'])
 def api_web_checkout():
     """Sayt to'lov sahifasidan kelgan buyurtma — kanal postidan kelgan xaridorlar"""
@@ -7301,91 +7344,36 @@ def api_checkout():
             return jsonify({'ok': False, 'error': 'Allaqachon guruhdasiz'}), 400
         amount = p['group_price']
 
-    # Buyurtma yaratish
+    # Buyurtma kodi
     code = gen_code()
+
+    # To'lov provider'ni aniqlash va payment_url olish.
+    # Hozir mock — kelajakda Paylov ulanganda initiate_paylov_payment
+    # haqiqiy hosted page URL'ni qaytaradi. Strategik field bilan
+    # frontend hech narsa o'zgartirmasdan yangi provider'ga ko'chiriladi.
+    payment_url, payment_provider = initiate_paylov_payment(code=code, amount=amount)
+
     orders[code] = {
-        'product_id': pid,
-        'user_id':    uid,
-        'user_name':  user_name,
-        'amount':     amount,
-        'type':       otype,
-        'variant':    variant,
-        'delivery':   delivery,
-        'address':    address,
-        'status':     'pending',
-        'created':    datetime.now().strftime('%d.%m.%Y %H:%M'),
-        'source':     'miniapp',
+        'product_id':       pid,
+        'user_id':          uid,
+        'user_name':        user_name,
+        'amount':           amount,
+        'type':             otype,
+        'variant':          variant,
+        'delivery':         delivery,
+        'address':          address,
+        'status':           'pending',
+        'created':          datetime.now().strftime('%d.%m.%Y %H:%M'),
+        'source':           'miniapp',
+        'payment_provider': payment_provider,
+        'payment_url':      payment_url,
+        'paid_at':          None,
     }
     save_data()
 
     variant_line  = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
     delivery_text = "🚚 Yetkazib berish" if delivery == 'deliver' else "🏪 Olib ketish"
     address_line  = f"\n📍 Manzil: {address}" if address else ''
-    sale_type     = p.get('sale_type', 'both')
-
-    # Click invoice link yaratish (Mini App ichida ochish uchun)
-    invoice_link = None
-    if CLICK_TOKEN:
-        price_lbl = "Yakka narx" if otype == 'solo' else "Guruh narxi"
-        # description: yakka bo'lsa minimal, guruh bo'lsa guruh ma'lumoti
-        if sale_type == 'solo' or otype == 'solo':
-            desc = (p.get('description') or p['name'])[:255]
-        else:
-            count   = len(groups.get(pid, []))
-            min_g   = p['min_group']
-            desc    = f"👥 Guruh: {count}/{min_g} • Kerak: {max(0, min_g-count)} kishi"
-            if p.get('description'):
-                desc += f"\n{p['description'][:100]}"
-        desc = (desc + f"\n🏪 {p.get('shop_name','')} | {p.get('contact','')}")[:255]
-
-        photo_url = p.get('photo_url') or None
-        inv_data  = {
-            'title':             strip_html(p['name'])[:32],
-            'description':       desc,
-            'payload':           code,
-            'provider_token':    CLICK_TOKEN,
-            'currency':          'UZS',
-            'prices':            json.dumps([{'label': price_lbl, 'amount': amount * 100}]),
-            'need_name':         True,
-            'need_phone_number': True,
-            'need_shipping_address': False,
-            'is_flexible':       False,
-        }
-        if photo_url and photo_url.startswith('http'):
-            inv_data['photo_url']  = photo_url
-            inv_data['photo_size'] = 800
-        # createInvoiceLink — URL qaytaradi (Mini App tg.openInvoice uchun)
-        try:
-            r = requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/createInvoiceLink', json=inv_data, timeout=10).json()
-            if r.get('ok'):
-                invoice_link = r['result']
-            else:
-                logging.warning(f"createInvoiceLink failed: {r}")
-                # Fallback: oddiy sendInvoice
-                inv_data['chat_id'] = uid
-                requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/sendInvoice', json=inv_data, timeout=10)
-        except Exception as e:
-            logging.error(f"createInvoiceLink error: {e}")
-    else:
-        # Fallback: qo'lda Payme
-        send_buyer(uid,
-            f"🛒 <b>{p.get('shop_name','Sotuvchi')} — {'Yakka' if otype=='solo' else 'Guruh'} buyurtma</b>\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📦 {p['name']}{variant_line}\n"
-            f"💰 {fmt(amount)} so'm\n"
-            f"🚚 {delivery_text}{address_line}\n\n"
-            f"💳 <b>Payme orqali to'lang:</b>\n"
-            f"📱 <code>{PAYME_NUMBER}</code>\n"
-            f"💵 <code>{fmt(amount)}</code>\n"
-            f"📝 Izoh: <code>{code}</code>\n\n"
-            f"⚠️ Izohga <b>{code}</b> yozing!\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"🔒 Joynshop kafolati ostida",
-            {'inline_keyboard': [
-                [{'text': "✅ To'lovni tasdiqlayman", 'callback_data': f'paid_{code}'}],
-                [{'text': "❌ Bekor",                 'callback_data': f'cancel_{code}'}],
-            ]}
-        )
 
     # Sotuvchiga xabar
     sid = p.get('seller_id')
@@ -7404,7 +7392,13 @@ def api_checkout():
             ]]}
         )
 
-    return jsonify({'ok': True, 'code': code, 'amount': amount, 'invoice_link': invoice_link})
+    return jsonify({
+        'ok':               True,
+        'code':             code,
+        'amount':           amount,
+        'payment_url':      payment_url,
+        'payment_provider': payment_provider,
+    })
 
 
 # ══════════════════════════════════════════════════════════════════════
