@@ -32,7 +32,7 @@ export function ProductsScreen() {
   if (!data || data.total === 0) return <EmptyState />;
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-3 pb-6">
+    <div className="min-h-screen bg-bg-2 pt-safe-top pb-6">
       {/* List */}
       <div className="px-4 mt-4 space-y-2">
         {data.items.map((item) => (

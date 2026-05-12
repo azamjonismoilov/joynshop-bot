@@ -12,6 +12,23 @@ if (tg) {
   try { tg.expand(); } catch { /* ignore */ }
 }
 
+// Safe-area sync — Telegram fullscreen overlay va device notch uchun
+function syncSafeArea() {
+  const root = document.documentElement;
+  const contentTop = tg?.contentSafeAreaInset?.top ?? 0;
+  const safeTop    = tg?.safeAreaInset?.top ?? 0;
+  root.style.setProperty('--tg-content-safe-top', `${contentTop}px`);
+  root.style.setProperty('--tg-safe-top',         `${safeTop}px`);
+}
+syncSafeArea();
+if (tg?.onEvent) {
+  try { tg.onEvent('contentSafeAreaChanged', syncSafeArea); } catch { /* ignore */ }
+  try { tg.onEvent('safeAreaChanged',        syncSafeArea); } catch { /* ignore */ }
+  try { tg.onEvent('fullscreenChanged',      syncSafeArea); } catch { /* ignore */ }
+  try { tg.onEvent('viewportChanged',        syncSafeArea); } catch { /* ignore */ }
+}
+window.addEventListener('resize', syncSafeArea);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

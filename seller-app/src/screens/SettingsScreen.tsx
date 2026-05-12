@@ -41,7 +41,7 @@ export function SettingsScreen() {
   ];
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-3 pb-8">
+    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
       <main className="px-4 mt-4 space-y-2.5">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="block">

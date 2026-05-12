@@ -14,7 +14,7 @@ export function IntegrationsScreen() {
   const { data, isLoading, isError, error, refetch } = useSellerIntegrations();
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-3 pb-8">
+    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
       <main className="px-4 mt-4">
         {isLoading ? (
           <div className="space-y-3">

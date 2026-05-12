@@ -46,7 +46,7 @@ export function CustomerDetailScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
+      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
@@ -259,7 +259,7 @@ function ActionButtons({ data }: { data: CustomerDetail }) {
 function DetailSkeleton() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border">
+      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
         <div className="flex items-center gap-2">
           <Skeleton width={36} height={36} rounded="md" />
           <Skeleton width={128} height={24} />

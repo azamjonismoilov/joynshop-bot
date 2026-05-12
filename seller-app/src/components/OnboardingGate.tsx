@@ -29,7 +29,7 @@ export function OnboardingGate({ me }: Props) {
   const pct   = Math.round((done / total) * 100);
 
   return (
-    <div className="min-h-screen bg-bg-2 px-4 py-8 flex flex-col">
+    <div className="min-h-screen bg-bg-2 px-4 pt-safe-top pb-8 flex flex-col">
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col">
         {/* Hero */}
         <div className="text-center mt-6 mb-6">

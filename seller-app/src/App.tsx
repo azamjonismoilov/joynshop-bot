@@ -76,7 +76,7 @@ function AppShell() {
 function FullScreenLoader() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border space-y-2">
+      <header className="px-4 pt-safe-top pb-4 bg-bg-1 border-b border-border space-y-2">
         <Skeleton height={28} width="60%" />
         <Skeleton height={14} width="35%" />
       </header>

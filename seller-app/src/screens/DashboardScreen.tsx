@@ -74,7 +74,7 @@ export function DashboardScreen() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
       {/* Brand header */}
-      <header className="px-4 pt-5 pb-4 bg-bg-1 border-b border-border">
+      <header className="px-4 pt-safe-top pb-4 bg-bg-1 border-b border-border">
         <h1 className="font-display text-2xl font-semibold text-fg-1">
           Joynshop
         </h1>
@@ -519,7 +519,7 @@ function Avatar({ name, size = 36 }: { name: string; size?: number }) {
 function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-5 pb-3 bg-bg-1 border-b border-border space-y-2">
+      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border space-y-2">
         <Skeleton height={16} width="50%" />
         <Skeleton height={12} width="30%" />
       </header>

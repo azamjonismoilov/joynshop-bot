@@ -79,7 +79,7 @@ export function CustomersScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-3 pb-8">
+    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
       <div className="px-4 mt-4 space-y-3">
         {data?.summary && <SummaryCards summary={data.summary} />}
 

@@ -32,6 +32,13 @@ export function getTgUser(): TgUser | null {
 }
 
 // window.Telegram.WebApp ham mavjud — native API'lar uchun ishlatamiz
+export interface TgSafeAreaInset {
+  top:    number;
+  bottom: number;
+  left:   number;
+  right:  number;
+}
+
 declare global {
   interface Window {
     Telegram?: {
@@ -46,6 +53,17 @@ declare global {
         colorScheme: 'light' | 'dark';
         themeParams: Record<string, string>;
         initData: string;
+        // Bot API 7.7+ / 7.10+ / 8.0+ (optional — eski Telegram larda undefined)
+        contentSafeAreaInset?: TgSafeAreaInset;  // Bot API 7.10+
+        safeAreaInset?:        TgSafeAreaInset;  // Bot API 7.7+
+        isFullscreen?:         boolean;          // Bot API 8.0+
+        isExpanded?:           boolean;
+        viewportHeight?:       number;
+        viewportStableHeight?: number;
+        onEvent?:  (eventName: string, handler: () => void) => void;
+        offEvent?: (eventName: string, handler: () => void) => void;
+        requestFullscreen?: () => void;
+        exitFullscreen?:    () => void;
       };
     };
   }

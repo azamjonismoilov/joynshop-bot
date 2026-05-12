@@ -116,6 +116,18 @@
   --transition-fast:       100ms ease-out;
   --transition-base:       150ms ease-out;
   --transition-slow:       250ms ease-out;
+
+  /* ───── Telegram safe-area ─────
+   * main.tsx Telegram WebApp'dan contentSafeAreaInset.top va
+   * safeAreaInset.top'ni o'qib shu var'larga yozadi. CSS env()
+   * device notch uchun fallback. Eng kattasi tanlanadi. */
+  --tg-content-safe-top:   0px;
+  --tg-safe-top:           0px;
+  --header-safe-top: max(
+    20px,
+    calc(var(--tg-content-safe-top) + 8px),
+    calc(env(safe-area-inset-top, 0px) + 8px)
+  );
 }
 
 /* Telegram theme overrides — har xil platforma uchun */

@@ -124,6 +124,10 @@ export default {
         base: '150ms',
         slow: '250ms',
       },
+      spacing: {
+        // Telegram safe-area + device notch — tokens.css'da hisoblanadi
+        'safe-top': 'var(--header-safe-top)',
+      },
     },
   },
   plugins: [],
