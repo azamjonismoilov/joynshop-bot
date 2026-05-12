@@ -392,6 +392,15 @@ export interface CustomerHistoryResponse {
 // ─── Settings: Legal ───
 export type LegalStatus = 'yatt' | 'mchj';
 
+export interface LegalUpdateBody {
+  legal_status?: LegalStatus;
+  stir?:          string;
+  bank_account?:  string;
+  bank_name?:     string;
+  bank_mfo?:      string;
+  director_name?: string;
+}
+
 export interface LegalInfo {
   completed:              boolean;
   completed_at:           string | null;
@@ -428,6 +437,15 @@ export interface ShopBrief {
 
 export interface ShopsResponse {
   shops: ShopBrief[];
+}
+
+export interface ShopUpdateBody {
+  name?:     string;
+  phone?:    string;
+  phone2?:   string;
+  address?:  string;
+  delivery?: DeliveryType;
+  social?:   Record<string, string>;
 }
 
 export interface ShopDetail extends ShopBrief {

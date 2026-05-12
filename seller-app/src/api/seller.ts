@@ -6,6 +6,8 @@ import type {
   ProductsQuery,
   ProductDetailResponse,
   ProductUpdateBody,
+  LegalUpdateBody,
+  ShopUpdateBody,
   StatsResponse,
   StatsRange,
   StatsChartResponse,
@@ -58,11 +60,11 @@ export function useSellerProductDetail(pid: string | undefined) {
   });
 }
 
-export class ProductValidationError extends Error {
+export class ApiValidationError extends Error {
   errors: Record<string, string>;
   constructor(errors: Record<string, string>) {
     super('Product validation failed');
-    this.name = 'ProductValidationError';
+    this.name = 'ApiValidationError';
     this.errors = errors;
   }
 }
@@ -70,16 +72,8 @@ export class ProductValidationError extends Error {
 export function useUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ pid, payload }: { pid: string; payload: ProductUpdateBody }) => {
-      try {
-        return await apiPatch<{ ok: true }>(`/seller/products/${pid}`, payload);
-      } catch (e: unknown) {
-        // ofetch wraps 400 responses with a `data` property
-        const data = (e as { data?: { errors?: Record<string, string> } }).data;
-        if (data?.errors) throw new ProductValidationError(data.errors);
-        throw e;
-      }
-    },
+    mutationFn: ({ pid, payload }: { pid: string; payload: ProductUpdateBody }) =>
+      patchWithValidation<{ ok: true }>(`/seller/products/${pid}`, payload),
     onSuccess: (_data, { pid }) => {
       qc.invalidateQueries({ queryKey: ['seller', 'products'] });
       qc.invalidateQueries({ queryKey: ['seller', 'products', 'detail', pid] });
@@ -225,6 +219,41 @@ export function useSellerCustomerHistory(cuid: string | undefined, page = 0, lim
 }
 
 // ─── Settings ───
+async function patchWithValidation<T>(path: string, body: unknown): Promise<T> {
+  try {
+    return await apiPatch<T>(path, body);
+  } catch (e: unknown) {
+    const data = (e as { data?: { errors?: Record<string, string> } }).data;
+    if (data?.errors) throw new ApiValidationError(data.errors);
+    throw e;
+  }
+}
+
+export function useUpdateLegal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: LegalUpdateBody) =>
+      patchWithValidation<{ ok: true }>('/seller/legal', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['seller', 'legal'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+    },
+  });
+}
+
+export function useUpdateShop() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ idx, body }: { idx: number; body: ShopUpdateBody }) =>
+      patchWithValidation<{ ok: true }>(`/seller/shops/${idx}`, body),
+    onSuccess: (_data, { idx }) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'shops'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'shops', 'detail', idx] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+    },
+  });
+}
+
 export function useSellerLegal() {
   return useQuery({
     queryKey: ['seller', 'legal'],

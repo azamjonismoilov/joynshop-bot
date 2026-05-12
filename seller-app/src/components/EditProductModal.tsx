@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { RiAddFill, RiCloseFill } from '@remixicon/react';
 import { Button, Input, Modal } from '@/components/ui';
 import {
-  ProductValidationError,
+  ApiValidationError,
   useUpdateProduct,
 } from '@/api/seller';
 import type {
@@ -61,7 +61,7 @@ function EditForm({
   product, field, onClose,
 }: { product: ProductDetailResponse; field: EditField; onClose: () => void }) {
   const mutation = useUpdateProduct();
-  const errors   = (mutation.error instanceof ProductValidationError)
+  const errors   = (mutation.error instanceof ApiValidationError)
     ? mutation.error.errors
     : null;
 
@@ -330,7 +330,7 @@ function EditForm({
       )}
 
       {/* Generic non-field-specific error */}
-      {mutation.isError && !(mutation.error instanceof ProductValidationError) && (
+      {mutation.isError && !(mutation.error instanceof ApiValidationError) && (
         <p className="text-xs text-danger font-body mt-3">
           {mutation.error instanceof Error ? mutation.error.message : 'Xato yuz berdi'}
         </p>

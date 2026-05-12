@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiBox3Fill,
+  RiEdit2Line,
   RiExternalLinkLine,
   RiGlobalFill,
   RiInstagramFill,
@@ -16,6 +18,7 @@ import {
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { useSellerShopDetail } from '@/api/seller';
 import { ErrorState } from '@/components/ErrorState';
+import { EditShopModal, type ShopEditField } from '@/components/EditShopModal';
 import type { ShopDetail } from '@/api/types';
 import { formatPriceShort } from '@/lib/format';
 
@@ -64,6 +67,7 @@ export function ShopDetailScreen() {
 }
 
 function ShopContent({ data }: { data: ShopDetail }) {
+  const [edit, setEdit] = useState<ShopEditField | null>(null);
   return (
     <div className="space-y-3">
       {/* Hero */}
@@ -87,6 +91,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
               </p>
             )}
           </div>
+          <EditIconButton onClick={() => setEdit('name')} />
         </div>
 
         {/* Quick stats grid */}
@@ -99,7 +104,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
 
       {/* Basic info */}
       <Card padding="md">
-        <SectionTitle label="Asosiy ma'lumotlar" />
+        <SectionHeader label="Asosiy ma'lumotlar" onEdit={() => setEdit('contact')} />
         <InfoRow
           icon={<RiPhoneFill size={14} />}
           label="Telefon"
@@ -123,7 +128,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
 
       {/* Delivery */}
       <Card padding="md">
-        <SectionTitle label="Yetkazib berish" />
+        <SectionHeader label="Yetkazib berish" onEdit={() => setEdit('delivery')} />
         <div className="flex items-center gap-2.5 py-1">
           <RiTruckFill size={18} className="text-brand shrink-0" />
           <span className="text-sm text-fg-1 font-body">
@@ -134,11 +139,11 @@ function ShopContent({ data }: { data: ShopDetail }) {
 
       {/* Social */}
       <Card padding="md">
-        <SectionTitle label="Ijtimoiy tarmoqlar" />
+        <SectionHeader label="Ijtimoiy tarmoqlar" onEdit={() => setEdit('social')} />
         <SocialList social={data.social} />
       </Card>
 
-      {/* Activity */}
+      {/* Activity (read-only) */}
       {data.last_order && (
         <Card padding="md">
           <SectionTitle label="Faollik" />
@@ -154,7 +159,39 @@ function ShopContent({ data }: { data: ShopDetail }) {
           />
         </Card>
       )}
+
+      {edit && (
+        <EditShopModal
+          isOpen={edit !== null}
+          onClose={() => setEdit(null)}
+          field={edit}
+          shop={data}
+        />
+      )}
     </div>
+  );
+}
+
+function SectionHeader({ label, onEdit }: { label: string; onEdit: () => void }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <p className="text-xs font-display font-medium uppercase tracking-wide text-fg-3">
+        {label}
+      </p>
+      <EditIconButton onClick={onEdit} />
+    </div>
+  );
+}
+
+function EditIconButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Tahrirlash"
+      className="inline-flex items-center justify-center w-8 h-8 rounded-md text-fg-3 hover:bg-bg-2 hover:text-brand transition-colors duration-base shrink-0"
+    >
+      <RiEdit2Line size={16} />
+    </button>
   );
 }
 

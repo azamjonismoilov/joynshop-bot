@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiBankFill,
   RiBuilding2Fill,
+  RiEdit2Line,
   RiFileTextFill,
   RiTelegramFill,
 } from '@remixicon/react';
 import { Badge, Button, Card, Skeleton } from '@/components/ui';
 import { useSellerLegal } from '@/api/seller';
 import { ErrorState } from '@/components/ErrorState';
+import { EditLegalModal, type LegalEditField } from '@/components/EditLegalModal';
 import { openSellerBotDeeplink } from '@/lib/telegram';
 
 export function LegalScreen() {
@@ -79,6 +82,7 @@ function EmptySection() {
 
 function LegalContent({ data }: { data: NonNullable<ReturnType<typeof useSellerLegal>['data']> }) {
   const isMchj = data.legal_status === 'mchj';
+  const [edit, setEdit] = useState<LegalEditField | null>(null);
   return (
     <div className="space-y-3">
       {/* Status banner */}
@@ -100,29 +104,83 @@ function LegalContent({ data }: { data: NonNullable<ReturnType<typeof useSellerL
               </p>
             )}
           </div>
+          <EditIconButton onClick={() => setEdit('status')} />
         </div>
       </Card>
 
       {/* Company */}
       <Card padding="md">
         <SectionTitle icon={<RiBuilding2Fill size={16} />} label="Kompaniya" />
-        <InfoRow label="STIR" value={data.stir || '—'} mono />
+        <EditableRow label="STIR" value={data.stir || '—'} mono onEdit={() => setEdit('stir')} />
         {isMchj && (
-          <InfoRow label="Direktor F.I.SH." value={data.director_name || '—'} />
+          <EditableRow
+            label="Direktor F.I.SH."
+            value={data.director_name || '—'}
+            onEdit={() => setEdit('director_name')}
+          />
         )}
       </Card>
 
       {/* Bank */}
       <Card padding="md">
         <SectionTitle icon={<RiBankFill size={16} />} label="Bank ma'lumotlari" />
-        <InfoRow label="Bank nomi" value={data.bank_name || '—'} />
-        <InfoRow
+        <EditableRow
+          label="Bank nomi"
+          value={data.bank_name || '—'}
+          onEdit={() => setEdit('bank_name')}
+        />
+        <EditableRow
           label="Hisob raqami"
           value={data.bank_account_formatted || data.bank_account || '—'}
           mono
+          onEdit={() => setEdit('bank_account')}
         />
-        <InfoRow label="MFO" value={data.bank_mfo || '—'} mono />
+        <EditableRow
+          label="MFO"
+          value={data.bank_mfo || '—'}
+          mono
+          onEdit={() => setEdit('bank_mfo')}
+        />
       </Card>
+
+      {edit && (
+        <EditLegalModal
+          isOpen={edit !== null}
+          onClose={() => setEdit(null)}
+          field={edit}
+          current={data}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditIconButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Tahrirlash"
+      className="inline-flex items-center justify-center w-8 h-8 rounded-md text-fg-3 hover:bg-bg-2 hover:text-brand transition-colors duration-base shrink-0"
+    >
+      <RiEdit2Line size={16} />
+    </button>
+  );
+}
+
+function EditableRow({
+  label, value, mono, onEdit,
+}: { label: string; value: string; mono?: boolean; onEdit: () => void }) {
+  return (
+    <div className="py-2 border-b border-border last:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-fg-3 font-body">{label}</p>
+          <p className={`text-sm text-fg-1 mt-0.5 break-words ${mono ? 'font-mono' : 'font-body'}`}>
+            {value}
+          </p>
+        </div>
+        <EditIconButton onClick={onEdit} />
+      </div>
     </div>
   );
 }
@@ -138,14 +196,4 @@ function SectionTitle({ icon, label }: { icon: React.ReactNode; label: string })
   );
 }
 
-function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="py-2 border-b border-border last:border-0">
-      <p className="text-xs text-fg-3 font-body">{label}</p>
-      <p className={`text-sm text-fg-1 mt-0.5 break-words ${mono ? 'font-mono' : 'font-body'}`}>
-        {value}
-      </p>
-    </div>
-  );
-}
 

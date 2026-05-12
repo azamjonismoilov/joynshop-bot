@@ -4780,24 +4780,18 @@ def seller_handle_msg(msg):
                 {'inline_keyboard': [[{'text': "⏭ O'zgartirmaslik", 'callback_data': 'ob_keep_phone'}]]})
 
         elif step == 'edit_phone_direct':
-            s['ob_phone'] = text.strip()
+            phone = text.strip()
             idx = s.get('edit_shop_idx', 0)
-            shops = seller_shops.get(uid, [])
-            if idx < len(shops):
-                shops[idx]['phone'] = s['ob_phone']
-                save_data()
             del seller_state[uid]
-            send_seller(cid, f"✅ Telefon yangilandi: {s['ob_phone']}")
+            ok, _ = do_update_shop(uid, idx, {'phone': phone})
+            send_seller(cid, f"✅ Telefon yangilandi: {phone}" if ok else "❌ Telefonni yangilab bo'lmadi")
 
         elif step == 'edit_address_direct':
-            s['ob_address'] = text.strip()
+            addr = text.strip()
             idx = s.get('edit_shop_idx', 0)
-            shops = seller_shops.get(uid, [])
-            if idx < len(shops):
-                shops[idx]['address'] = s['ob_address']
-                save_data()
             del seller_state[uid]
-            send_seller(cid, f"✅ Manzil yangilandi: {s['ob_address']}")
+            ok, _ = do_update_shop(uid, idx, {'address': addr})
+            send_seller(cid, f"✅ Manzil yangilandi: {addr}" if ok else "❌ Manzilni yangilab bo'lmadi")
 
         elif step == 'edit_social_direct':
             social = {}
@@ -4806,13 +4800,13 @@ def seller_handle_msg(msg):
                     k, v = line.split(':', 1)
                     social[k.strip().lower()] = v.strip()
             idx = s.get('edit_shop_idx', 0)
-            shops = seller_shops.get(uid, [])
-            if idx < len(shops):
-                shops[idx]['social'] = social
-                save_data()
             del seller_state[uid]
-            lines = '\n'.join(f"🔗 {k}: {v}" for k, v in social.items())
-            send_seller(cid, f"✅ Ijtimoiy tarmoqlar yangilandi:\n{lines}")
+            ok, _ = do_update_shop(uid, idx, {'social': social})
+            if ok:
+                lines = '\n'.join(f"🔗 {k}: {v}" for k, v in social.items() if v)
+                send_seller(cid, f"✅ Ijtimoiy tarmoqlar yangilandi:\n{lines}" if lines else "✅ Ijtimoiy tarmoqlar tozalandi.")
+            else:
+                send_seller(cid, "❌ Yangilab bo'lmadi")
 
         elif step == 'prod_name':
             s['name'] = text; s['step'] = 'prod_category'
@@ -8230,6 +8224,136 @@ def do_update_customer(sid, cuid, payload):
     save_data()
     return True, None
 
+# ─── LEGAL / SHOP ACTION HELPERS ────────────────────────────────────
+# do_update_legal, do_update_shop — bot webhook va Mini App API ikkalasi
+# ham shu helper'lardan foydalanadi.
+LEGAL_EDITABLE_FIELDS = ('legal_status', 'stir', 'bank_account', 'bank_name', 'bank_mfo', 'director_name')
+SHOP_EDITABLE_FIELDS  = ('name', 'phone', 'phone2', 'address', 'social', 'delivery')
+SHOP_DELIVERY_VALUES  = ('pickup', 'deliver', 'both')
+SHOP_SOCIAL_KEYS      = ('instagram', 'telegram', 'website', 'youtube')
+
+def do_update_legal(uid, payload):
+    """Yuridik ma'lumotlarni yangilaydi. Mavjud validatorlarni ishlatadi.
+    Returns (ok, errors)."""
+    errors  = {}
+    updates = {}
+
+    if 'legal_status' in payload:
+        st = payload.get('legal_status')
+        if st not in ('yatt', 'mchj'):
+            errors['legal_status'] = "Status: yatt | mchj"
+        else:
+            updates['legal_status'] = st
+
+    if 'stir' in payload:
+        ok, val, err = validate_stir(payload.get('stir') or '')
+        if not ok:
+            errors['stir'] = err.lstrip('❌ ').strip()
+        else:
+            updates['stir'] = val
+
+    if 'bank_account' in payload:
+        ok, val, err = validate_bank_account(payload.get('bank_account') or '')
+        if not ok:
+            errors['bank_account'] = err.lstrip('❌ ').strip()
+        else:
+            updates['bank_account'] = val
+
+    if 'bank_name' in payload:
+        ok, val, err = validate_bank_name(payload.get('bank_name') or '')
+        if not ok:
+            errors['bank_name'] = err.lstrip('❌ ').strip()
+        else:
+            updates['bank_name'] = val
+
+    if 'bank_mfo' in payload:
+        ok, val, err = validate_mfo(payload.get('bank_mfo') or '')
+        if not ok:
+            errors['bank_mfo'] = err.lstrip('❌ ').strip()
+        else:
+            updates['bank_mfo'] = val
+
+    if 'director_name' in payload:
+        ok, val, err = validate_director_name(payload.get('director_name') or '')
+        if not ok:
+            errors['director_name'] = err.lstrip('❌ ').strip()
+        else:
+            updates['director_name'] = val
+
+    if errors:
+        return False, errors
+
+    prof = seller_profiles.setdefault(uid, {})
+    for k, v in updates.items():
+        prof[k] = v
+    # YaTT ga o'tishda director_name avto-tozalash
+    if updates.get('legal_status') == 'yatt' and prof.get('director_name'):
+        prof['director_name'] = None
+    save_data()
+    return True, None
+
+def do_update_shop(uid, idx, payload):
+    """Do'kon ma'lumotlarini yangilaydi. channel/billz/verified TEGMAYDI.
+    Returns (ok, errors)."""
+    shops = seller_shops.get(uid) or seller_shops.get(str(uid)) or []
+    if idx < 0 or idx >= len(shops):
+        return False, {'_': 'not_found'}
+    errors  = {}
+    updates = {}
+
+    if 'name' in payload:
+        name = str(payload.get('name') or '').strip()
+        if not name:
+            errors['name'] = "Nom bo'sh bo'lmasligi kerak"
+        else:
+            updates['name'] = name[:100]
+
+    if 'phone' in payload:
+        phone = str(payload.get('phone') or '').strip()
+        if not phone:
+            errors['phone'] = "Telefon kiritilishi kerak"
+        else:
+            updates['phone'] = phone[:30]
+
+    if 'phone2' in payload:
+        ph2 = str(payload.get('phone2') or '').strip()
+        updates['phone2'] = ph2[:30]
+
+    if 'address' in payload:
+        addr = str(payload.get('address') or '').strip()
+        updates['address'] = addr[:200]
+
+    if 'delivery' in payload:
+        dv = payload.get('delivery')
+        if dv not in SHOP_DELIVERY_VALUES:
+            errors['delivery'] = "Delivery: pickup | deliver | both"
+        else:
+            updates['delivery'] = dv
+
+    if 'social' in payload:
+        raw = payload.get('social')
+        if not isinstance(raw, dict):
+            errors['social'] = "Social dict bo'lishi kerak"
+        else:
+            social = {}
+            for k, v in raw.items():
+                key = str(k).strip().lower()
+                if key not in SHOP_SOCIAL_KEYS:
+                    continue
+                val = str(v or '').strip()
+                if val:
+                    social[key] = val[:200]
+            updates['social'] = social
+
+    if errors:
+        return False, errors
+
+    sh = shops[idx]
+    for k, v in updates.items():
+        sh[k] = v
+    save_data()
+    return True, None
+
 ORDER_STATUS_META = {
     'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},
     'confirming': {'emoji': '🔄', 'label': "Tasdiqlash kutilmoqda"},
@@ -8728,6 +8852,20 @@ def api_seller_legal():
         'director_name':          prof.get('director_name'),
     })
 
+@app.route('/api/v1/seller/legal', methods=['PATCH'])
+@require_seller
+def api_seller_update_legal():
+    """Yuridik ma'lumotlarni qisman yangilash."""
+    uid = g.seller_uid
+    body = request.get_json(silent=True) or {}
+    payload = {k: v for k, v in body.items() if k in LEGAL_EDITABLE_FIELDS}
+    if not payload:
+        return jsonify({'ok': False, 'errors': {'_': 'no_fields'}}), 400
+    ok, errors = do_update_legal(uid, payload)
+    if not ok:
+        return jsonify({'ok': False, 'errors': errors}), 400
+    return jsonify({'ok': True}), 200
+
 DELIVERY_LABEL_FULL = {
     'pickup':  '🏪 Olib ketish',
     'deliver': '🚚 Yetkazib berish',
@@ -8795,6 +8933,25 @@ def api_seller_shop_detail(idx):
         'last_order':       last_order_dt.strftime('%d.%m.%Y') if last_order_dt else '',
     })
     return jsonify(brief)
+
+@app.route('/api/v1/seller/shops/<int:idx>', methods=['PATCH'])
+@require_seller
+def api_seller_update_shop(idx):
+    """Do'kon ma'lumotlarini qisman yangilash."""
+    uid = g.seller_uid
+    shops = _seller_get_shops(uid)
+    if idx < 0 or idx >= len(shops):
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+    body = request.get_json(silent=True) or {}
+    payload = {k: v for k, v in body.items() if k in SHOP_EDITABLE_FIELDS}
+    if not payload:
+        return jsonify({'ok': False, 'errors': {'_': 'no_fields'}}), 400
+    ok, errors = do_update_shop(uid, idx, payload)
+    if not ok:
+        if errors.get('_') == 'not_found':
+            return jsonify({'ok': False, 'error': 'not_found'}), 404
+        return jsonify({'ok': False, 'errors': errors}), 400
+    return jsonify({'ok': True}), 200
 
 # ─── SPRINT 1.4: chart + billz detail + mxik proxy ──────────────────
 
