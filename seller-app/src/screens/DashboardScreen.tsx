@@ -16,9 +16,6 @@ import {
   RiBarChart2Fill,
   RiBox3Fill,
   RiClipboardFill,
-  RiSettings3Fill,
-  RiShoppingBag3Fill,
-  RiTeamFill,
   RiWalletFill,
 } from '@remixicon/react';
 import { Card, Button, Skeleton, SkeletonStats, SkeletonListItem } from '@/components/ui';
@@ -100,40 +97,7 @@ export function DashboardScreen() {
           />
         </section>
 
-        {/* ─── B2. Quick actions ─── */}
-        <section className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <QuickAction
-            icon={<RiBox3Fill size={22} />}
-            label="Mahsulotlar"
-            count={profile.products_count}
-            to="/products"
-          />
-          <QuickAction
-            icon={<RiShoppingBag3Fill size={22} />}
-            label="Buyurtmalar"
-            count={profile.orders_pending}
-            countSuffix={profile.orders_pending ? 'yangi' : undefined}
-            to="/orders"
-          />
-          <QuickAction
-            icon={<RiTeamFill size={22} />}
-            label="Mijozlar"
-            count={profile.customers_count ?? 0}
-            to="/customers"
-          />
-          <QuickAction
-            icon={<RiBarChart2Fill size={22} />}
-            label="Tahlil"
-            to="/stats"
-          />
-          <QuickAction
-            icon={<RiSettings3Fill size={22} />}
-            label="Sozlamalar"
-            to="/settings"
-          />
-        </section>
-
-        {/* ─── B3. No-products banner ─── */}
+        {/* ─── B2. No-products banner ─── */}
         {profile.products_count === 0 && (
           <Card padding="md">
             <div className="flex items-start gap-3">
@@ -163,8 +127,8 @@ export function DashboardScreen() {
 
         {/* ─── C. Chart ─── */}
         <Card padding="md">
-          <div className="flex items-center justify-between mb-3">
-            <div>
+          <div className="flex items-start justify-between mb-3 gap-3">
+            <div className="min-w-0">
               <h2 className="font-display text-base font-semibold text-fg-1">
                 Daromad grafigi
               </h2>
@@ -176,7 +140,16 @@ export function DashboardScreen() {
                 </p>
               )}
             </div>
-            <RangeTabs value={chartDays} onChange={setChartDays} />
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <Link
+                to="/stats"
+                className="inline-flex items-center gap-0.5 text-xs font-medium text-brand hover:text-brand-hover"
+              >
+                Batafsil
+                <RiArrowRightSFill size={14} />
+              </Link>
+              <RangeTabs value={chartDays} onChange={setChartDays} />
+            </div>
           </div>
           <ChartBody chart={chart} />
         </Card>
@@ -210,45 +183,6 @@ export function DashboardScreen() {
 // ════════════════════════════════════════════════════════════════════
 //  Subcomponents
 // ════════════════════════════════════════════════════════════════════
-
-interface QuickActionProps {
-  icon:          React.ReactNode;
-  label:         string;
-  count?:        number;
-  countSuffix?:  string;
-  to?:           string;
-  disabled?:     boolean;
-  disabledNote?: string;
-}
-
-function QuickAction({ icon, label, count, countSuffix, to, disabled, disabledNote }: QuickActionProps) {
-  const inner = (
-    <Card
-      padding="sm"
-      className={cn(
-        'h-full',
-        disabled && 'opacity-50',
-        !disabled && to && 'cursor-pointer hover:border-border-strong transition-colors duration-base',
-      )}
-    >
-      <div className="flex flex-col items-center text-center gap-1.5 py-1">
-        <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-subtle text-brand">
-          {icon}
-        </div>
-        <p className="font-display text-sm font-medium text-fg-1">{label}</p>
-        {disabled ? (
-          <p className="text-[10px] text-fg-4 font-body">{disabledNote}</p>
-        ) : count !== undefined ? (
-          <p className="text-[11px] text-fg-3 font-mono">
-            {count}{countSuffix ? ` ${countSuffix}` : ''}
-          </p>
-        ) : null}
-      </div>
-    </Card>
-  );
-  if (disabled || !to) return inner;
-  return <Link to={to} className="block">{inner}</Link>;
-}
 
 interface StatCardProps {
   icon: React.ReactNode;
