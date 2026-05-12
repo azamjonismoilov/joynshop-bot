@@ -15,3 +15,6 @@ export type { CardProps, CardVariant, CardPadding } from './Card';
 
 export { Skeleton, SkeletonCard, SkeletonListItem, SkeletonStats } from './Skeleton';
 export type { SkeletonProps, SkeletonRounded } from './Skeleton';
+
+export { Modal } from './Modal';
+export type { ModalProps } from './Modal';

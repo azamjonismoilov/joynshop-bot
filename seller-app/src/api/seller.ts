@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiGet } from './client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost } from './client';
 import type {
   MeResponse,
   ProductsResponse,
@@ -87,6 +87,35 @@ export function useSellerOrderDetail(code: string | undefined) {
     queryFn: () => apiGet<OrderDetailResponse>(`/seller/orders/${code}`),
     staleTime: THREE_MIN,
     enabled: Boolean(code),
+  });
+}
+
+// ─── Order actions (Mini App mutations) ───
+export function useConfirmOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      apiPost<{ ok: true }>(`/seller/orders/${code}/confirm`),
+    onSuccess: (_data, code) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'orders'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'orders', 'detail', code] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'stats'] });
+    },
+  });
+}
+
+export function useRejectOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, reason }: { code: string; reason: string }) =>
+      apiPost<{ ok: true }>(`/seller/orders/${code}/reject`, { reason }),
+    onSuccess: (_data, { code }) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'orders'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'orders', 'detail', code] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'stats'] });
+    },
   });
 }
 

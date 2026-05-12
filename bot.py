@@ -2812,109 +2812,24 @@ def seller_handle_cb(cb):
         return
 
     if d.startswith('seller_ac_'):
-        code     = d[10:]
+        code = d[10:]
         if code not in orders:
             answer_cb(cbid, '❌'); return
-        o        = orders[code]
-        pid      = o['product_id']
-        buyer_id = o['user_id']
-        p        = products.get(pid, {})
-        orders[code]['status'] = 'confirmed'
-        # CRM yangilash
-        seller_id = p.get('seller_id')
-        if seller_id:
-            update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''),
-                            phone=o.get('user_phone',''), username=o.get('username',''),
-                            code=code)
-
-        # ─── INVENTAR: stock kamaytirish ───
-        if pid in products and products[pid].get('stock', 9999) < 9999:
-            products[pid]['stock'] = max(0, products[pid].get('stock', 0) - 1)
-            current_stock = products[pid]['stock']
-            stock_init    = products[pid].get('stock_initial', current_stock)
-            # Stock 0 — mahsulotni yopish
-            if current_stock == 0:
-                products[pid]['status'] = 'closed'
-                if seller_id:
-                    send_seller(seller_id,
-                        f"🔴 <b>QOLDIQ TUGADI!</b>\n\n"
-                        f"📦 {p.get('name','')}\n"
-                        f"Mahsulot avtomatik yopildi.\n\n"
-                        f"Qoldiq qo'shish uchun mahsulotni tahrirlang.",
-                        {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
-                    )
-            # Stock 5 yoki kam — ogohlantirish (faqat 5,4,3,2,1 da bir marta)
-            elif current_stock <= 5 and stock_init > 5:
-                if seller_id:
-                    send_seller(seller_id,
-                        f"⚠️ <b>QOLDIQ KAM!</b>\n\n"
-                        f"📦 {p.get('name','')}\n"
-                        f"📊 Qoldiq: {current_stock} ta\n\n"
-                        f"Tez orada qo'shimcha qo'shing.",
-                        {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
-                    )
-
-        save_data()
-
-        if o.get('type') == 'group':
-            if pid not in groups: groups[pid] = []
-            if buyer_id not in groups[pid]: groups[pid].append(buyer_id)
-            count = len(groups[pid])
-            min_g = p.get('min_group', 3)
-            save_data()
-            answer_cb(cbid, f'✅ {count}/{min_g}')
-            update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
-            send_buyer(buyer_id, build_check(code, o))
-            dtype = p.get('delivery_type', 'pickup')
-            if dtype == 'deliver':
-                send_buyer(buyer_id,
-                    f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
-                    f"Shahar, tuman, ko'cha, uy raqami\n"
-                    f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
-                )
-                get_profile(buyer_id)['awaiting_address'] = code
-            ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{buyer_id}"
-            send_buyer(buyer_id,
-                f"🎉 <b>Guruhga qo'shildingiz!</b>\n\n"
-                f"👥 Guruh: {count}/{min_g}\n\nGuruh to'lganda xabar beramiz! 🔔\n\n"
-                f"👫 Do'stingizni taklif qiling — +10,000 so'm cashback!",
-                {'inline_keyboard': [
-                    [{'text': "🔗 Do'stni taklif qilish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
-                    [{'text': "↩️ Qaytarish so'rash", 'callback_data': f'refund_{code}'}]
-                ]}
-            )
-            if count >= min_g:
-                notify_group_filled(pid)
-        else:
-            answer_cb(cbid, '✅ Tasdiqlandi!')
-            update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), False)
-            send_buyer(buyer_id, build_check(code, o))
-            dtype = p.get('delivery_type', 'pickup')
-            if dtype == 'deliver':
-                send_buyer(buyer_id,
-                    f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
-                    f"Shahar, tuman, ko'cha, uy raqami\n"
-                    f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
-                )
-                get_profile(buyer_id)['awaiting_address'] = code
-            send_buyer(buyer_id,
-                f"✅ <b>Buyurtma tasdiqlandi!</b>\n\n📞 Sotuvchi: {p.get('contact','')}\n\nMahsulot yetkazilgandan so'ng:",
-                {'inline_keyboard': [[
-                    {'text': '⭐ Baho bering', 'callback_data': f'rate_start_{pid}'},
-                    {'text': '↩️ Qaytarish',   'callback_data': f'refund_{code}'}
-                ]]}
-            )
+        if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
+            answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
+        result = do_confirm_order(code)
+        answer_cb(cbid, result['cb_message'])
         return
 
     if d.startswith('seller_ar_'):
         code = d[10:]
-        if code in orders:
-            orders[code]['status'] = 'rejected'
-            save_data()
-            send_buyer(orders[code]['user_id'],
-                f"❌ <b>To'lov tasdiqlanmadi</b>\n\n#{code}\n\nIzohda kodni tekshiring."
-            )
-        answer_cb(cbid, '❌ Rad'); return
+        if code not in orders:
+            answer_cb(cbid, '❌'); return
+        if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
+            answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
+        result = do_reject_order(code, '')
+        answer_cb(cbid, result['cb_message'])
+        return
 
     if d.startswith('seller_approve_refund_'):
         code = d[21:]
@@ -5649,7 +5564,7 @@ def handle_successful_payment(msg):
                 f"💳 Click ✅ • 🆔 #{code}",
                 {'inline_keyboard': [[
                     {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
-                    {'text': '❌ Rad',        'callback_data': f'seller_rj_{code}'},
+                    {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'},
                 ]]}
             )
         send_buyer(uid,
@@ -5684,7 +5599,7 @@ def handle_successful_payment(msg):
             f"💳 Click ✅ • 🆔 #{code}",
             {'inline_keyboard': [[
                 {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
-                {'text': '❌ Rad',        'callback_data': f'seller_rj_{code}'},
+                {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'},
             ]]}
         )
     auto_check(code, orders[code], p)
@@ -7999,6 +7914,129 @@ def api_seller_product_detail(pid):
         'channel_post_url':      channel_post_url,
     })
 
+# ─── ORDER ACTION HELPERS ───────────────────────────────────────────
+# do_confirm_order va do_reject_order — webhook callback handler'lari va
+# Mini App API endpoint'lari ikkalasi ham shu yagona helper'lardan
+# foydalanadi. Caller order mavjudligini va statusni oldindan tekshirishi
+# kerak (idempotency uchun).
+ORDER_TERMINAL_STATUSES = ('confirmed', 'rejected', 'cancelled')
+
+def do_confirm_order(code):
+    """Buyurtmani tasdiqlaydi va barcha side-effect'larni bajaradi:
+    CRM yangilash, stock dekrement, buyer notifications, guruh counter,
+    group_filled trigger. Caller order existence'ni va status'ni tekshirgan
+    bo'lishi shart. Qaytaradi: {'cb_message': str} — webhook answer_cb uchun."""
+    o        = orders[code]
+    pid      = o['product_id']
+    buyer_id = o['user_id']
+    p        = products.get(pid, {})
+
+    orders[code]['status']       = 'confirmed'
+    orders[code]['confirmed_at'] = datetime.now().strftime('%d.%m.%Y %H:%M')
+
+    seller_id = p.get('seller_id')
+    if seller_id:
+        update_customer(seller_id, buyer_id, o.get('user_name',''), o['amount'], p.get('name',''),
+                        phone=o.get('user_phone',''), username=o.get('username',''),
+                        code=code)
+
+    # ─── INVENTAR: stock kamaytirish ───
+    if pid in products and products[pid].get('stock', 9999) < 9999:
+        products[pid]['stock'] = max(0, products[pid].get('stock', 0) - 1)
+        current_stock = products[pid]['stock']
+        stock_init    = products[pid].get('stock_initial', current_stock)
+        if current_stock == 0:
+            products[pid]['status'] = 'closed'
+            if seller_id:
+                send_seller(seller_id,
+                    f"🔴 <b>QOLDIQ TUGADI!</b>\n\n"
+                    f"📦 {p.get('name','')}\n"
+                    f"Mahsulot avtomatik yopildi.\n\n"
+                    f"Qoldiq qo'shish uchun mahsulotni tahrirlang.",
+                    {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
+                )
+        elif current_stock <= 5 and stock_init > 5:
+            if seller_id:
+                send_seller(seller_id,
+                    f"⚠️ <b>QOLDIQ KAM!</b>\n\n"
+                    f"📦 {p.get('name','')}\n"
+                    f"📊 Qoldiq: {current_stock} ta\n\n"
+                    f"Tez orada qo'shimcha qo'shing.",
+                    {'inline_keyboard': [[{'text': "✏️ Tahrirlash", 'callback_data': f'edit_prod_{pid}'}]]}
+                )
+
+    save_data()
+
+    cb_message = '✅ Tasdiqlandi!'
+    if o.get('type') == 'group':
+        if pid not in groups: groups[pid] = []
+        if buyer_id not in groups[pid]: groups[pid].append(buyer_id)
+        count = len(groups[pid])
+        min_g = p.get('min_group', 3)
+        save_data()
+        cb_message = f'✅ {count}/{min_g}'
+        update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), True)
+        send_buyer(buyer_id, build_check(code, o))
+        dtype = p.get('delivery_type', 'pickup')
+        if dtype == 'deliver':
+            send_buyer(buyer_id,
+                f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
+                f"Shahar, tuman, ko'cha, uy raqami\n"
+                f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
+            )
+            get_profile(buyer_id)['awaiting_address'] = code
+        ref_link = f"https://t.me/{BUYER_BOT_USERNAME}?start=ref_{buyer_id}"
+        send_buyer(buyer_id,
+            f"🎉 <b>Guruhga qo'shildingiz!</b>\n\n"
+            f"👥 Guruh: {count}/{min_g}\n\nGuruh to'lganda xabar beramiz! 🔔\n\n"
+            f"👫 Do'stingizni taklif qiling — +10,000 so'm cashback!",
+            {'inline_keyboard': [
+                [{'text': "🔗 Do'stni taklif qilish", 'url': f"https://t.me/share/url?url={ref_link}&text=🛍%20Do'stlarim%20bilan%20birgalikda%20xarid%20qilib%2040%25%20gacha%20tejayapman!%20Sen%20ham%20ulab%20ko'r%20👇"}],
+                [{'text': "↩️ Qaytarish so'rash", 'callback_data': f'refund_{code}'}]
+            ]}
+        )
+        if count >= min_g:
+            notify_group_filled(pid)
+    else:
+        update_profile(buyer_id, o['amount'], p.get('original_price', o['amount']), False)
+        send_buyer(buyer_id, build_check(code, o))
+        dtype = p.get('delivery_type', 'pickup')
+        if dtype == 'deliver':
+            send_buyer(buyer_id,
+                f"🚚 <b>Yetkazib berish uchun manzil yuboring</b>\n\n"
+                f"Shahar, tuman, ko'cha, uy raqami\n"
+                f"<i>Masalan: Toshkent, Yunusobod, Amir Temur 108, 15-xonadon</i>"
+            )
+            get_profile(buyer_id)['awaiting_address'] = code
+        send_buyer(buyer_id,
+            f"✅ <b>Buyurtma tasdiqlandi!</b>\n\n📞 Sotuvchi: {p.get('contact','')}\n\nMahsulot yetkazilgandan so'ng:",
+            {'inline_keyboard': [[
+                {'text': '⭐ Baho bering', 'callback_data': f'rate_start_{pid}'},
+                {'text': '↩️ Qaytarish',   'callback_data': f'refund_{code}'}
+            ]]}
+        )
+    return {'cb_message': cb_message}
+
+def do_reject_order(code, reason=''):
+    """Buyurtmani rad etadi. Caller order existence'ni va status'ni
+    tekshirgan bo'lishi shart. reason — ixtiyoriy izoh, maks 200 char.
+    Qaytaradi: {'cb_message': str}."""
+    o = orders[code]
+    o['status']      = 'rejected'
+    o['rejected_at'] = datetime.now().strftime('%d.%m.%Y %H:%M')
+    reason = (reason or '').strip()[:200]
+    if reason:
+        o['reject_reason'] = reason
+    save_data()
+
+    msg = f"❌ <b>To'lov tasdiqlanmadi</b>\n\n#{code}\n\n"
+    if reason:
+        msg += f"<i>Sabab: {reason}</i>\n\n"
+    msg += "Izohda kodni tekshiring."
+    send_buyer(o['user_id'], msg)
+
+    return {'cb_message': '❌ Rad'}
+
 ORDER_STATUS_META = {
     'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},
     'confirming': {'emoji': '🔄', 'label': "Tasdiqlash kutilmoqda"},
@@ -8040,6 +8078,10 @@ def _format_order_item(code, o):
         'status_label':   meta['label'],
         'payment_method': o.get('payment_method', ''),
         'created':        o.get('created', ''),
+        'actions': {
+            'can_confirm': status in ('pending', 'confirming'),
+            'can_reject':  status not in ORDER_TERMINAL_STATUSES,
+        },
     }
 
 @app.route('/api/v1/seller/orders', methods=['GET'])
@@ -8190,6 +8232,50 @@ def api_seller_order_detail(code):
     item['timeline'] = timeline
 
     return jsonify(item)
+
+def _seller_owns_order(uid, code):
+    """Order shu sotuvchiga tegishlimi? Returns (ok, error_response_tuple)."""
+    o = orders.get(code)
+    if not o:
+        return False, (jsonify({'error': 'not_found'}), 404)
+    pid = o.get('product_id', '')
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        # 404 (existence yashirish) — bu sotuvchi buyurtmasi emas
+        return False, (jsonify({'error': 'not_found'}), 404)
+    return True, None
+
+@app.route('/api/v1/seller/orders/<code>/confirm', methods=['POST'])
+@require_seller
+def api_seller_confirm_order(code):
+    """Buyurtmani tasdiqlash — Mini App'dan."""
+    uid = g.seller_uid
+    ok, err = _seller_owns_order(uid, code)
+    if not ok:
+        return err
+    o = orders[code]
+    if o.get('status') in ORDER_TERMINAL_STATUSES:
+        return jsonify({'error': 'conflict', 'reason': 'not_actionable',
+                        'status': o.get('status')}), 409
+    do_confirm_order(code)
+    return jsonify({'ok': True, 'order': _format_order_item(code, orders[code])}), 200
+
+@app.route('/api/v1/seller/orders/<code>/reject', methods=['POST'])
+@require_seller
+def api_seller_reject_order(code):
+    """Buyurtmani rad etish — Mini App'dan. Body: {reason?: string}."""
+    uid = g.seller_uid
+    ok, err = _seller_owns_order(uid, code)
+    if not ok:
+        return err
+    o = orders[code]
+    if o.get('status') in ORDER_TERMINAL_STATUSES:
+        return jsonify({'error': 'conflict', 'reason': 'not_actionable',
+                        'status': o.get('status')}), 409
+    body = request.get_json(silent=True) or {}
+    reason = (body.get('reason') or '').strip()[:200]
+    do_reject_order(code, reason)
+    return jsonify({'ok': True, 'order': _format_order_item(code, orders[code])}), 200
 
 # ─── CRM helpers ────────────────────────────────────────────────────
 

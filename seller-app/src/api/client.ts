@@ -49,3 +49,10 @@ export const api = ofetch.create({
 export async function apiGet<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
   return api<T>(path, { method: 'GET', query: query as FetchOptions['query'] });
 }
+
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return api<T>(path, {
+    method: 'POST',
+    body: body as FetchOptions['body'],
+  });
+}

@@ -142,6 +142,11 @@ export interface OrderBuyer {
   username: string;
 }
 
+export interface OrderActions {
+  can_confirm: boolean;
+  can_reject:  boolean;
+}
+
 export interface OrderItem {
   code:           string;          // "JS-AB12CD"
   product_id:     string;
@@ -160,6 +165,7 @@ export interface OrderItem {
   status_label:   string;
   payment_method: string;
   created:        string;          // "01.05.2026 14:30"
+  actions?:       OrderActions;
 }
 
 export interface OrdersSummary {

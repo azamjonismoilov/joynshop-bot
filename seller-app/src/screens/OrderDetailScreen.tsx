@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
@@ -10,8 +11,12 @@ import {
   RiUserFill,
   RiWalletFill,
 } from '@remixicon/react';
-import { Card, Button, Badge, Skeleton } from '@/components/ui';
-import { useSellerOrderDetail } from '@/api/seller';
+import { Card, Button, Badge, Modal, Skeleton } from '@/components/ui';
+import {
+  useConfirmOrder,
+  useRejectOrder,
+  useSellerOrderDetail,
+} from '@/api/seller';
 import type {
   OrderDetailResponse,
   OrderStatus,
@@ -72,8 +77,8 @@ export function OrderDetailScreen() {
         {/* Timeline */}
         <TimelineCard timeline={data.timeline} />
 
-        {/* Action buttons (placeholder — Sprint 2 will wire) */}
-        <ActionButtons status={data.status} />
+        {/* Action buttons */}
+        <ActionButtons data={data} />
       </main>
     </div>
   );
@@ -318,24 +323,121 @@ function TimelineRow({ event, isLast }: { event: OrderTimelineEvent; isLast: boo
   );
 }
 
-function ActionButtons({ status }: { status: OrderStatus }) {
-  // Sprint 2'da haqiqiy mutation hooks ulanadi. Hozircha disabled.
-  const canConfirm = status === 'confirming' || status === 'pending';
-  const canReject  = status !== 'rejected' && status !== 'cancelled' && status !== 'confirmed';
+function ActionButtons({ data }: { data: OrderDetailResponse }) {
+  const [showReject, setShowReject] = useState(false);
+  const [reason, setReason]         = useState('');
+  const [actionError, setError]     = useState<string | null>(null);
+  const confirmMut = useConfirmOrder();
+  const rejectMut  = useRejectOrder();
+
+  // Server'dagi actions field afzal — eski backend uchun status'dan fallback
+  const canConfirm = data.actions?.can_confirm ?? (data.status === 'pending' || data.status === 'confirming');
+  const canReject  = data.actions?.can_reject  ?? !['confirmed', 'rejected', 'cancelled'].includes(data.status);
   if (!canConfirm && !canReject) return null;
+
+  const isPending = confirmMut.isPending || rejectMut.isPending;
+
+  const handleConfirm = () => {
+    setError(null);
+    confirmMut.mutate(data.code, {
+      onError: (e) => setError(e instanceof Error ? e.message : "Tasdiqlash xato bo'ldi"),
+    });
+  };
+
+  const handleReject = () => {
+    setError(null);
+    rejectMut.mutate(
+      { code: data.code, reason: reason.trim() },
+      {
+        onSuccess: () => {
+          setShowReject(false);
+          setReason('');
+        },
+        onError: (e) => setError(e instanceof Error ? e.message : "Rad etish xato bo'ldi"),
+      },
+    );
+  };
+
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {canConfirm && (
-        <Button variant="success" size="lg" iconLeft={<RiCheckFill size={18} />} disabled>
-          Tasdiqlash
-        </Button>
-      )}
-      {canReject && (
-        <Button variant="danger" size="lg" iconLeft={<RiCloseFill size={18} />} disabled>
-          Bekor qilish
-        </Button>
-      )}
-    </div>
+    <>
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          {canConfirm && (
+            <Button
+              variant="success"
+              size="lg"
+              iconLeft={<RiCheckFill size={18} />}
+              disabled={isPending}
+              onClick={handleConfirm}
+            >
+              {confirmMut.isPending ? 'Tasdiqlanmoqda...' : 'Tasdiqlash'}
+            </Button>
+          )}
+          {canReject && (
+            <Button
+              variant="danger"
+              size="lg"
+              iconLeft={<RiCloseFill size={18} />}
+              disabled={isPending}
+              onClick={() => { setError(null); setShowReject(true); }}
+            >
+              Rad etish
+            </Button>
+          )}
+        </div>
+        {actionError && (
+          <p className="text-xs text-danger font-body px-1">{actionError}</p>
+        )}
+      </div>
+
+      <Modal
+        isOpen={showReject}
+        onClose={() => { if (!rejectMut.isPending) setShowReject(false); }}
+        title="Buyurtmani rad etish"
+      >
+        <p className="text-sm text-fg-3 font-body mb-4">
+          Bu amal qaytarib bo'lmaydi. Xaridorga xabar yuboriladi.
+        </p>
+        <label className="block">
+          <span className="text-xs text-fg-3 font-body">Sabab (ixtiyoriy)</span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value.slice(0, 200))}
+            placeholder="Masalan: Mahsulot omborda yo'q"
+            rows={3}
+            disabled={rejectMut.isPending}
+            className="mt-1.5 w-full rounded-md border border-border bg-bg-1 px-3 py-2 text-sm font-body text-fg-1 placeholder:text-fg-4 resize-none focus:outline-none focus:border-border-focus disabled:opacity-50"
+          />
+          <span className="block text-[10px] text-fg-4 font-mono mt-1 text-right">
+            {reason.length}/200
+          </span>
+        </label>
+        {rejectMut.isError && !actionError && (
+          <p className="text-xs text-danger font-body mt-2">
+            {rejectMut.error instanceof Error ? rejectMut.error.message : "Xato yuz berdi"}
+          </p>
+        )}
+        <div className="grid grid-cols-2 gap-2 mt-5">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => { setShowReject(false); setReason(''); }}
+            disabled={rejectMut.isPending}
+          >
+            Bekor
+          </Button>
+          <Button
+            variant="danger"
+            size="lg"
+            iconLeft={<RiCloseFill size={18} />}
+            onClick={handleReject}
+            disabled={rejectMut.isPending}
+          >
+            {rejectMut.isPending ? 'Rad etilmoqda...' : 'Rad etish'}
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }
 
