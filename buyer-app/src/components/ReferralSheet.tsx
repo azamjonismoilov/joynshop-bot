@@ -11,6 +11,7 @@ import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
 import { isInTelegram, tgWebApp } from '@/lib/telegram';
 import { formatPrice } from '@/lib/format';
+import { useToast } from './Toast';
 
 interface Props {
   isOpen:  boolean;
@@ -25,6 +26,7 @@ const CASHBACK_PER = 10000;
 
 export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,9 +64,11 @@ export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
       navigator.clipboard.writeText(refLink);
       setCopied(true);
       hapticNotify('success');
+      toast.show('Link nusxalandi', 'success');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       hapticNotify('error');
+      toast.show("Nusxalab bo'lmadi", 'error');
     }
   };
 

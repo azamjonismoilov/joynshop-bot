@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useToast } from './Toast';
 import {
   RiCheckboxCircleFill,
   RiCloseFill,
@@ -31,7 +32,9 @@ const ADDRESS_KEY = 'joynshop:buyer:last-address';
 export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: Props) {
   const product = useProduct(pid);
   const mutation = useCheckout();
+  const toast = useToast();
   const data = product.data;
+  const tgUser = getTgUser();
 
   // Step state
   const initialStep = useMemo<Step>(
@@ -87,14 +90,13 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
   // Submit
   const submit = () => {
     if (!data) return;
-    const user = getTgUser();
-    if (!user) {
+    if (!tgUser) {
       hapticNotify('error');
-      alert("Telegram orqali oching — buyurtma yaratish uchun.");
+      toast.show("Telegram orqali oching — buyurtma yaratish uchun", 'error');
       return;
     }
     hapticImpact('medium');
-    const userName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi';
+    const userName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi';
     const finalAddress = delivery === 'deliver' ? address.trim() : '';
     if (delivery === 'deliver') {
       try { localStorage.setItem(ADDRESS_KEY, finalAddress); } catch { /* quota */ }
@@ -102,7 +104,7 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
     mutation.mutate(
       {
         product_id: data.id,
-        user_id:    user.id,
+        user_id:    tgUser.id,
         user_name:  userName,
         type:       defaultType,
         variant,
@@ -141,11 +143,11 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
           enabled: delivery === 'pickup' || address.trim().length >= 10,
         };
       case 'confirm':
-        return { text: "🛍 Buyurtma berish", enabled: !mutation.isPending };
+        return { text: "🛍 Buyurtma berish", enabled: !mutation.isPending && !!tgUser };
       case 'success':
         return { text: "🏠 Bosh sahifaga qaytish", enabled: true };
     }
-  }, [step, variant, delivery, address, data, mutation.isPending]);
+  }, [step, variant, delivery, address, data, mutation.isPending, tgUser]);
 
   const onMain = () => {
     if (step === 'variant')  { setStep('delivery'); return; }
@@ -490,8 +492,18 @@ function ConfirmStep({
 }
 
 function SuccessStep({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const toast = useToast();
   const copy = () => {
-    try { navigator.clipboard.writeText(code); } catch { /* ignore */ }
+    hapticImpact('light');
+    try {
+      navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast.show('Kod nusxalandi', 'success');
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.show("Nusxalab bo'lmadi", 'error');
+    }
   };
   return (
     <div className="text-center py-2">
@@ -507,11 +519,16 @@ function SuccessStep({ code }: { code: string }) {
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-bg-3 hover:bg-bg-muted transition-colors duration-base"
+        className={cn(
+          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-base',
+          copied ? 'bg-success-subtle text-success' : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
+        )}
         aria-label="Kodni nusxalash"
       >
-        <span className="text-xs text-fg-3 font-body">Buyurtma:</span>
-        <span className="font-mono text-sm font-bold text-fg-1">{code}</span>
+        <span className="text-xs font-body opacity-70">
+          {copied ? '✓ Nusxalandi' : 'Buyurtma:'}
+        </span>
+        <span className="font-mono text-sm font-bold">{code}</span>
       </button>
       <p className="text-xs text-fg-3 font-body mt-5 max-w-xs mx-auto inline-flex items-start gap-1.5 justify-center">
         <RiHome5Line size={14} className="text-brand mt-0.5 shrink-0" />

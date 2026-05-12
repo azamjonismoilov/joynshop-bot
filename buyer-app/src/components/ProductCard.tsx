@@ -1,7 +1,8 @@
-import { RiPriceTag3Fill, RiTeamFill } from '@remixicon/react';
+import { RiTeamFill } from '@remixicon/react';
 import { formatPrice, discountPct } from '@/lib/format';
 import { photoUrl, type ProductListItem } from '@/api/types';
 import { WishlistButton } from './WishlistButton';
+import { ProductImage } from './ProductImage';
 
 interface Props {
   item:        ProductListItem;
@@ -25,22 +26,12 @@ export function ProductCard({ item, onClick, showWishlist = true }: Props) {
     >
       {/* Photo */}
       <div className="relative bg-bg-3" style={{ aspectRatio: '1 / 1' }}>
-        {src ? (
-          <img
-            src={src}
-            alt={item.name}
-            loading="lazy"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const el = e.currentTarget as HTMLImageElement;
-              el.style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-fg-4">
-            <RiPriceTag3Fill size={36} />
-          </div>
-        )}
+        <ProductImage
+          src={src}
+          alt={item.name}
+          className="w-full h-full object-cover"
+          fallbackSize={36}
+        />
 
         {disc > 0 && (
           <span className="absolute top-2 left-2 inline-flex items-center px-1.5 py-0.5 rounded-md bg-danger text-danger-fg text-[10px] font-mono font-bold shadow-sm">

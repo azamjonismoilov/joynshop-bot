@@ -12,6 +12,7 @@ import {
 import { Badge, Button, Skeleton } from '@/components/ui';
 import { useProduct } from '@/api/buyer';
 import type { ProductDetail } from '@/api/types';
+import { ProductImage } from './ProductImage';
 import { cn } from '@/lib/cn';
 import { discountPct, formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
@@ -372,15 +373,15 @@ function Gallery({
       >
         {sources.map((src, i) => (
           <div key={i} className="w-full h-full shrink-0">
-            <img
+            <ProductImage
               src={src}
               alt=""
-              draggable={false}
               className="w-full h-full object-cover"
-              onError={(e) => {
-                const el = e.currentTarget as HTMLImageElement;
-                el.style.display = 'none';
-              }}
+              fallbackSize={48}
+              // Faqat current + qo'shni slide'larni darhol yuklash —
+              // qolganlar browser native lazy
+              lazy={Math.abs(i - idx) > 1}
+              draggable={false}
             />
           </div>
         ))}

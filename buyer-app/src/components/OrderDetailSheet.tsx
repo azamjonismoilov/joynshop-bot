@@ -4,7 +4,6 @@ import {
   RiFileCopyLine,
   RiMapPinFill,
   RiPhoneFill,
-  RiPriceTag3Fill,
   RiShoppingBag3Fill,
   RiStore3Fill,
   RiTelegramFill,
@@ -12,10 +11,11 @@ import {
   RiTruckFill,
   RiWalletFill,
 } from '@remixicon/react';
-import { Badge, Button } from '@/components/ui';
+import { Badge, Button, Modal } from '@/components/ui';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
-import { Modal } from '@/components/ui/Modal';
+import { ProductImage } from './ProductImage';
 import { useCancelOrder } from '@/api/buyer';
+import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
@@ -49,6 +49,7 @@ const STATUS_HINT: Record<OrderStatus, string> = {
 export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
   const [showCancelConfirm, setCancelConfirm] = useState(false);
   const cancelMut = useCancelOrder(uid);
+  const toast = useToast();
 
   // Body scroll lock + ESC
   useEffect(() => {
@@ -140,15 +141,23 @@ export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
             disabled={cancelMut.isPending}
             onClick={() => {
               if (!uid) return;
+              hapticImpact('medium');
               cancelMut.mutate(
                 { code: order.code },
                 {
                   onSuccess: () => {
                     hapticNotify('success');
+                    toast.show('Buyurtma bekor qilindi', 'info');
                     setCancelConfirm(false);
                     onClose();
                   },
-                  onError: () => hapticNotify('error'),
+                  onError: (err) => {
+                    hapticNotify('error');
+                    toast.show(
+                      err instanceof Error ? err.message : "Bekor qilib bo'lmadi",
+                      'error',
+                    );
+                  },
                 },
               );
             }}
@@ -235,19 +244,15 @@ function ProductInfo({ order }: { order: BuyerOrderItem }) {
   return (
     <div className="flex items-start gap-3">
       <div
-        className="shrink-0 bg-bg-3 rounded-lg overflow-hidden flex items-center justify-center"
+        className="shrink-0 rounded-lg overflow-hidden"
         style={{ width: 80, height: 80 }}
       >
-        {photo ? (
-          <img
-            src={photo}
-            alt=""
-            className="w-full h-full object-cover"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-          />
-        ) : (
-          <RiPriceTag3Fill size={36} className="text-fg-4" />
-        )}
+        <ProductImage
+          src={photo}
+          alt={order.name}
+          className="w-full h-full object-cover"
+          fallbackSize={36}
+        />
       </div>
       <div className="flex-1 min-w-0 pt-0.5">
         <h2 className="font-display text-base font-bold text-fg-1 leading-tight">{order.name}</h2>
@@ -271,8 +276,15 @@ function ProductInfo({ order }: { order: BuyerOrderItem }) {
 }
 
 function DetailsCard({ order }: { order: BuyerOrderItem }) {
+  const toast = useToast();
   const copy = () => {
-    try { navigator.clipboard.writeText(order.code); hapticImpact('light'); } catch { /* ignore */ }
+    hapticImpact('light');
+    try {
+      navigator.clipboard.writeText(order.code);
+      toast.show('Kod nusxalandi', 'success');
+    } catch {
+      toast.show("Nusxalab bo'lmadi", 'error');
+    }
   };
   return (
     <div className="bg-bg-2 rounded-card p-3 space-y-2">

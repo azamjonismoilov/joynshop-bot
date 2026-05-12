@@ -6,6 +6,7 @@ import {
   RiUser3Fill,
 } from '@remixicon/react';
 import { cn } from '@/lib/cn';
+import { hapticSelection } from '@/lib/haptic';
 
 interface NavItem {
   to:     string;
@@ -46,6 +47,7 @@ export function BottomNav() {
             to={item.to}
             aria-label={item.label}
             aria-current={active ? 'page' : undefined}
+            onClick={() => { if (!active) hapticSelection(); }}
             className={cn(
               'flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1.5 min-w-[56px] transition-colors duration-base',
               active

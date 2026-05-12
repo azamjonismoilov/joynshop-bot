@@ -15,7 +15,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailSheet } from '@/components/ProductDetailSheet';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { cn } from '@/lib/cn';
-import { hapticSelection } from '@/lib/haptic';
+import { hapticImpact, hapticSelection } from '@/lib/haptic';
 import { tgWebApp } from '@/lib/telegram';
 
 type Filter = 'all' | 'hot' | 'almost' | 'new';
@@ -151,7 +151,7 @@ export function HomeScreen() {
               <ProductCard
                 key={p.id}
                 item={p}
-                onClick={() => setOpenPid(p.id)}
+                onClick={() => { hapticImpact('light'); setOpenPid(p.id); }}
               />
             ))}
           </div>

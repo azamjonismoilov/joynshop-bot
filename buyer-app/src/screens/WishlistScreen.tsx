@@ -9,6 +9,7 @@ import { ProductDetailSheet } from '@/components/ProductDetailSheet';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { hapticImpact } from '@/lib/haptic';
 import { getTgUser } from '@/lib/telegram';
 
 export function WishlistScreen() {
@@ -67,7 +68,7 @@ export function WishlistScreen() {
                 <ProductCard
                   key={p.id}
                   item={p}
-                  onClick={() => setOpenPid(p.id)}
+                  onClick={() => { hapticImpact('light'); setOpenPid(p.id); }}
                 />
               ))}
             </div>

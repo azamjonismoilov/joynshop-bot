@@ -14,7 +14,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
 import { cn } from '@/lib/cn';
-import { hapticSelection } from '@/lib/haptic';
+import { hapticImpact, hapticSelection } from '@/lib/haptic';
 import { getTgUser } from '@/lib/telegram';
 
 type Filter = 'all' | 'active' | 'done';
@@ -133,7 +133,11 @@ export function OrdersScreen() {
           ) : (
             <div className="space-y-2">
               {filtered.map((o) => (
-                <OrderCard key={o.code} order={o} onClick={() => setSelected(o)} />
+                <OrderCard
+                  key={o.code}
+                  order={o}
+                  onClick={() => { hapticImpact('light'); setSelected(o); }}
+                />
               ))}
             </div>
           )}

@@ -156,6 +156,11 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Hide scrollbars on horizontal-scroll chip rows */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

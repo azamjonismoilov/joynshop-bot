@@ -1,12 +1,12 @@
 import {
   RiMapPinFill,
-  RiPriceTag3Fill,
   RiStore3Fill,
   RiTruckFill,
 } from '@remixicon/react';
 import { Badge, Card } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
+import { ProductImage } from './ProductImage';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 
@@ -36,23 +36,15 @@ export function OrderCard({ order, onClick }: Props) {
       <div className="flex items-start gap-3">
         {/* Photo */}
         <div
-          className="shrink-0 bg-bg-3 rounded-lg overflow-hidden flex items-center justify-center"
+          className="shrink-0 rounded-lg overflow-hidden"
           style={{ width: 64, height: 64 }}
         >
-          {photo ? (
-            <img
-              src={photo}
-              alt=""
-              loading="lazy"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                const el = e.currentTarget as HTMLImageElement;
-                el.style.display = 'none';
-              }}
-            />
-          ) : (
-            <RiPriceTag3Fill size={28} className="text-fg-4" />
-          )}
+          <ProductImage
+            src={photo}
+            alt={order.name}
+            className="w-full h-full object-cover"
+            fallbackSize={28}
+          />
         </div>
 
         <div className="flex-1 min-w-0">
