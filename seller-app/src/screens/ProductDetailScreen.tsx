@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
   RiCloseFill,
   RiEdit2Line,
   RiErrorWarningFill,
@@ -23,6 +22,7 @@ import {
   useCloseProduct,
   useSellerProductDetail,
 } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { EditProductModal, type EditField } from '@/components/EditProductModal';
 import { cn } from '@/lib/cn';
@@ -36,7 +36,6 @@ const SALE_TYPE_LABEL: Record<ProductSaleType, string> = {
 };
 
 export function ProductDetailScreen() {
-  const navigate = useNavigate();
   const { pid } = useParams<{ pid: string }>();
   const { data, isLoading, isError, error, refetch } = useSellerProductDetail(pid);
   const [editField, setEditField] = useState<EditField | null>(null);
@@ -44,23 +43,7 @@ export function ProductDetailScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-fg-3 font-body">Mahsulot</p>
-            <h1 className="font-display text-base font-semibold text-fg-1 truncate">
-              {data?.name || '—'}
-            </h1>
-          </div>
-        </div>
-      </header>
+      <AppHeader tagline={data?.name || 'Mahsulot'} showBack />
 
       <main className="px-4 mt-4 space-y-4">
         {isLoading ? (

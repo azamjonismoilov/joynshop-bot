@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
   RiBankFill,
   RiBuilding2Fill,
   RiEdit2Line,
@@ -10,30 +8,17 @@ import {
 } from '@remixicon/react';
 import { Badge, Button, Card, Skeleton } from '@/components/ui';
 import { useSellerLegal } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { EditLegalModal, type LegalEditField } from '@/components/EditLegalModal';
 import { openSellerBotDeeplink } from '@/lib/telegram';
 
 export function LegalScreen() {
-  const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useSellerLegal();
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <h1 className="font-display text-xl font-semibold text-fg-1">
-            Yuridik ma'lumotlar
-          </h1>
-        </div>
-      </header>
+      <AppHeader tagline="Yuridik ma'lumotlar" showBack />
 
       <main className="px-4 mt-4">
         {isLoading ? (

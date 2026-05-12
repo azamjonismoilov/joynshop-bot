@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
   RiArrowRightSFill,
   RiEdit2Line,
   RiPhoneFill,
@@ -20,6 +19,7 @@ import {
 import type { BadgeVariant } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
 import { useSellerCustomerDetail, useUpdateCustomer } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 import { EditCustomerNoteModal } from '@/components/EditCustomerNoteModal';
 import type { CustomerActivity, CustomerDetail } from '@/api/types';
 import { ErrorState } from '@/components/ErrorState';
@@ -33,7 +33,6 @@ const ACTIVITY_BADGE: Record<CustomerActivity, BadgeVariant> = {
 };
 
 export function CustomerDetailScreen() {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { data, isLoading, isError, error, refetch } = useSellerCustomerDetail(id);
 
@@ -46,18 +45,7 @@ export function CustomerDetailScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <h1 className="font-display text-xl font-semibold text-fg-1">Mijoz profili</h1>
-        </div>
-      </header>
+      <AppHeader tagline={data.name || 'Mijoz'} showBack />
 
       <div className="px-4 mt-4 space-y-3">
         <ProfileHeader data={data} />
@@ -259,12 +247,7 @@ function ActionButtons({ data }: { data: CustomerDetail }) {
 function DetailSkeleton() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Skeleton width={36} height={36} rounded="md" />
-          <Skeleton width={128} height={24} />
-        </div>
-      </header>
+      <AppHeader tagline="Mijoz" showBack />
       <div className="px-4 mt-4 space-y-3">
         <Card padding="md">
           <div className="flex items-center gap-3">

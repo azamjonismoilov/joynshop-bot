@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiArrowRightSFill,
@@ -13,8 +13,9 @@ import {
   SkeletonListItem,
 } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
-import { useSellerCustomerDetail, useSellerCustomerHistory } from '@/api/seller';
+import { useSellerCustomerHistory } from '@/api/seller';
 import type { CustomerHistoryItem } from '@/api/types';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { formatPrice } from '@/lib/format';
 
@@ -40,14 +41,11 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function CustomerHistoryScreen() {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [page, setPage] = useState(0);
 
-  const customerQ = useSellerCustomerDetail(id);
   const historyQ  = useSellerCustomerHistory(id, page, 20);
 
-  const customer = customerQ.data;
   const data     = historyQ.data;
 
   if (historyQ.isError) {
@@ -56,25 +54,7 @@ export function CustomerHistoryScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-semibold text-fg-1 leading-tight">
-              Xaridlar tarixi
-            </h1>
-            {customer && (
-              <p className="text-xs text-fg-3 font-body truncate">{customer.name}</p>
-            )}
-          </div>
-        </div>
-      </header>
+      <AppHeader tagline="Xaridlar tarixi" showBack />
 
       <div className="px-4 mt-4 space-y-3">
         {data && (

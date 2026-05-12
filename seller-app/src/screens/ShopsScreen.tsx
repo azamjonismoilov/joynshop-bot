@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react';
 import { Badge, Button, Card, Skeleton, SkeletonListItem } from '@/components/ui';
 import { useSellerShops } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { openSellerBotDeeplink } from '@/lib/telegram';
 import type { ShopBrief } from '@/api/types';
@@ -16,7 +17,8 @@ export function ShopsScreen() {
   const { data, isLoading, isError, error, refetch } = useSellerShops();
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Do'konlar" showBack />
       <main className="px-4 mt-4">
         {isLoading ? (
           <div className="space-y-3">

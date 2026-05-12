@@ -14,6 +14,7 @@ import { ShopDetailScreen } from './screens/ShopDetailScreen';
 import { IntegrationsScreen } from './screens/IntegrationsScreen';
 import { BillzIntegrationScreen } from './screens/BillzIntegrationScreen';
 import { UIShowcase } from './screens/UIShowcase';
+import { AppHeader } from './components/AppHeader';
 import { OnboardingGate } from './components/OnboardingGate';
 import { BottomNav } from './components/BottomNav';
 import { ErrorState } from './components/ErrorState';
@@ -76,10 +77,7 @@ function AppShell() {
 function FullScreenLoader() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-4 bg-bg-1 border-b border-border space-y-2">
-        <Skeleton height={28} width="60%" />
-        <Skeleton height={14} width="35%" />
-      </header>
+      <AppHeader tagline="Yuklanmoqda..." />
       <main className="px-4 mt-4 space-y-4">
         <section className="grid grid-cols-2 gap-3">
           <SkeletonStats />

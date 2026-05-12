@@ -4,6 +4,7 @@ import {
   RiTelegramFill,
 } from '@remixicon/react';
 import { Button, Card } from '@/components/ui';
+import { AppHeader } from '@/components/AppHeader';
 import { openSellerBotDeeplink } from '@/lib/telegram';
 import { cn } from '@/lib/cn';
 import type { MeResponse, OnboardingSteps } from '@/api/types';
@@ -29,8 +30,9 @@ export function OnboardingGate({ me }: Props) {
   const pct   = Math.round((done / total) * 100);
 
   return (
-    <div className="min-h-screen bg-bg-2 px-4 pt-safe-top pb-8 flex flex-col">
-      <div className="max-w-md w-full mx-auto flex-1 flex flex-col">
+    <div className="min-h-screen bg-bg-2 flex flex-col">
+      <AppHeader tagline="Sotuvchi paneli" />
+      <div className="max-w-md w-full mx-auto flex-1 flex flex-col px-4 pb-8">
         {/* Hero */}
         <div className="text-center mt-6 mb-6">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-subtle text-brand mb-4">

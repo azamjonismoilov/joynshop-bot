@@ -7,6 +7,7 @@ import {
 } from '@remixicon/react';
 import { Card } from '@/components/ui';
 import { useSellerMe } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 
 interface SettingItem {
   icon:        React.ReactNode;
@@ -41,7 +42,8 @@ export function SettingsScreen() {
   ];
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Sozlamalar" />
       <main className="px-4 mt-4 space-y-2.5">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="block">

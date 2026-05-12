@@ -17,6 +17,7 @@ import {
 import type { BadgeVariant } from '@/components/ui';
 import { useSellerOrders } from '@/api/seller';
 import type { OrderFilter, OrderItem, OrderStatus } from '@/api/types';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
@@ -76,7 +77,8 @@ export function OrdersScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Buyurtmalar" />
       <div className="px-4 mt-4 space-y-3">
         {/* Filter tabs (segmented, scrollable) */}
         <FilterBar

@@ -15,6 +15,7 @@ import {
 import { Card, Badge, Button } from '@/components/ui';
 import { useSellerProducts } from '@/api/seller';
 import type { ProductItem } from '@/api/types';
+import { AppHeader } from '@/components/AppHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
@@ -32,7 +33,8 @@ export function ProductsScreen() {
   if (!data || data.total === 0) return <EmptyState />;
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-6">
+    <div className="min-h-screen bg-bg-2 pb-6">
+      <AppHeader tagline="Mahsulotlar" />
       {/* List */}
       <div className="px-4 mt-4 space-y-2">
         {data.items.map((item) => (

@@ -23,6 +23,7 @@ import type {
   CustomerFilter,
   CustomersSummary,
 } from '@/api/types';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { formatPrice, formatPriceShort } from '@/lib/format';
@@ -79,7 +80,8 @@ export function CustomersScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Mijozlar" />
       <div className="px-4 mt-4 space-y-3">
         {data?.summary && <SummaryCards summary={data.summary} />}
 

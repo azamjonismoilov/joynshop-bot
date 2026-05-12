@@ -6,6 +6,7 @@ import {
 } from '@remixicon/react';
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { useSellerIntegrations } from '@/api/seller';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import type { IntegrationItem } from '@/api/types';
@@ -14,7 +15,8 @@ export function IntegrationsScreen() {
   const { data, isLoading, isError, error, refetch } = useSellerIntegrations();
 
   return (
-    <div className="min-h-screen bg-bg-2 pt-safe-top pb-8">
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Integratsiyalar" showBack />
       <main className="px-4 mt-4">
         {isLoading ? (
           <div className="space-y-3">

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
   RiCheckFill,
   RiCloseFill,
   RiPriceTag3Fill,
@@ -22,6 +21,7 @@ import type {
   OrderStatus,
   OrderTimelineEvent,
 } from '@/api/types';
+import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { colorFromName, formatPrice, getInitials } from '@/lib/format';
@@ -35,7 +35,6 @@ const STATUS_BANNER_BG: Record<OrderStatus, string> = {
 };
 
 export function OrderDetailScreen() {
-  const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
   const { data, isLoading, isError, error, refetch } = useSellerOrderDetail(code);
 
@@ -44,22 +43,7 @@ export function OrderDetailScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      {/* Header */}
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center justify-center w-9 h-9 rounded-md hover:bg-bg-2 text-fg-2"
-            aria-label="Orqaga"
-          >
-            <RiArrowLeftSFill size={22} />
-          </button>
-          <div className="min-w-0">
-            <p className="text-xs text-fg-3 font-body">Buyurtma</p>
-            <h1 className="font-mono text-lg font-semibold text-brand">#{data.code}</h1>
-          </div>
-        </div>
-      </header>
+      <AppHeader tagline={`Buyurtma #${data.code}`} showBack />
 
       <main className="px-4 mt-4 space-y-4">
         {/* Status banner */}
@@ -447,19 +431,7 @@ function ActionButtons({ data }: { data: OrderDetailResponse }) {
 function DetailSkeleton({ code }: { code?: string }) {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
-      <header className="px-4 pt-safe-top pb-3 bg-bg-1 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Skeleton width={36} height={36} rounded="md" />
-          <div className="space-y-1">
-            <Skeleton width={64} height={10} />
-            {code ? (
-              <p className="font-mono text-lg font-semibold text-fg-3">#{code}</p>
-            ) : (
-              <Skeleton width={120} height={20} />
-            )}
-          </div>
-        </div>
-      </header>
+      <AppHeader tagline={code ? `Buyurtma #${code}` : 'Buyurtma'} showBack />
       <main className="px-4 mt-4 space-y-4">
         <Skeleton height={72} rounded="xl" />
         <Skeleton height={140} rounded="xl" />
