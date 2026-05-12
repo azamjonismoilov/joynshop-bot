@@ -1,4 +1,5 @@
-import { RiAddFill, RiBox3Fill } from '@remixicon/react';
+import { Link } from 'react-router-dom';
+import { RiAddFill, RiBox3Fill, RiTelegramFill } from '@remixicon/react';
 import { Button } from '@/components/ui';
 import { openSellerBotDeeplink } from '@/lib/telegram';
 
@@ -13,18 +14,30 @@ export function EmptyState() {
           Hali mahsulot yo'q
         </h2>
         <p className="text-sm text-fg-3 font-body mb-6">
-          Mahsulot qo'shish uchun botga qayting. Birinchi mahsulot
-          ro'yxatda paydo bo'lganda bu yerda ko'rsatamiz.
+          Birinchi mahsulotingizni Mini App orqali yoki botda
+          qo'shing.
         </p>
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          iconLeft={<RiAddFill size={20} />}
-          onClick={() => openSellerBotDeeplink('addproduct')}
-        >
-          Botda mahsulot qo'shish
-        </Button>
+        <div className="space-y-2">
+          <Link to="/products/new" className="block">
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              iconLeft={<RiAddFill size={20} />}
+            >
+              Yangi mahsulot qo'shish
+            </Button>
+          </Link>
+          <Button
+            variant="ghost"
+            size="md"
+            fullWidth
+            iconLeft={<RiTelegramFill size={16} />}
+            onClick={() => openSellerBotDeeplink('addproduct')}
+          >
+            Yoki botda qo'shish
+          </Button>
+        </div>
       </div>
     </div>
   );

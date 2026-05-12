@@ -29,7 +29,6 @@ import {
 import { useSellerMe, useSellerStats, useSellerStatsChart } from '@/api/seller';
 import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
-import { openSellerBotDeeplink } from '@/lib/telegram';
 import { cn } from '@/lib/cn';
 import {
   colorFromName,
@@ -108,17 +107,17 @@ export function DashboardScreen() {
                   Hali mahsulot yo'q
                 </p>
                 <p className="text-xs text-fg-3 font-body mt-0.5">
-                  Mahsulot qo'shish uchun botga qayting.
+                  Birinchi mahsulotingizni qo'shing.
                 </p>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="mt-3"
-                  iconLeft={<RiAddFill size={16} />}
-                  onClick={() => openSellerBotDeeplink('addproduct')}
-                >
-                  Botda mahsulot qo'shish
-                </Button>
+                <Link to="/products/new" className="inline-block mt-3">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    iconLeft={<RiAddFill size={16} />}
+                  >
+                    Mahsulot qo'shish
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>

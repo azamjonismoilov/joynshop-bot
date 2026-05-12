@@ -63,3 +63,10 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
     body: body as FetchOptions['body'],
   });
 }
+
+export async function apiPostMultipart<T>(path: string, formData: FormData): Promise<T> {
+  return api<T>(path, {
+    method: 'POST',
+    body: formData,
+  });
+}

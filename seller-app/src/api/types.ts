@@ -118,6 +118,58 @@ export interface ProductDetailResponse {
   actions:          ProductActions;
 }
 
+export interface CategoryItem {
+  name:           string;
+  icon:           string;
+  products_count: number;
+}
+
+export interface CategoriesResponse {
+  categories: CategoryItem[];
+}
+
+export interface MxikSearchResponse {
+  ok:       boolean;
+  results:  MxikItem[];
+  count?:   number;
+  error?:   string;
+}
+
+export interface MxikItem {
+  code:      string;
+  name:      string;
+  classify?: string;
+  brand?:    string;
+  units?:    string;
+}
+
+export interface ProductPhotoUploadResponse {
+  ok:        true;
+  photo_url: string;
+}
+
+export interface ProductCreateBody {
+  name:            string;
+  category:        string;
+  sale_type:       ProductSaleType;
+  original_price:  number;
+  group_price?:    number;
+  solo_price?:     number;
+  min_group?:      number;
+  description?:    string;
+  variants?:       string[];
+  mxik_code?:      string;
+  mxik_name?:      string;
+  deadline_hours:  number;
+  photo_urls:      string[];
+  shop_idx:        number;
+}
+
+export interface ProductCreateResponse {
+  ok:  true;
+  pid: string;
+}
+
 export interface ProductUpdateBody {
   name?:           string;
   description?:    string;

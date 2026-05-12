@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { ProductsScreen } from './screens/ProductsScreen';
+import { ProductCreateScreen } from './screens/ProductCreateScreen';
 import { ProductDetailScreen } from './screens/ProductDetailScreen';
 import { OrdersScreen } from './screens/OrdersScreen';
 import { OrderDetailScreen } from './screens/OrderDetailScreen';
@@ -23,6 +24,7 @@ import { useSellerMe } from './api/seller';
 import { cn } from './lib/cn';
 
 const HIDE_NAV_PATTERNS: RegExp[] = [
+  /^\/products\/new$/,
   /^\/products\/[^/]+$/,
   /^\/orders\/[^/]+$/,
   /^\/customers\/[^/]+/,
@@ -52,6 +54,7 @@ function AppShell() {
         <Routes>
           <Route path="/"                          element={<DashboardScreen />} />
           <Route path="/products"                  element={<ProductsScreen />} />
+          <Route path="/products/new"              element={<ProductCreateScreen />} />
           <Route path="/products/:pid"             element={<ProductDetailScreen />} />
           <Route path="/orders"                    element={<OrdersScreen />} />
           <Route path="/orders/:code"              element={<OrderDetailScreen />} />

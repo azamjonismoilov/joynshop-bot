@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  RiAddLine,
   RiArrowLeftSFill,
   RiArrowRightSFill,
   RiErrorWarningFill,
@@ -70,7 +71,22 @@ export function ProductsScreen() {
           </Button>
         </div>
       )}
+
+      <CreateProductFab />
     </div>
+  );
+}
+
+function CreateProductFab() {
+  return (
+    <Link
+      to="/products/new"
+      aria-label="Yangi mahsulot"
+      className="fixed right-4 inline-flex items-center justify-center w-14 h-14 rounded-full bg-brand text-white shadow-xl hover:bg-brand-hover active:bg-brand-active transition-colors duration-base z-40"
+      style={{ bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}
+    >
+      <RiAddLine size={28} />
+    </Link>
   );
 }
 

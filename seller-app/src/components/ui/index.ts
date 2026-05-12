@@ -18,3 +18,6 @@ export type { SkeletonProps, SkeletonRounded } from './Skeleton';
 
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
+
+export { CollapseSection } from './CollapseSection';
+export type { CollapseSectionProps } from './CollapseSection';

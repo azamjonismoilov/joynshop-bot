@@ -7882,6 +7882,61 @@ def api_seller_close_product(pid):
     do_close_product(pid)
     return jsonify({'ok': True}), 200
 
+@app.route('/api/v1/seller/products/upload-photo', methods=['POST'])
+@require_seller
+def api_seller_upload_product_photo():
+    """Mini App'dan mahsulot rasmini S3'ga yuklash. multipart/form-data."""
+    uid = g.seller_uid
+    photo = request.files.get('photo')
+    if not photo or not photo.filename:
+        return jsonify({'ok': False, 'error': 'no_photo'}), 400
+    # Hajm tekshiruvi — 5 MB cap
+    photo.stream.seek(0, 2)
+    size = photo.stream.tell()
+    photo.stream.seek(0)
+    if size > 5 * 1024 * 1024:
+        return jsonify({'ok': False, 'error': 'too_large',
+                        'reason': 'max 5 MB'}), 413
+    ctype = (photo.mimetype or 'image/jpeg').lower()
+    if not ctype.startswith('image/'):
+        return jsonify({'ok': False, 'error': 'invalid_format'}), 400
+    ext = ctype.split('/', 1)[1] or 'jpeg'
+    if ext == 'jpeg':
+        ext = 'jpg'
+    s3 = get_s3()
+    if not s3:
+        return jsonify({'ok': False, 'error': 's3_unavailable'}), 503
+    key = f'products/upload_{uid}_{int(datetime.now().timestamp() * 1000)}.{ext}'
+    try:
+        s3.put_object(
+            Bucket=AWS_BUCKET_NAME,
+            Key=key,
+            Body=photo.stream.read(),
+            ContentType=ctype,
+        )
+    except Exception as e:
+        logging.error(f"upload-photo S3 error: {e}")
+        return jsonify({'ok': False, 'error': 's3_upload_failed'}), 500
+    if CDN_BASE_URL:
+        photo_url = f'{CDN_BASE_URL}/{key}'
+    else:
+        photo_url = f'https://{AWS_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{key}'
+    return jsonify({'ok': True, 'photo_url': photo_url}), 200
+
+@app.route('/api/v1/seller/products', methods=['POST'])
+@require_seller
+def api_seller_create_product():
+    """Yangi mahsulot yaratish (Mini App'dan)."""
+    uid = g.seller_uid
+    body = request.get_json(silent=True) or {}
+    payload = {k: v for k, v in body.items() if k in PRODUCT_CREATE_FIELDS}
+    ok, errors, pid = do_create_product(uid, payload)
+    if not ok:
+        if errors and errors.get('_') == 'channel_post_failed':
+            return jsonify({'ok': False, 'errors': errors}), 502
+        return jsonify({'ok': False, 'errors': errors}), 400
+    return jsonify({'ok': True, 'pid': pid}), 200
+
 # ─── ORDER ACTION HELPERS ───────────────────────────────────────────
 # do_confirm_order va do_reject_order — webhook callback handler'lari va
 # Mini App API endpoint'lari ikkalasi ham shu yagona helper'lardan
@@ -8353,6 +8408,223 @@ def do_update_shop(uid, idx, payload):
         sh[k] = v
     save_data()
     return True, None
+
+# ─── PRODUCT CREATE HELPER ──────────────────────────────────────────
+# do_create_product — Mini App POST /seller/products endpoint'i ishlatadi.
+# Bot webhook flow alohida (publish_product) — ikkalasi parallel ishlaydi.
+PRODUCT_CREATE_FIELDS = (
+    'name', 'category', 'sale_type', 'original_price', 'group_price',
+    'solo_price', 'min_group', 'description', 'variants', 'mxik_code',
+    'mxik_name', 'deadline_hours', 'photo_urls', 'shop_idx',
+)
+CATEGORY_NAMES = {name for name, _ in CATEGORIES}
+
+def do_create_product(uid, payload):
+    """Yangi mahsulot yaratadi va kanal post'ini yuboradi. Returns
+    (ok: bool, errors: dict|None, pid: str|None)."""
+    errors  = {}
+    cleaned = {}
+
+    name = (payload.get('name') or '').strip()
+    if not name:
+        errors['name'] = "Nom bo'sh bo'lmasligi kerak"
+    else:
+        cleaned['name'] = name[:100]
+
+    cat = payload.get('category')
+    if cat not in CATEGORY_NAMES:
+        errors['category'] = "Kategoriya tanlanishi kerak"
+    else:
+        cleaned['category'] = cat
+
+    st = payload.get('sale_type')
+    if st not in ('group', 'solo', 'both'):
+        errors['sale_type'] = "Sotuv turi: group | solo | both"
+    else:
+        cleaned['sale_type'] = st
+
+    new_orig  = parse_price(payload.get('original_price'))
+    new_group = parse_price(payload.get('group_price', 0))
+    new_solo  = parse_price(payload.get('solo_price', 0))
+    if new_orig is None or new_orig <= 0:
+        errors['original_price'] = "Asl narx 0 dan katta bo'lishi kerak"
+    if st and st not in errors.get('sale_type', ''):
+        if st == 'solo':
+            if not errors.get('original_price'):
+                cleaned['original_price'] = new_orig
+                cleaned['solo_price']     = new_orig
+                cleaned['group_price']    = new_orig
+                cleaned['min_group']      = 1
+        else:
+            if new_group is None or new_group <= 0:
+                errors['group_price'] = "Guruh narxi 0 dan katta bo'lishi kerak"
+            elif new_orig and new_group >= new_orig:
+                errors['group_price'] = "Guruh narxi asl narxdan past bo'lishi kerak"
+            if st == 'both':
+                if new_solo is None or new_solo <= 0:
+                    errors['solo_price'] = "Yakka narx 0 dan katta bo'lishi kerak"
+                elif new_orig and new_solo >= new_orig:
+                    errors['solo_price'] = "Yakka narx asl narxdan past bo'lishi kerak"
+                elif new_group and new_solo < new_group:
+                    errors['solo_price'] = "Yakka narx guruh narxidan yuqori bo'lishi kerak"
+            ok2, mg, err2 = validate_min_group_text(str(payload.get('min_group', '')))
+            if not ok2:
+                errors['min_group'] = err2.lstrip('❌ ').strip()
+            else:
+                cleaned['min_group'] = mg
+            if not any(k in errors for k in ('original_price','group_price','solo_price')):
+                cleaned['original_price'] = new_orig
+                cleaned['group_price']    = new_group
+                cleaned['solo_price']     = new_solo if st == 'both' else 0
+
+    desc = (payload.get('description') or '').strip()
+    cleaned['description'] = desc[:300]
+
+    variants = payload.get('variants') or []
+    if not isinstance(variants, list):
+        errors['variants'] = "Variantlar massiv bo'lishi kerak"
+    else:
+        cleaned['variants'] = [str(v).strip()[:50] for v in variants if str(v).strip()]
+
+    try:
+        hours = int(payload.get('deadline_hours', 48))
+    except (ValueError, TypeError):
+        hours = 48
+    if hours < 1 or hours > 720:
+        errors['deadline_hours'] = "1 dan 720 soatgacha"
+    else:
+        cleaned['deadline_hours'] = hours
+
+    photo_urls = payload.get('photo_urls') or []
+    if not isinstance(photo_urls, list) or not photo_urls:
+        errors['photo_urls'] = "Kamida 1 ta rasm kerak"
+    else:
+        cleaned['photo_urls'] = [str(u) for u in photo_urls if u][:5]
+        if not cleaned['photo_urls']:
+            errors['photo_urls'] = "Kamida 1 ta rasm kerak"
+
+    try:
+        shop_idx = int(payload.get('shop_idx', 0))
+    except (ValueError, TypeError):
+        shop_idx = 0
+    shops = _seller_get_shops(uid)
+    if not shops:
+        errors['shop_idx'] = "Avval do'kon yarating"
+    elif shop_idx < 0 or shop_idx >= len(shops):
+        errors['shop_idx'] = "Do'kon topilmadi"
+    else:
+        cleaned['shop_idx'] = shop_idx
+
+    mxik_code = (payload.get('mxik_code') or '').strip()
+    mxik_name = (payload.get('mxik_name') or '').strip()
+    if mxik_code:
+        cleaned['mxik_code'] = mxik_code[:32]
+        cleaned['mxik_name'] = mxik_name[:200]
+    else:
+        cleaned['mxik_code'] = None
+        cleaned['mxik_name'] = None
+
+    if errors:
+        return False, errors, None
+
+    shop = shops[cleaned['shop_idx']]
+    channel = shop.get('channel', '')
+    pid = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    deadline = datetime.now() + timedelta(hours=cleaned['deadline_hours'])
+
+    products[pid] = {
+        'name':           cleaned['name'],
+        'shop_name':      shop.get('name', ''),
+        'description':    cleaned['description'],
+        'original_price': cleaned['original_price'],
+        'group_price':    cleaned['group_price'],
+        'solo_price':     cleaned['solo_price'],
+        'min_group':      cleaned['min_group'],
+        'stock':          9999,
+        'stock_initial':  9999,
+        'photo_id':       None,
+        'photo_ids':      [],
+        'photo_url':      cleaned['photo_urls'][0],
+        'photo_urls':     cleaned['photo_urls'],
+        'contact':        shop.get('phone', ''),
+        'phone2':         shop.get('phone2', ''),
+        'address':        shop.get('address', ''),
+        'social':         shop.get('social', {}),
+        'delivery_type':  shop.get('delivery', 'pickup'),
+        'variants':       cleaned['variants'],
+        'category':       cleaned['category'],
+        'sale_type':      cleaned['sale_type'],
+        'seller_channel': channel,
+        'seller_id':      uid,
+        'deadline':       deadline.strftime('%d.%m.%Y %H:%M'),
+        'deadline_dt':    deadline.strftime('%Y-%m-%d %H:%M'),
+        'channel_message_id': None,
+        'channel_chat_id':    None,
+        'status':         'active',
+        'is_active':      True,
+        'solo_available': True,
+        'mxik_code':      cleaned['mxik_code'],
+        'mxik_name':      cleaned['mxik_name'],
+    }
+    groups[pid] = []
+    if uid not in seller_products:
+        seller_products[uid] = []
+    seller_products[uid].append(pid)
+
+    # Kanal post yuborish
+    caption = post_caption(products[pid], pid)
+    kb = json.dumps(join_kb(pid, 0, cleaned['min_group'],
+                            has_solo=bool(cleaned['solo_price']),
+                            sale_type=cleaned['sale_type']))
+    try:
+        if len(cleaned['photo_urls']) > 1:
+            media = []
+            for i, url in enumerate(cleaned['photo_urls']):
+                item = {'type': 'photo', 'media': url}
+                if i == 0:
+                    item['caption'] = caption
+                    item['parse_mode'] = 'HTML'
+                media.append(item)
+            r = requests.post(
+                f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMediaGroup',
+                json={'chat_id': channel, 'media': media}, timeout=15,
+            ).json()
+            if r.get('ok') and r.get('result'):
+                first_msg = r['result'][0]
+                products[pid]['channel_message_id'] = first_msg.get('message_id')
+                products[pid]['channel_chat_id']    = channel
+                # Tugmalar uchun alohida xabar (media group reply_markup qabul qilmaydi)
+                requests.post(
+                    f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage',
+                    json={'chat_id': channel, 'text': caption,
+                          'parse_mode': 'HTML', 'reply_markup': kb}, timeout=10,
+                )
+            else:
+                raise RuntimeError(f"sendMediaGroup failed: {r}")
+        else:
+            r = requests.post(
+                f'https://api.telegram.org/bot{SELLER_TOKEN}/sendPhoto',
+                json={'chat_id': channel, 'photo': cleaned['photo_urls'][0],
+                      'caption': caption, 'parse_mode': 'HTML',
+                      'reply_markup': kb}, timeout=15,
+            ).json()
+            if r.get('ok'):
+                products[pid]['channel_message_id'] = r['result'].get('message_id')
+                products[pid]['channel_chat_id']    = channel
+            else:
+                raise RuntimeError(f"sendPhoto failed: {r}")
+    except Exception as e:
+        # Rollback
+        logging.error(f"do_create_product channel post failed: {e}")
+        del products[pid]
+        if pid in groups:
+            del groups[pid]
+        if uid in seller_products and pid in seller_products[uid]:
+            seller_products[uid].remove(pid)
+        return False, {'_': 'channel_post_failed', 'detail': str(e)[:200]}, None
+
+    save_data()
+    return True, None, pid
 
 ORDER_STATUS_META = {
     'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},

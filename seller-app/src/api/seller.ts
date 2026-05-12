@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPatch, apiPost } from './client';
+import { apiGet, apiPatch, apiPost, apiPostMultipart } from './client';
 import type {
   MeResponse,
   ProductsResponse,
   ProductsQuery,
   ProductDetailResponse,
   ProductUpdateBody,
+  ProductCreateBody,
+  ProductCreateResponse,
+  ProductPhotoUploadResponse,
+  CategoriesResponse,
+  MxikSearchResponse,
   LegalUpdateBody,
   ShopUpdateBody,
   StatsResponse,
@@ -48,6 +53,55 @@ export function useSellerProducts(query: ProductsQuery = {}) {
     }),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useSellerCategories() {
+  return useQuery({
+    queryKey: ['seller', 'categories'],
+    queryFn: () => apiGet<CategoriesResponse>('/seller/categories'),
+    staleTime: 60 * 60 * 1000, // 1 hour
+  });
+}
+
+export function useMxikSearch(query: string) {
+  const trimmed = query.trim();
+  return useQuery({
+    queryKey: ['seller', 'mxik', trimmed],
+    queryFn: () => apiGet<MxikSearchResponse>('/seller/mxik/search', { q: trimmed }),
+    enabled: trimmed.length >= 3,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUploadProductPhoto() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('photo', file);
+      return apiPostMultipart<ProductPhotoUploadResponse>('/seller/products/upload-photo', form);
+    },
+  });
+}
+
+export function useCreateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: ProductCreateBody) => {
+      try {
+        return await apiPost<ProductCreateResponse>('/seller/products', body);
+      } catch (e: unknown) {
+        const data = (e as { data?: { errors?: Record<string, string> } }).data;
+        if (data?.errors) throw new ApiValidationError(data.errors);
+        throw e;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['seller', 'products'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'stats'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'categories'] });
+    },
   });
 }
 
