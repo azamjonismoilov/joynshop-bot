@@ -11,6 +11,11 @@ import type {
   ProductUpdateBody,
 } from '@/api/types';
 import { cn } from '@/lib/cn';
+import { useMainButton } from '@/lib/useMainButton';
+import { hapticNotify, hapticSelection } from '@/lib/haptic';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 export type EditField =
   | 'name'
@@ -52,14 +57,14 @@ interface Props {
 export function EditProductModal({ isOpen, onClose, product, field }: Props) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={TITLES[field]}>
-      <EditForm product={product} field={field} onClose={onClose} />
+      <EditForm product={product} field={field} isOpen={isOpen} onClose={onClose} />
     </Modal>
   );
 }
 
 function EditForm({
-  product, field, onClose,
-}: { product: ProductDetailResponse; field: EditField; onClose: () => void }) {
+  product, field, isOpen, onClose,
+}: { product: ProductDetailResponse; field: EditField; isOpen: boolean; onClose: () => void }) {
   const mutation = useUpdateProduct();
   const errors   = (mutation.error instanceof ApiValidationError)
     ? mutation.error.errors
@@ -103,11 +108,35 @@ function EditForm({
     }
     mutation.mutate(
       { pid: product.id, payload },
-      { onSuccess: () => onClose() },
+      {
+        onSuccess: () => { hapticNotify('success'); onClose(); },
+        onError:   () => hapticNotify('error'),
+      },
     );
   }
 
   const isPending = mutation.isPending;
+
+  // Per-field validation — MainButton enabled only when input is non-empty/valid
+  const trimmedName = name.trim();
+  const minGroupNum = Number(minGroup);
+  const hoursNum    = Number(hours);
+  const fieldValid =
+    (field === 'name'        && trimmedName.length > 0) ||
+    (field === 'description' && true) ||
+    (field === 'pricing'     && Number(orig.replace(/\D/g, '')) > 0) ||
+    (field === 'min_group'   && minGroupNum >= 2 && minGroupNum <= 100) ||
+    (field === 'deadline'    && hoursNum >= 1 && hoursNum <= 720) ||
+    (field === 'variants'    && variants.length > 0);
+
+  useMainButton({
+    text:    'Saqlash',
+    enabled: isOpen && fieldValid && !isPending,
+    loading: isPending,
+    onClick: submit,
+  });
+
+  const inTelegram = isInTelegram();
 
   return (
     <>
@@ -165,7 +194,7 @@ function EditForm({
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => setSaleType(opt.key)}
+                  onClick={() => { hapticSelection(); setSaleType(opt.key); }}
                   disabled={isPending}
                   className={cn(
                     'flex-1 px-2 py-1.5 text-xs font-medium font-display rounded-sm transition-colors duration-base',
@@ -238,7 +267,7 @@ function EditForm({
                 <button
                   key={p.hours}
                   type="button"
-                  onClick={() => setHours(String(p.hours))}
+                  onClick={() => { hapticSelection(); setHours(String(p.hours)); }}
                   disabled={isPending}
                   className={cn(
                     'px-2 py-1.5 text-xs font-medium font-display rounded-md border transition-colors duration-base',
@@ -336,13 +365,15 @@ function EditForm({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending}>
+      <div className={cn('mt-5', inTelegram ? 'flex justify-start' : 'grid grid-cols-2 gap-2')}>
+        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending} fullWidth={inTelegram}>
           Bekor
         </Button>
-        <Button variant="primary" size="lg" onClick={submit} disabled={isPending}>
-          {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
-        </Button>
+        {!inTelegram && (
+          <Button variant="primary" size="lg" onClick={submit} disabled={isPending || !fieldValid}>
+            {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+          </Button>
+        )}
       </div>
     </>
   );

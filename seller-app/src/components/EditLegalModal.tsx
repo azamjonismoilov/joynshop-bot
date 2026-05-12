@@ -3,6 +3,11 @@ import { Button, Input, Modal } from '@/components/ui';
 import { ApiValidationError, useUpdateLegal } from '@/api/seller';
 import type { LegalInfo, LegalStatus, LegalUpdateBody } from '@/api/types';
 import { cn } from '@/lib/cn';
+import { useMainButton } from '@/lib/useMainButton';
+import { hapticNotify, hapticSelection } from '@/lib/haptic';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 export type LegalEditField =
   | 'status'
@@ -67,10 +72,30 @@ export function EditLegalModal({ isOpen, onClose, field, current }: Props) {
       case 'bank_mfo':      payload = { bank_mfo: bankMfo.trim() }; break;
       case 'director_name': payload = { director_name: directorName.trim() }; break;
     }
-    mutation.mutate(payload, { onSuccess: () => onClose() });
+    mutation.mutate(payload, {
+      onSuccess: () => { hapticNotify('success'); onClose(); },
+      onError:   () => hapticNotify('error'),
+    });
   };
 
   const isPending = mutation.isPending;
+
+  const fieldValid =
+    (field === 'status'        && (status === 'yatt' || status === 'mchj')) ||
+    (field === 'stir'          && /^[1-6]\d{8}$/.test(stir.trim())) ||
+    (field === 'bank_name'     && bankName.trim().length >= 3) ||
+    (field === 'bank_account'  && bankAccount.replace(/\D/g, '').length === 20) ||
+    (field === 'bank_mfo'      && /^\d{5}$/.test(bankMfo.trim())) ||
+    (field === 'director_name' && directorName.trim().split(/\s+/).filter(Boolean).length >= 3);
+
+  useMainButton({
+    text:    'Saqlash',
+    enabled: isOpen && fieldValid && !isPending,
+    loading: isPending,
+    onClick: submit,
+  });
+
+  const inTelegram = isInTelegram();
 
   return (
     <Modal
@@ -85,7 +110,7 @@ export function EditLegalModal({ isOpen, onClose, field, current }: Props) {
               <button
                 key={opt}
                 type="button"
-                onClick={() => setStatus(opt)}
+                onClick={() => { hapticSelection(); setStatus(opt); }}
                 disabled={isPending}
                 className={cn(
                   'flex-1 py-3 px-3 rounded-md border text-sm font-medium font-display transition-colors duration-base',
@@ -193,13 +218,15 @@ export function EditLegalModal({ isOpen, onClose, field, current }: Props) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending}>
+      <div className={cn('mt-5', inTelegram ? 'flex' : 'grid grid-cols-2 gap-2')}>
+        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending} fullWidth={inTelegram}>
           Bekor
         </Button>
-        <Button variant="primary" size="lg" onClick={submit} disabled={isPending}>
-          {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
-        </Button>
+        {!inTelegram && (
+          <Button variant="primary" size="lg" onClick={submit} disabled={isPending || !fieldValid}>
+            {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+          </Button>
+        )}
       </div>
     </Modal>
   );

@@ -18,6 +18,7 @@ import { PhotoUploader } from '@/components/PhotoUploader';
 import { MxikSearchModal } from '@/components/MxikSearchModal';
 import { ProductPreviewModal } from '@/components/ProductPreviewModal';
 import { useMainButton } from '@/lib/useMainButton';
+import { hapticNotify, hapticSelection } from '@/lib/haptic';
 import {
   ApiValidationError,
   useCreateProduct,
@@ -275,10 +276,12 @@ export function ProductCreateScreen() {
   const submitFromPreview = () => {
     mutation.mutate(buildBody(), {
       onSuccess: (res) => {
+        hapticNotify('success');
         clearDraft();
         setShowPreview(false);
         navigate(`/products/${res.pid}`);
       },
+      onError: () => hapticNotify('error'),
     });
   };
 
@@ -325,7 +328,7 @@ export function ProductCreateScreen() {
                 <button
                   key={i}
                   type="button"
-                  onClick={() => setShopIdx(i)}
+                  onClick={() => { hapticSelection(); setShopIdx(i); }}
                   className={cn(
                     'px-3 py-1.5 rounded-md border text-sm font-medium font-display transition-colors duration-base',
                     shopIdx === i
@@ -377,7 +380,7 @@ export function ProductCreateScreen() {
                   <button
                     key={opt.id}
                     type="button"
-                    onClick={() => setSaleType(opt.id)}
+                    onClick={() => { hapticSelection(); setSaleType(opt.id); }}
                     className={cn(
                       'px-2 py-2 rounded-md border text-xs font-medium font-display transition-colors duration-base',
                       saleType === opt.id
@@ -580,7 +583,7 @@ export function ProductCreateScreen() {
               <button
                 key={d.hours}
                 type="button"
-                onClick={() => setDeadlineHours(d.hours)}
+                onClick={() => { hapticSelection(); setDeadlineHours(d.hours); }}
                 className={cn(
                   'px-2 py-2 rounded-md border text-xs font-medium font-display transition-colors duration-base',
                   deadlineHours === d.hours
@@ -714,7 +717,7 @@ function CategoryPicker({
         <button
           key={cat.name}
           type="button"
-          onClick={() => onChange(cat.name)}
+          onClick={() => { hapticSelection(); onChange(cat.name); }}
           className={cn(
             'flex items-center gap-1.5 px-2 py-2 rounded-md border text-left transition-colors duration-base',
             value === cat.name

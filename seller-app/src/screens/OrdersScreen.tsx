@@ -21,6 +21,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
+import { hapticSelection } from '@/lib/haptic';
 
 interface FilterTab {
   key:   OrderFilter;
@@ -169,7 +170,7 @@ function FilterBar({
         return (
           <button
             key={tab.key}
-            onClick={() => onChange(tab.key)}
+            onClick={() => { hapticSelection(); onChange(tab.key); }}
             className={cn(
               'inline-flex items-center gap-1.5 px-3 h-9 rounded-md text-sm font-medium font-display',
               'whitespace-nowrap transition-colors duration-base shrink-0',

@@ -25,6 +25,11 @@ import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { colorFromName, formatPrice, getInitials } from '@/lib/format';
+import { useMainButton } from '@/lib/useMainButton';
+import { hapticImpact, hapticNotify } from '@/lib/haptic';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 const STATUS_BANNER_BG: Record<OrderStatus, string> = {
   pending:    'bg-bg-3 text-fg-2',
@@ -317,14 +322,18 @@ function ActionButtons({ data }: { data: OrderDetailResponse }) {
   // Server'dagi actions field afzal — eski backend uchun status'dan fallback
   const canConfirm = data.actions?.can_confirm ?? (data.status === 'pending' || data.status === 'confirming');
   const canReject  = data.actions?.can_reject  ?? !['confirmed', 'rejected', 'cancelled'].includes(data.status);
-  if (!canConfirm && !canReject) return null;
 
   const isPending = confirmMut.isPending || rejectMut.isPending;
 
   const handleConfirm = () => {
     setError(null);
+    hapticImpact('medium');
     confirmMut.mutate(data.code, {
-      onError: (e) => setError(e instanceof Error ? e.message : "Tasdiqlash xato bo'ldi"),
+      onSuccess: () => hapticNotify('success'),
+      onError: (e) => {
+        hapticNotify('error');
+        setError(e instanceof Error ? e.message : "Tasdiqlash xato bo'ldi");
+      },
     });
   };
 
@@ -334,19 +343,37 @@ function ActionButtons({ data }: { data: OrderDetailResponse }) {
       { code: data.code, reason: reason.trim() },
       {
         onSuccess: () => {
+          hapticNotify('success');
           setShowReject(false);
           setReason('');
         },
-        onError: (e) => setError(e instanceof Error ? e.message : "Rad etish xato bo'ldi"),
+        onError: (e) => {
+          hapticNotify('error');
+          setError(e instanceof Error ? e.message : "Rad etish xato bo'ldi");
+        },
       },
     );
   };
 
+  // Tasdiqlash → MainButton; reject modal ochiq bo'lsa MainButton yashirin
+  useMainButton({
+    text:    'Tasdiqlash',
+    enabled: !!canConfirm && !showReject && !isPending,
+    loading: confirmMut.isPending,
+    onClick: handleConfirm,
+  });
+  const inTelegram = isInTelegram();
+
+  if (!canConfirm && !canReject) return null;
+
   return (
     <>
       <div className="space-y-2">
-        <div className="grid grid-cols-2 gap-2">
-          {canConfirm && (
+        <div className={cn(
+          'gap-2',
+          inTelegram ? 'flex flex-col' : 'grid grid-cols-2',
+        )}>
+          {canConfirm && !inTelegram && (
             <Button
               variant="success"
               size="lg"
@@ -363,7 +390,7 @@ function ActionButtons({ data }: { data: OrderDetailResponse }) {
               size="lg"
               iconLeft={<RiCloseFill size={18} />}
               disabled={isPending}
-              onClick={() => { setError(null); setShowReject(true); }}
+              onClick={() => { hapticImpact('light'); setError(null); setShowReject(true); }}
             >
               Rad etish
             </Button>

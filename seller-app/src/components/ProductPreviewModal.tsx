@@ -16,6 +16,10 @@ import type {
 } from '@/api/types';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
+import { useMainButton } from '@/lib/useMainButton';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 interface PreviewData {
   name:           string;
@@ -63,6 +67,14 @@ export function ProductPreviewModal({
   const deadlineLabel = DEADLINE_LABELS[data.deadlineHours] || `${data.deadlineHours} soat`;
   const showGroup = data.saleType !== 'solo';
   const showSolo  = data.saleType !== 'group';
+
+  useMainButton({
+    text:    "🚀 E'lon qilish",
+    enabled: isOpen && !isSubmitting,
+    loading: !!isSubmitting,
+    onClick: onConfirm,
+  });
+  const inTelegram = isInTelegram();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Kanal posti ko'rinishi">
@@ -217,13 +229,15 @@ export function ProductPreviewModal({
       </div>
 
       {/* Action buttons */}
-      <div className={cn('grid grid-cols-2 gap-2 mt-4')}>
-        <Button variant="outline" size="lg" onClick={onClose} disabled={isSubmitting}>
+      <div className={cn('mt-4', inTelegram ? 'flex' : 'grid grid-cols-2 gap-2')}>
+        <Button variant="outline" size="lg" onClick={onClose} disabled={isSubmitting} fullWidth={inTelegram}>
           Tahrirlash
         </Button>
-        <Button variant="primary" size="lg" onClick={onConfirm} disabled={isSubmitting}>
-          {isSubmitting ? "E'lon qilinmoqda..." : "E'lon qilish"}
-        </Button>
+        {!inTelegram && (
+          <Button variant="primary" size="lg" onClick={onConfirm} disabled={isSubmitting}>
+            {isSubmitting ? "E'lon qilinmoqda..." : "E'lon qilish"}
+          </Button>
+        )}
       </div>
     </Modal>
   );

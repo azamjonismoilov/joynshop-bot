@@ -44,6 +44,7 @@ import type {
   TopCustomer,
   TopProduct,
 } from '@/api/types';
+import { hapticSelection } from '@/lib/haptic';
 
 interface PeriodOption {
   key:   StatsRange;
@@ -178,7 +179,7 @@ function PeriodFilter({
       {PERIODS.map((p) => (
         <button
           key={p.key}
-          onClick={() => onChange(p)}
+          onClick={() => { hapticSelection(); onChange(p); }}
           className={cn(
             'flex-1 px-3 py-1.5 text-xs font-medium font-display rounded-sm transition-colors duration-base whitespace-nowrap',
             value.key === p.key ? 'bg-bg-1 text-fg-1 shadow-xs' : 'text-fg-3 hover:text-fg-2',

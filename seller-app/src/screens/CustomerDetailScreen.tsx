@@ -25,6 +25,7 @@ import type { CustomerActivity, CustomerDetail } from '@/api/types';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
+import { hapticNotify, hapticSelection } from '@/lib/haptic';
 
 const ACTIVITY_BADGE: Record<CustomerActivity, BadgeVariant> = {
   active:  'green',
@@ -124,6 +125,7 @@ function TagsCard({ data }: { data: CustomerDetail }) {
 
   const toggle = (tagId: string) => {
     if (mutation.isPending) return;
+    hapticSelection();
     const next = active.includes(tagId)
       ? active.filter((t) => t !== tagId)
       : [...active, tagId];
@@ -131,6 +133,8 @@ function TagsCard({ data }: { data: CustomerDetail }) {
     mutation.mutate(
       { cuid: data.cuid, payload: { tags: next } },
       {
+        onSuccess: () => hapticNotify('success'),
+        onError:   () => hapticNotify('error'),
         onSettled: () => setPendingTags(null),
       },
     );

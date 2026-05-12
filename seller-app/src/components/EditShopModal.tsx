@@ -3,6 +3,11 @@ import { Button, Input, Modal } from '@/components/ui';
 import { ApiValidationError, useUpdateShop } from '@/api/seller';
 import type { DeliveryType, ShopDetail, ShopUpdateBody } from '@/api/types';
 import { cn } from '@/lib/cn';
+import { useMainButton } from '@/lib/useMainButton';
+import { hapticNotify, hapticSelection } from '@/lib/haptic';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 export type ShopEditField = 'name' | 'contact' | 'delivery' | 'social';
 
@@ -77,10 +82,28 @@ export function EditShopModal({ isOpen, onClose, field, shop }: Props) {
         body = { social };
         break;
     }
-    mutation.mutate({ idx: shop.idx, body }, { onSuccess: () => onClose() });
+    mutation.mutate({ idx: shop.idx, body }, {
+      onSuccess: () => { hapticNotify('success'); onClose(); },
+      onError:   () => hapticNotify('error'),
+    });
   };
 
   const isPending = mutation.isPending;
+
+  const fieldValid =
+    (field === 'name'     && name.trim().length > 0) ||
+    (field === 'contact'  && phone.trim().length > 0 && address.trim().length > 0) ||
+    (field === 'delivery' && (delivery === 'pickup' || delivery === 'deliver' || delivery === 'both')) ||
+    (field === 'social'   && true);
+
+  useMainButton({
+    text:    'Saqlash',
+    enabled: isOpen && fieldValid && !isPending,
+    loading: isPending,
+    onClick: submit,
+  });
+
+  const inTelegram = isInTelegram();
 
   return (
     <Modal
@@ -149,7 +172,7 @@ export function EditShopModal({ isOpen, onClose, field, shop }: Props) {
             <button
               key={opt.id}
               type="button"
-              onClick={() => setDelivery(opt.id)}
+              onClick={() => { hapticSelection(); setDelivery(opt.id); }}
               disabled={isPending}
               className={cn(
                 'w-full text-left px-3 py-3 rounded-md border text-sm font-medium font-display transition-colors duration-base',
@@ -195,13 +218,15 @@ export function EditShopModal({ isOpen, onClose, field, shop }: Props) {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending}>
+      <div className={cn('mt-5', inTelegram ? 'flex' : 'grid grid-cols-2 gap-2')}>
+        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending} fullWidth={inTelegram}>
           Bekor
         </Button>
-        <Button variant="primary" size="lg" onClick={submit} disabled={isPending}>
-          {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
-        </Button>
+        {!inTelegram && (
+          <Button variant="primary" size="lg" onClick={submit} disabled={isPending || !fieldValid}>
+            {isPending ? 'Saqlanmoqda...' : 'Saqlash'}
+          </Button>
+        )}
       </div>
     </Modal>
   );

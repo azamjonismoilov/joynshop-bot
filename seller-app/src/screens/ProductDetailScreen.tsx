@@ -28,6 +28,7 @@ import { EditProductModal, type EditField } from '@/components/EditProductModal'
 import { cn } from '@/lib/cn';
 import { formatPrice, formatPriceShort } from '@/lib/format';
 import type { ProductDetailResponse, ProductSaleType } from '@/api/types';
+import { hapticNotify } from '@/lib/haptic';
 
 const SALE_TYPE_LABEL: Record<ProductSaleType, string> = {
   both:  'Guruh va yakka',
@@ -441,7 +442,10 @@ function CloseConfirmModal({
           size="lg"
           iconLeft={<RiCloseFill size={18} />}
           disabled={mutation.isPending}
-          onClick={() => mutation.mutate(pid, { onSuccess: onClose })}
+          onClick={() => mutation.mutate(pid, {
+            onSuccess: () => { hapticNotify('success'); onClose(); },
+            onError:   () => hapticNotify('error'),
+          })}
         >
           {mutation.isPending ? "Yopilmoqda..." : 'Yopish'}
         </Button>

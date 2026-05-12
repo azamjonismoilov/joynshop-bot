@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { Button, Modal } from '@/components/ui';
 import { useUpdateCustomer } from '@/api/seller';
 import { cn } from '@/lib/cn';
+import { useMainButton } from '@/lib/useMainButton';
+import { hapticNotify } from '@/lib/haptic';
+
+const isInTelegram = (): boolean =>
+  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 interface Props {
   isOpen:      boolean;
@@ -27,12 +32,30 @@ export function EditCustomerNoteModal({ isOpen, onClose, cuid, currentNote }: Pr
   const submit = () => {
     mutation.mutate(
       { cuid, payload: { note } },
-      { onSuccess: () => onClose() },
+      {
+        onSuccess: () => { hapticNotify('success'); onClose(); },
+        onError:   () => hapticNotify('error'),
+      },
     );
   };
 
   const isPending = mutation.isPending;
   const overLimit = note.length > MAX_LEN - 10;
+
+  const trimmed = note.trim();
+  const willDelete = trimmed.length === 0 && currentNote.length > 0;
+  const mainText = willDelete ? "O'chirish" : 'Saqlash';
+  // Saqlash uchun matn o'zgargan bo'lishi shart; o'chirish uchun har doim faol
+  const mainEnabled = isOpen && !isPending && (willDelete || trimmed !== currentNote.trim());
+
+  useMainButton({
+    text:    mainText,
+    enabled: mainEnabled,
+    loading: isPending,
+    onClick: submit,
+  });
+
+  const inTelegram = isInTelegram();
 
   return (
     <Modal
@@ -70,13 +93,15 @@ export function EditCustomerNoteModal({ isOpen, onClose, cuid, currentNote }: Pr
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending}>
+      <div className={cn('mt-5', inTelegram ? 'flex' : 'grid grid-cols-2 gap-2')}>
+        <Button variant="outline" size="lg" onClick={onClose} disabled={isPending} fullWidth={inTelegram}>
           Bekor
         </Button>
-        <Button variant="primary" size="lg" onClick={submit} disabled={isPending}>
-          {isPending ? "Saqlanmoqda..." : 'Saqlash'}
-        </Button>
+        {!inTelegram && (
+          <Button variant="primary" size="lg" onClick={submit} disabled={isPending}>
+            {isPending ? "Saqlanmoqda..." : mainText}
+          </Button>
+        )}
       </div>
     </Modal>
   );
