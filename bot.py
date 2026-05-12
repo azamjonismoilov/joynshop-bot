@@ -107,8 +107,16 @@ APP_URL            = os.environ.get('APP_URL', '')
 # doesn't proxy that path. Falls back to APP_URL when not set.
 BACKEND_URL        = os.environ.get('BACKEND_URL', APP_URL)
 
+# Buyer Mini App — React frontend hosted on Vercel (buyer.joynshop.uz).
+# Eski /miniapp Flask route ham ishlab turaveradi (fallback uchun).
+# Sprint 1+ cutover: barcha bot inline web_app tugmalari shu URL'ga
+# yo'naltirilgan. BUYER_APP_URL env var orqali override qilish mumkin
+# (masalan staging uchun).
+BUYER_APP_URL      = os.environ.get('BUYER_APP_URL', 'https://buyer.joynshop.uz').rstrip('/')
+
 def setup_bot_ui():
-    miniapp_url = f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp" if (BACKEND_URL or APP_URL) else None
+    # Xaridor menu button — React Mini App'ga yo'naltiriladi (Vercel hosted).
+    miniapp_url = BUYER_APP_URL or None
 
     if BUYER_TOKEN:
         if miniapp_url:
@@ -5609,7 +5617,7 @@ def buyer_handle_cb(cb):
                 "🛍 <b>Joynshop do'koni</b>\n\nMahsulotlarni ko'rish uchun:",
                 {'inline_keyboard': [
                     [{'text': "🌐 Saytga o'tish",  'url': APP_URL}],
-                    [{'text': "📱 Miniapp ochish", 'web_app': {'url': f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp"}}],
+                    [{'text': "📱 Miniapp ochish", 'web_app': {'url': BUYER_APP_URL}}],
                 ]}
             )
         else:
@@ -5986,8 +5994,9 @@ def buyer_handle_msg(msg):
                 if not p:
                     send_buyer(cid, "❌ Mahsulot topilmadi yoki yopilgan.")
                     return
-                _base = (BACKEND_URL or APP_URL or '').rstrip('/')
-                miniapp_url = f'{_base}/miniapp?pid={pid}&action=buy&type={buy_type}' if _base else None
+                # Query params React app'da window.location.search orqali o'qiladi
+                # (Sprint 2 da deep-link auto-open ulanadi).
+                miniapp_url = f'{BUYER_APP_URL}/?pid={pid}&action=buy&type={buy_type}' if BUYER_APP_URL else None
                 if miniapp_url:
                     # Faqat bitta xabar — Mini App ochish tugmasi bilan
                     send_buyer(cid,
@@ -6022,8 +6031,7 @@ def buyer_handle_msg(msg):
                     )
             except: pass
             # /start with ref — welcome message
-            _base = (BACKEND_URL or APP_URL or '').rstrip('/')
-            miniapp_url = f'{_base}/miniapp' if _base else None
+            miniapp_url = BUYER_APP_URL or None
             site_url    = APP_URL if APP_URL else None
 
             inline_row = []
@@ -6174,8 +6182,7 @@ def buyer_handle_msg(msg):
 
     # ── /start (parametrsiz) ──
     if text == '/start':
-        _base = (BACKEND_URL or APP_URL or '').rstrip('/')
-        miniapp_url = f'{_base}/miniapp' if _base else None
+        miniapp_url = BUYER_APP_URL or None
         site_url    = APP_URL if APP_URL else None
 
         # 1 ta xabar: salom matni + inline [Saytga o'tish] [Miniapp] buttonlar
@@ -6958,19 +6965,22 @@ def setup_menu_route():
     from flask import jsonify
     if request.args.get('key','')!=DASHBOARD_PASSWORD:
         return jsonify({'ok':False,'error':'unauthorized'}),403
-    miniapp_url = f"{(BACKEND_URL or APP_URL or '').rstrip('/')}/miniapp" if (BACKEND_URL or APP_URL) else None
+    miniapp_url = BUYER_APP_URL or None
     results={}
     if BUYER_TOKEN and miniapp_url:
         r=requests.post(f'https://api.telegram.org/bot{BUYER_TOKEN}/setChatMenuButton',
             json={'menu_button':{'type':'web_app','text':'🛍 Joynshop','web_app':{'url':miniapp_url}}}).json()
         results['buyer_menu']=r
     elif BUYER_TOKEN:
-        results['buyer_menu']='APP_URL not set'
+        results['buyer_menu']='BUYER_APP_URL not set'
     if SELLER_TOKEN:
         r=requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/setChatMenuButton',
             json={'menu_button':{'type':'commands'}}).json()
         results['seller_menu']=r
-    results['miniapp_url']=miniapp_url; results['APP_URL']=APP_URL; results['BACKEND_URL']=BACKEND_URL
+    results['miniapp_url']=miniapp_url
+    results['BUYER_APP_URL']=BUYER_APP_URL
+    results['APP_URL']=APP_URL
+    results['BACKEND_URL']=BACKEND_URL
     return jsonify({'ok':True,'results':results})
 
 @app.route('/admin/backfill-expired', methods=['POST'])
