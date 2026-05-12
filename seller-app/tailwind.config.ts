@@ -84,7 +84,7 @@ export default {
       fontFamily: {
         display: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
         body:    ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-        mono:    ['DM Mono', 'ui-monospace', 'SF Mono', 'monospace'],
+        mono:    ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       fontSize: {
         xs:    ['12px', { lineHeight: '16px' }],

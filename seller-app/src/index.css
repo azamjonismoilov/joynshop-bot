@@ -18,3 +18,9 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* font-mono klassi endi Inter ga yo'naltirilgan (DM Mono olib tashlandi).
+   Raqamlar bir xil kenglikda ko'rinishi uchun tabular-nums qo'llaymiz. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}

@@ -281,12 +281,12 @@ function ChartBody({ chart }: { chart: ReturnType<typeof useSellerStatsChart> })
           </defs>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 11, fill: 'var(--color-fg-3)', fontFamily: 'DM Mono' }}
+            tick={{ fontSize: 11, fill: 'var(--color-fg-3)', fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'var(--color-fg-3)', fontFamily: 'DM Mono' }}
+            tick={{ fontSize: 11, fill: 'var(--color-fg-3)', fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => formatPriceShort(v)}

@@ -72,7 +72,8 @@
   /* ───── Typography ───── */
   --font-display:          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body:             'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono:             'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* font-mono klassi Inter ga yo'naltirilgan — raqamlar tabular-nums orqali tekislanadi */
+  --font-mono:             'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* ───── Spacing — 4px base scale ───── */
   --space-0:               0;
