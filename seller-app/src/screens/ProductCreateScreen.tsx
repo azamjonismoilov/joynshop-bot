@@ -11,6 +11,7 @@ import {
   Card,
   CollapseSection,
   Input,
+  Modal,
 } from '@/components/ui';
 import { AppHeader } from '@/components/AppHeader';
 import { PhotoUploader } from '@/components/PhotoUploader';
@@ -111,9 +112,10 @@ export function ProductCreateScreen() {
   // Section 6 (collapse)
   const [deadlineHours, setDeadlineHours] = useState(48);
 
-  // Draft + preview
+  // Draft + preview + exit confirm
   const [draftMeta, setDraftMeta]     = useState<{ savedAt: number } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hydrated, setHydrated]       = useState(false);
 
   // Mount — draft mavjudligini tekshirish, lekin avtomatik restore qilmaymiz
@@ -195,6 +197,37 @@ export function ProductCreateScreen() {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
+  // Sotuvchi formada nimadir kiritganmi?
+  const hasContent =
+    name.trim().length > 0 ||
+    category.length > 0 ||
+    photoUrls.length > 0 ||
+    origPrice.length > 0 ||
+    groupPrice.length > 0 ||
+    soloPrice.length > 0 ||
+    description.trim().length > 0 ||
+    variants.length > 0 ||
+    mxik !== null;
+
+  const handleBack = () => {
+    if (hasContent) {
+      setShowExitConfirm(true);
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const exitKeepDraft = () => {
+    setShowExitConfirm(false);
+    navigate(-1);
+  };
+
+  const exitDiscardDraft = () => {
+    clearDraft();
+    setShowExitConfirm(false);
+    navigate(-1);
+  };
+
   const parsePrice = (v: string) => Number(v.replace(/\D/g, '')) || 0;
   const orig  = parsePrice(origPrice);
   const grp   = parsePrice(groupPrice);
@@ -240,7 +273,7 @@ export function ProductCreateScreen() {
 
   return (
     <div className="min-h-screen bg-bg-2 pb-32">
-      <AppHeader tagline="Yangi mahsulot" showBack />
+      <AppHeader tagline="Yangi mahsulot" showBack onBack={handleBack} />
 
       <main className="px-4 mt-4 space-y-3">
         {/* ─── Draft restore banner ─── */}
@@ -618,6 +651,43 @@ export function ProductCreateScreen() {
           categories:    cats.data?.categories,
         }}
       />
+
+      <Modal
+        isOpen={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        title="Mahsulot qo'shishni bekor qilasizmi?"
+      >
+        <p className="text-sm text-fg-3 font-body mb-4">
+          Kiritilgan ma'lumotlar avtomatik saqlangan — keyin
+          davom etishingiz mumkin.
+        </p>
+        <div className="space-y-2">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={exitKeepDraft}
+          >
+            Saqlab chiqish
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            fullWidth
+            onClick={exitDiscardDraft}
+          >
+            O'chirib chiqish
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            fullWidth
+            onClick={() => setShowExitConfirm(false)}
+          >
+            Davom etish
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

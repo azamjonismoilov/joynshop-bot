@@ -841,6 +841,38 @@ def get_prod_progress_text(uid):
         f"Davom etasizmi yoki yangi boshlamoqchimisiz?"
     )
 
+def seller_start_addproduct_flow(uid, cid):
+    """Mahsulot qo'shish flow'ini boshlash. /addproduct text handler va
+    /start addproduct deeplink ikkalasi ham shu yagona joydan chaqiriladi.
+    """
+    if is_prod_in_progress(uid):
+        send_seller(cid, get_prod_progress_text(uid),
+            {'inline_keyboard': [
+                [{'text': '▶️ Davom etish', 'callback_data': 'prod_continue'}],
+                [{'text': '🗑 Bekor qilish', 'callback_data': 'prod_restart'}],
+            ]}
+        )
+        return
+    shops = seller_shops.get(uid, [])
+    if not shops:
+        send_seller(cid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
+        return
+    if len(shops) == 1:
+        seller_state[uid] = {
+            'step': 'prod_name', 'shop_idx': 0,
+            'shop_name':      shops[0]['name'],
+            'contact':        shops[0]['phone'],
+            'delivery_type':  shops[0].get('delivery','pickup'),
+            'seller_channel': shops[0].get('channel',''),
+        }
+        send_seller(cid,
+            f"📦 <b>{shops[0]['name']}</b> uchun yangi mahsulot\n\n"
+            f"<b>1/4</b> Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
+        )
+    else:
+        btns = [[{'text': f"🏪 {s['name']}", 'callback_data': f"sel_shop_{i}"}] for i,s in enumerate(shops)]
+        send_seller(cid, "Qaysi do'kon uchun mahsulot qo'shmoqchisiz?", {'inline_keyboard': btns})
+
 def is_spam(text):
     if not text: return False
     lower = text.lower()
@@ -4234,7 +4266,13 @@ def seller_handle_msg(msg):
         )
         return
 
-    if text == '/start':
+    if text == '/start' or text.startswith('/start '):
+        # Deeplink param: t.me/<bot>?start=<param> → "/start <param>"
+        parts = text.split(maxsplit=1)
+        start_param = parts[1].strip() if len(parts) > 1 else ''
+        if start_param == 'addproduct':
+            seller_start_addproduct_flow(uid, cid)
+            return
         shops = seller_shops.get(uid) or seller_shops.get(str(uid), [])
         is_new = not shops and str(uid) not in [str(k) for k in seller_shops.keys()]
         if is_new:
@@ -4434,33 +4472,7 @@ def seller_handle_msg(msg):
         return
 
     if text == '/addproduct' or text == "➕ Mahsulot qo'shish":
-        if is_prod_in_progress(uid):
-            send_seller(cid, get_prod_progress_text(uid),
-                {'inline_keyboard': [
-                    [{'text': '▶️ Davom etish', 'callback_data': 'prod_continue'}],
-                    [{'text': '🗑 Bekor qilish', 'callback_data': 'prod_restart'}],
-                ]}
-            )
-            return
-        shops = seller_shops.get(uid, [])
-        if not shops:
-            send_seller(cid, "❌ Avval do'kon profilingizni to'ldiring.\n\n/start yozing.")
-            return
-        if len(shops) == 1:
-            seller_state[uid] = {
-                'step': 'prod_name', 'shop_idx': 0,
-                'shop_name':      shops[0]['name'],
-                'contact':        shops[0]['phone'],
-                'delivery_type':  shops[0].get('delivery','pickup'),
-                'seller_channel': shops[0].get('channel',''),
-            }
-            send_seller(cid,
-                f"📦 <b>{shops[0]['name']}</b> uchun yangi mahsulot\n\n"
-                f"<b>1/4</b> Mahsulot nomini yozing:\n<i>Masalan: Nike Air Max 270</i>"
-            )
-        else:
-            btns = [[{'text': f"🏪 {s['name']}", 'callback_data': f"sel_shop_{i}"}] for i,s in enumerate(shops)]
-            send_seller(cid, "Qaysi do'kon uchun mahsulot qo'shmoqchisiz?", {'inline_keyboard': btns})
+        seller_start_addproduct_flow(uid, cid)
         return
 
     if text in ('/mychannels', '/shops', "📢 Do'konlarim", '📢 Kanallarim'):

@@ -1,10 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { RiArrowLeftSLine } from '@remixicon/react';
+import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 
 interface AppHeaderProps {
   tagline:   string;
   showBack?: boolean;
   onBack?:   () => void;
+}
+
+// Telegram Mini App'da Telegram native BackButton chaqiriladi (chap-yuqori),
+// shuning uchun HTML back tugma takror bo'lib qoladi. Faqat brauzer/dev
+// rejimida ko'rsatamiz (fallback).
+function isInTelegram(): boolean {
+  return typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 }
 
 export function AppHeader({ tagline, showBack, onBack }: AppHeaderProps) {
@@ -13,10 +21,16 @@ export function AppHeader({ tagline, showBack, onBack }: AppHeaderProps) {
     if (onBack) onBack();
     else navigate(-1);
   };
+
+  // Telegram BackButton'ni `showBack` true bo'lganda ulash —
+  // har detail ekran avtomatik mos keladi (per-screen kod kerak emas).
+  useTelegramBackButton(handleBack, !!showBack);
+
+  const showHtmlBack = showBack && !isInTelegram();
   return (
     <header className="bg-brand text-white pt-safe-top pb-4 px-4">
       <div className="relative flex items-center justify-center min-h-[40px]">
-        {showBack && (
+        {showHtmlBack && (
           <button
             onClick={handleBack}
             aria-label="Orqaga"
