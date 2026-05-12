@@ -17,6 +17,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { PhotoUploader } from '@/components/PhotoUploader';
 import { MxikSearchModal } from '@/components/MxikSearchModal';
 import { ProductPreviewModal } from '@/components/ProductPreviewModal';
+import { useMainButton } from '@/lib/useMainButton';
 import {
   ApiValidationError,
   useCreateProduct,
@@ -243,6 +244,16 @@ export function ProductCreateScreen() {
     orig > 0 &&
     (saleType === 'solo' || grp > 0) &&
     !mutation.isPending;
+
+  // Telegram MainButton — modal yopiq va forma valid bo'lganda ko'rinadi
+  const modalsOpen = showPreview || showExitConfirm || showMxik;
+  useMainButton({
+    text:    "🚀 Oldindan ko'rish",
+    enabled: !modalsOpen && canSubmit,
+    loading: mutation.isPending,
+    onClick: () => setShowPreview(true),
+  });
+  const isInTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
   const buildBody = (): ProductCreateBody => ({
     name:           name.trim(),
@@ -605,21 +616,23 @@ export function ProductCreateScreen() {
         )}
       </main>
 
-      {/* Sticky bottom CTA */}
-      <div
-        className="fixed left-0 right-0 bg-bg-1 border-t border-border px-4 py-3 z-30"
-        style={{ bottom: 'env(safe-area-inset-bottom, 0)' }}
-      >
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!canSubmit}
-          onClick={() => setShowPreview(true)}
+      {/* Sticky bottom CTA — brauzer/dev fallback (Telegram'da MainButton ishlatiladi) */}
+      {!isInTelegram && (
+        <div
+          className="fixed left-0 right-0 bg-bg-1 border-t border-border px-4 py-3 z-30"
+          style={{ bottom: 'env(safe-area-inset-bottom, 0)' }}
         >
-          {mutation.isPending ? "E'lon qilinmoqda..." : "🚀 Oldindan ko'rish"}
-        </Button>
-      </div>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={!canSubmit}
+            onClick={() => setShowPreview(true)}
+          >
+            {mutation.isPending ? "E'lon qilinmoqda..." : "🚀 Oldindan ko'rish"}
+          </Button>
+        </div>
+      )}
 
       <MxikSearchModal
         isOpen={showMxik}

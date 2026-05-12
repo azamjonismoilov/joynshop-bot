@@ -39,6 +39,17 @@ export interface TgSafeAreaInset {
   right:  number;
 }
 
+export interface TgMainButtonParams {
+  text?:       string;
+  color?:      string;
+  text_color?: string;
+  is_active?:  boolean;
+  is_visible?: boolean;
+}
+
+export type TgHapticImpactStyle = 'light' | 'medium' | 'heavy' | 'rigid' | 'soft';
+export type TgHapticNotificationType = 'success' | 'error' | 'warning';
+
 declare global {
   interface Window {
     Telegram?: {
@@ -48,7 +59,31 @@ declare global {
         close(): void;
         openTelegramLink(url: string): void;
         BackButton: { show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void };
-        MainButton: { show(): void; hide(): void; setText(text: string): void; onClick(cb: () => void): void };
+        // MainButton — Bot API 6.0+, to'liq
+        MainButton: {
+          text:              string;
+          color:             string;
+          textColor:         string;
+          isVisible:         boolean;
+          isActive:          boolean;
+          isProgressVisible: boolean;
+          setText(text: string): void;
+          onClick(cb: () => void): void;
+          offClick(cb: () => void): void;
+          show(): void;
+          hide(): void;
+          enable(): void;
+          disable(): void;
+          showProgress(leaveActive?: boolean): void;
+          hideProgress(): void;
+          setParams(params: TgMainButtonParams): void;
+        };
+        // HapticFeedback — Bot API 6.1+ (optional, eski clientlarda undefined)
+        HapticFeedback?: {
+          impactOccurred(style: TgHapticImpactStyle): void;
+          notificationOccurred(type: TgHapticNotificationType): void;
+          selectionChanged(): void;
+        };
         platform: string;
         colorScheme: 'light' | 'dark';
         themeParams: Record<string, string>;
@@ -64,6 +99,10 @@ declare global {
         offEvent?: (eventName: string, handler: () => void) => void;
         requestFullscreen?: () => void;
         exitFullscreen?:    () => void;
+        // Color API — Bot API 6.1+ / 7.10+
+        setHeaderColor?:     (color: string) => void;
+        setBackgroundColor?: (color: string) => void;
+        setBottomBarColor?:  (color: string) => void;
       };
     };
   }

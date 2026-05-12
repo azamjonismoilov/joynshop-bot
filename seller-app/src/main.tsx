@@ -10,6 +10,10 @@ const tg = tgWebApp();
 if (tg) {
   try { tg.ready(); } catch { /* ignore */ }
   try { tg.expand(); } catch { /* ignore */ }
+  // Brand color sync — Telegram chrome ham orange bo'ladi (immersive UI)
+  try { tg.setHeaderColor?.('#FA7319'); } catch { /* ignore */ }   // brand
+  try { tg.setBackgroundColor?.('#F5F5F4'); } catch { /* ignore */ } // bg-bg-2
+  try { tg.setBottomBarColor?.('#FFFFFF'); } catch { /* ignore */ }  // Bot API 7.10+
 }
 
 // Safe-area sync — Telegram fullscreen overlay va device notch uchun
