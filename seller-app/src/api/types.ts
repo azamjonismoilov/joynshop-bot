@@ -66,6 +66,70 @@ export interface ProductsResponse {
   has_next: boolean;
 }
 
+export type ProductSaleType = 'both' | 'group' | 'solo';
+export type ProductStatusKey = 'active' | 'closed' | 'draft';
+
+export interface ProductPhoto {
+  url:        string;
+  is_primary: boolean;
+}
+
+export interface ProductActions {
+  can_edit:  boolean;
+  can_close: boolean;
+}
+
+export interface ProductDetailResponse {
+  id:                    string;
+  name:                  string;
+  description:           string;
+  category:              string;
+  category_icon:         string;
+  sale_type:             ProductSaleType;
+  original_price:        number;
+  group_price:           number;
+  solo_price:            number;
+  min_group:             number;
+  count:                 number;
+  status:                ProductStatusKey;
+  status_label:          string;
+  status_emoji:          string;
+  is_archived:           boolean;
+  source:                'manual' | 'billz';
+  is_billz_draft:        boolean;
+  deadline:              string;
+  deadline_dt:           string;
+  deadline_seconds_left: number;
+  photos:                ProductPhoto[];
+  variants:              string[];
+  barcode:               string;
+  sku:                   string;
+  brand_name:            string;
+  shop:    { name: string; channel: string };
+  mxik:    { code: string | null; name: string | null; missing: boolean };
+  stats:   {
+    orders_total:   number;
+    revenue:        number;
+    wishlist_count: number;
+    first_order:    string;
+    last_order:     string;
+  };
+  channel_post_url: string | null;
+  actions:          ProductActions;
+}
+
+export interface ProductUpdateBody {
+  name?:           string;
+  description?:    string;
+  original_price?: number;
+  group_price?:    number;
+  solo_price?:     number;
+  sale_type?:      ProductSaleType;
+  min_group?:      number;
+  deadline_hours?: number;
+  variants?:       string[];
+}
+
 export type ProductFilter = 'active' | 'archived' | 'all';
 
 export interface ProductsQuery {

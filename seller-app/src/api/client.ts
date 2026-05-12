@@ -56,3 +56,10 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
     body: body as FetchOptions['body'],
   });
 }
+
+export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  return api<T>(path, {
+    method: 'PATCH',
+    body: body as FetchOptions['body'],
+  });
+}

@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPost } from './client';
+import { apiGet, apiPatch, apiPost } from './client';
 import type {
   MeResponse,
   ProductsResponse,
   ProductsQuery,
+  ProductDetailResponse,
+  ProductUpdateBody,
   StatsResponse,
   StatsRange,
   StatsChartResponse,
@@ -43,6 +45,60 @@ export function useSellerProducts(query: ProductsQuery = {}) {
     }),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useSellerProductDetail(pid: string | undefined) {
+  return useQuery({
+    queryKey: ['seller', 'products', 'detail', pid],
+    queryFn: () => apiGet<ProductDetailResponse>(`/seller/products/${pid}`),
+    staleTime: 3 * 60 * 1000,
+    enabled: Boolean(pid),
+  });
+}
+
+export class ProductValidationError extends Error {
+  errors: Record<string, string>;
+  constructor(errors: Record<string, string>) {
+    super('Product validation failed');
+    this.name = 'ProductValidationError';
+    this.errors = errors;
+  }
+}
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pid, payload }: { pid: string; payload: ProductUpdateBody }) => {
+      try {
+        return await apiPatch<{ ok: true }>(`/seller/products/${pid}`, payload);
+      } catch (e: unknown) {
+        // ofetch wraps 400 responses with a `data` property
+        const data = (e as { data?: { errors?: Record<string, string> } }).data;
+        if (data?.errors) throw new ProductValidationError(data.errors);
+        throw e;
+      }
+    },
+    onSuccess: (_data, { pid }) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'products'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'products', 'detail', pid] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'stats'] });
+    },
+  });
+}
+
+export function useCloseProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (pid: string) =>
+      apiPost<{ ok: true }>(`/seller/products/${pid}/close`),
+    onSuccess: (_data, pid) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'products'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'products', 'detail', pid] });
+      qc.invalidateQueries({ queryKey: ['seller', 'me'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'stats'] });
+    },
   });
 }
 

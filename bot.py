@@ -2741,27 +2741,12 @@ def seller_handle_cb(cb):
         if not p: answer_cb(cbid, '❌ Topilmadi!'); return
         if p.get('seller_id') != uid and uid != ADMIN_ID:
             answer_cb(cbid, "❌ Ruxsat yo'q!"); return
-        # Soft delete
-        p['status']    = 'closed'
-        p['is_active'] = False
-        # Kanal post o'chirish
-        ch_cid = p.get('channel_chat_id')
-        ch_mid = p.get('channel_message_id')
-        if ch_cid and ch_mid:
-            try:
-                requests.post(
-                    f'https://api.telegram.org/bot{SELLER_TOKEN}/deleteMessage',
-                    json={'chat_id': ch_cid, 'message_id': ch_mid}, timeout=5
-                )
-            except Exception as e:
-                logging.error(f"deleteMessage error: {e}")
-        # seller_products dan olib tashlash
-        if uid in seller_products and pid in seller_products[uid]:
-            seller_products[uid].remove(pid)
-        save_data()
+        name = p.get('name', '')
+        if not do_close_product(pid):
+            answer_cb(cbid, '⚠️ Allaqachon yopilgan'); return
         answer_cb(cbid, "✅ O'chirildi!")
         send_seller(uid,
-            f"🗑 <b>{p.get('name','')}</b> o'chirildi.",
+            f"🗑 <b>{name}</b> o'chirildi.",
             {'inline_keyboard': [[{'text': "📦 Mahsulotlarim",
                                     'callback_data': 'menu_myproducts'}]]})
         return
@@ -5258,77 +5243,25 @@ def seller_handle_msg(msg):
                     ]})
                 return
 
-            # ─── Text-based field edits ───
-            if step == 'pp_edit_name':
-                new_name = text.strip()
-                if not new_name:
-                    send_seller(cid, "❌ Nom bo'sh bo'lmasligi kerak"); return
-                p['name'] = new_name[:100]
-            elif step == 'pp_edit_orig':
-                val = parse_price(text)
-                if val is None or val <= 0:
-                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
-                ok, err = validate_prices(val, p.get('group_price', 0), p.get('solo_price', 0),
-                                          sale_type=p.get('sale_type', 'both'))
-                if not ok:
-                    send_seller(cid, err); return
-                p['original_price'] = val
-            elif step == 'pp_edit_grp':
-                val = parse_price(text)
-                if val is None or val <= 0:
-                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
-                ok, err = validate_prices(p.get('original_price', 0), val, p.get('solo_price', 0),
-                                          sale_type=p.get('sale_type', 'both'))
-                if not ok:
-                    send_seller(cid, err); return
-                p['group_price'] = val
-            elif step == 'pp_edit_solo':
-                val = parse_price(text)
-                if val is None or val <= 0:
-                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
-                ok, err = validate_prices(p.get('original_price', 0), p.get('group_price', 0), val,
-                                          sale_type=p.get('sale_type', 'both'))
-                if not ok:
-                    send_seller(cid, err); return
-                p['solo_price'] = val
-            elif step == 'pp_edit_min':
-                ok, mg, err = validate_min_group_text(text)
-                if not ok:
-                    send_seller(cid, err); return
-                p['min_group'] = mg
-            elif step == 'pp_edit_deadline':
-                try:
-                    hours = int(text.strip())
-                except (ValueError, TypeError):
-                    send_seller(cid, "❌ Soatlar sonini kiriting (masalan: 48)"); return
-                if hours < 1 or hours > 720:
-                    send_seller(cid, "❌ 1 dan 720 soatgacha kiriting"); return
-                deadline_dt = datetime.now() + timedelta(hours=hours)
-                p['deadline']    = deadline_dt.strftime('%d.%m.%Y %H:%M')
-                p['deadline_dt'] = deadline_dt.strftime('%Y-%m-%d %H:%M')
-            elif step == 'pp_edit_desc':
-                p['description'] = text[:300]
-            elif step == 'pp_edit_variants':
-                raw = [v.strip() for v in text.replace('،', ',').split(',') if v.strip()]
-                if not raw:
-                    send_seller(cid, "❌ Kamida 1 ta variant kiriting"); return
-                p['variants'] = raw
-            else:
+            # ─── Text-based field edits — do_update_product helper'ga yo'naltirildi ───
+            step_to_payload = {
+                'pp_edit_name':     ('name',            lambda t: t.strip()),
+                'pp_edit_orig':     ('original_price',  lambda t: t),
+                'pp_edit_grp':      ('group_price',     lambda t: t),
+                'pp_edit_solo':     ('solo_price',      lambda t: t),
+                'pp_edit_min':      ('min_group',       lambda t: t),
+                'pp_edit_deadline': ('deadline_hours',  lambda t: t.strip()),
+                'pp_edit_desc':     ('description',     lambda t: t),
+                'pp_edit_variants': ('variants',
+                    lambda t: [v.strip() for v in t.replace('،', ',').split(',') if v.strip()]),
+            }
+            if step not in step_to_payload:
                 send_seller(cid, "❌ Noma'lum step"); seller_state.pop(uid, None); return
-
-            # Saqlash + kanal post caption'ini yangilash
-            save_data()
-            try:
-                ch_cid = p.get('channel_chat_id')
-                ch_mid = p.get('channel_message_id')
-                if ch_cid and ch_mid:
-                    count = len(groups.get(pid, []))
-                    edit_caption(ch_cid, ch_mid, post_caption(p, pid),
-                                 join_kb(pid, count, p.get('min_group', 0),
-                                         has_solo=bool(p.get('solo_price')),
-                                         sale_type=p.get('sale_type', 'both')))
-            except Exception as e:
-                logging.error(f"pp_edit channel update error: {e}")
+            field, transform = step_to_payload[step]
+            ok, errors, _ = do_update_product(pid, {field: transform(text)})
+            if not ok:
+                first_err = next(iter(errors.values()), 'Xato')
+                send_seller(cid, f"❌ {first_err}"); return
             seller_state.pop(uid, None)
             send_seller(cid,
                 f"✅ Yangilandi.",
@@ -7912,7 +7845,46 @@ def api_seller_product_detail(pid):
             'last_order':     last_dt.strftime('%d.%m.%Y')  if last_dt  else '',
         },
         'channel_post_url':      channel_post_url,
+        'actions': {
+            'can_edit':  p.get('status') == 'active',
+            'can_close': p.get('status') == 'active',
+        },
     })
+
+@app.route('/api/v1/seller/products/<pid>', methods=['PATCH'])
+@require_seller
+def api_seller_update_product(pid):
+    """Mahsulotni qisman yangilash. Body: ProductUpdateBody."""
+    uid = g.seller_uid
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+    if p.get('status') != 'active':
+        return jsonify({'ok': False, 'error': 'conflict',
+                        'reason': 'not_editable', 'status': p.get('status')}), 409
+    body = request.get_json(silent=True) or {}
+    # Whitelisted field'larni filter
+    payload = {k: v for k, v in body.items() if k in PRODUCT_EDITABLE_FIELDS}
+    if not payload:
+        return jsonify({'ok': False, 'errors': {'_': 'no_fields'}}), 400
+    ok, errors, _ = do_update_product(pid, payload)
+    if not ok:
+        return jsonify({'ok': False, 'errors': errors}), 400
+    return jsonify({'ok': True}), 200
+
+@app.route('/api/v1/seller/products/<pid>/close', methods=['POST'])
+@require_seller
+def api_seller_close_product(pid):
+    """Mahsulotni soft-delete qiladi."""
+    uid = g.seller_uid
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+    if p.get('status') == 'closed':
+        return jsonify({'ok': False, 'error': 'conflict',
+                        'reason': 'already_closed'}), 409
+    do_close_product(pid)
+    return jsonify({'ok': True}), 200
 
 # ─── ORDER ACTION HELPERS ───────────────────────────────────────────
 # do_confirm_order va do_reject_order — webhook callback handler'lari va
@@ -8036,6 +8008,168 @@ def do_reject_order(code, reason=''):
     send_buyer(o['user_id'], msg)
 
     return {'cb_message': '❌ Rad'}
+
+# ─── PRODUCT ACTION HELPERS ─────────────────────────────────────────
+# do_update_product va do_close_product — webhook va Mini App API ikkalasi
+# ham shu helper'lardan foydalanadi. Caller ownership'ni va status'ni
+# oldindan tekshirgan bo'lishi shart.
+PRODUCT_EDITABLE_FIELDS = (
+    'name', 'description', 'original_price', 'group_price', 'solo_price',
+    'sale_type', 'min_group', 'deadline_hours', 'variants',
+)
+
+def do_update_product(pid, payload):
+    """Whitelisted field'larni validatsiya qilib mahsulotga yozadi.
+    Returns (ok: bool, errors: dict|None, _unused). Success'da kanal post
+    avtomatik yangilanadi va min_group kamaytirilgan bo'lsa group_filled
+    qayta tekshiriladi."""
+    p = products.get(pid)
+    if not p:
+        return False, {'_': 'not_found'}, None
+    errors  = {}
+    updates = {}
+
+    if 'name' in payload:
+        new_name = (payload.get('name') or '').strip()
+        if not new_name:
+            errors['name'] = "Nom bo'sh bo'lmasligi kerak"
+        else:
+            updates['name'] = new_name[:100]
+
+    if 'description' in payload:
+        updates['description'] = str(payload.get('description') or '')[:300]
+
+    if 'sale_type' in payload:
+        st = payload.get('sale_type')
+        if st not in ('both', 'group', 'solo'):
+            errors['sale_type'] = "Sotuv turi: both | group | solo"
+        else:
+            updates['sale_type'] = st
+
+    # Pricing — cross-field validation
+    price_touched = any(k in payload for k in ('original_price', 'group_price', 'solo_price', 'sale_type'))
+    if price_touched:
+        new_sale_type = updates.get('sale_type', p.get('sale_type', 'both'))
+        new_orig  = p.get('original_price', 0)
+        new_group = p.get('group_price', 0)
+        new_solo  = p.get('solo_price', 0)
+        if 'original_price' in payload:
+            v = parse_price(payload['original_price'])
+            if v is None or v <= 0:
+                errors['original_price'] = "Asl narx 0 dan katta bo'lishi kerak"
+            else:
+                new_orig = v
+        if 'group_price' in payload:
+            v = parse_price(payload['group_price'])
+            if v is None or v < 0:
+                errors['group_price'] = "Guruh narxi noto'g'ri"
+            else:
+                new_group = v
+        if 'solo_price' in payload:
+            v = parse_price(payload['solo_price'])
+            if v is None or v < 0:
+                errors['solo_price'] = "Yakka narx noto'g'ri"
+            else:
+                new_solo = v
+        if not any(k in errors for k in ('original_price', 'group_price', 'solo_price')):
+            ok, err = validate_prices(new_orig, new_group, new_solo, sale_type=new_sale_type)
+            if not ok:
+                errors['pricing'] = err.lstrip('❌ ').strip()
+            else:
+                if 'original_price' in payload: updates['original_price'] = new_orig
+                if 'group_price' in payload:    updates['group_price']    = new_group
+                if 'solo_price' in payload:     updates['solo_price']     = new_solo
+
+    if 'min_group' in payload:
+        ok, mg, err = validate_min_group_text(str(payload['min_group']))
+        if not ok:
+            errors['min_group'] = err.lstrip('❌ ').strip()
+        else:
+            updates['min_group'] = mg
+
+    if 'deadline_hours' in payload:
+        try:
+            hours = int(payload['deadline_hours'])
+        except (ValueError, TypeError):
+            errors['deadline_hours'] = "Soatlar sonini kiriting"
+        else:
+            if hours < 1 or hours > 720:
+                errors['deadline_hours'] = "1 dan 720 soatgacha"
+            else:
+                deadline_dt = datetime.now() + timedelta(hours=hours)
+                updates['deadline']    = deadline_dt.strftime('%d.%m.%Y %H:%M')
+                updates['deadline_dt'] = deadline_dt.strftime('%Y-%m-%d %H:%M')
+
+    if 'variants' in payload:
+        raw = payload['variants']
+        if not isinstance(raw, list):
+            errors['variants'] = "Variantlar massiv bo'lishi kerak"
+        else:
+            cleaned = [str(v).strip()[:50] for v in raw if str(v).strip()]
+            if not cleaned:
+                errors['variants'] = "Kamida 1 ta variant kiriting"
+            else:
+                updates['variants'] = cleaned
+
+    if errors:
+        return False, errors, None
+
+    old_min_group = p.get('min_group', 0)
+    for k, v in updates.items():
+        p[k] = v
+    save_data()
+
+    # Kanal post caption'ini yangilash
+    try:
+        ch_cid = p.get('channel_chat_id')
+        ch_mid = p.get('channel_message_id')
+        if ch_cid and ch_mid:
+            count = len(groups.get(pid, []))
+            edit_caption(ch_cid, ch_mid, post_caption(p, pid),
+                         join_kb(pid, count, p.get('min_group', 0),
+                                 has_solo=bool(p.get('solo_price')),
+                                 sale_type=p.get('sale_type', 'both')))
+    except Exception as e:
+        logging.error(f"do_update_product channel update error: {e}")
+
+    # Min group kamaytirilgan bo'lsa — group_filled qayta tekshirish
+    new_min = p.get('min_group', 0)
+    if new_min and new_min < old_min_group:
+        count = len(groups.get(pid, []))
+        if count >= new_min and p.get('status') == 'active':
+            try:
+                notify_group_filled(pid)
+            except Exception as e:
+                logging.error(f"do_update_product notify_group_filled error: {e}")
+
+    return True, None, None
+
+def do_close_product(pid):
+    """Mahsulotni soft-delete qiladi: status='closed', is_active=False,
+    kanal post'ini o'chiradi, seller_products dan olib tashlaydi.
+    Returns True agar yopildi, False agar allaqachon yopilgan."""
+    p = products.get(pid)
+    if not p:
+        return False
+    if p.get('status') == 'closed':
+        return False
+    p['status']    = 'closed'
+    p['is_active'] = False
+    ch_cid = p.get('channel_chat_id')
+    ch_mid = p.get('channel_message_id')
+    if ch_cid and ch_mid:
+        try:
+            requests.post(
+                f'https://api.telegram.org/bot{SELLER_TOKEN}/deleteMessage',
+                json={'chat_id': ch_cid, 'message_id': ch_mid}, timeout=5,
+            )
+        except Exception as e:
+            logging.error(f"do_close_product deleteMessage error: {e}")
+    seller_id = p.get('seller_id')
+    if seller_id and seller_id in seller_products and pid in seller_products[seller_id]:
+        seller_products[seller_id].remove(pid)
+    save_data()
+    return True
 
 ORDER_STATUS_META = {
     'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},

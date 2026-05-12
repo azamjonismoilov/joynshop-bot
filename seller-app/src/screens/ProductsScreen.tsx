@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiArrowRightSFill,
@@ -35,7 +36,9 @@ export function ProductsScreen() {
       {/* List */}
       <div className="px-4 mt-4 space-y-2">
         {data.items.map((item) => (
-          <ProductCard key={item.id} item={item} />
+          <Link key={item.id} to={`/products/${item.id}`} className="block">
+            <ProductCard item={item} />
+          </Link>
         ))}
       </div>
 
