@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://joynshop-bot.onrender.com/api/:path*"
+    },
+    {
+      "source": "/((?!_next|assets|favicon|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
