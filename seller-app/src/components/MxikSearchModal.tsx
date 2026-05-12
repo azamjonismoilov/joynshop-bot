@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
-import { RiSearchLine } from '@remixicon/react';
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+  RiExternalLinkLine,
+  RiSearchLine,
+} from '@remixicon/react';
 import { Button, Input, Modal } from '@/components/ui';
 import { useMxikSearch } from '@/api/seller';
 import type { MxikItem } from '@/api/types';
+import { cn } from '@/lib/cn';
 
 interface Props {
   isOpen:   boolean;
@@ -11,8 +17,11 @@ interface Props {
 }
 
 export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
-  const [query, setQuery]       = useState('');
+  const [query, setQuery]         = useState('');
   const [debounced, setDebounced] = useState('');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualCode, setManualCode] = useState('');
+  const [manualError, setManualError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 500);
@@ -23,11 +32,26 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
     if (isOpen) {
       setQuery('');
       setDebounced('');
+      setManualOpen(false);
+      setManualCode('');
+      setManualError(null);
     }
   }, [isOpen]);
 
   const { data, isLoading, isError } = useMxikSearch(debounced);
-  const results = data?.results ?? [];
+  const results       = data?.results ?? [];
+  const searchFailed  = debounced.length >= 3 && (isError || data?.ok === false);
+  const searchEmpty   = debounced.length >= 3 && data?.ok && results.length === 0;
+
+  const submitManual = () => {
+    const cleaned = manualCode.replace(/\D/g, '');
+    if (!/^\d{17}$/.test(cleaned)) {
+      setManualError("MXIK kodi aynan 17 raqamdan iborat bo'lishi kerak");
+      return;
+    }
+    onPick({ code: cleaned, name: "Qo'lda kiritildi" });
+    onClose();
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="MXIK qidirish">
@@ -43,29 +67,29 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
         iconLeft={<RiSearchLine size={16} />}
       />
 
-      <div className="mt-3 max-h-[50vh] overflow-y-auto -mx-2">
+      <div className="mt-3 max-h-[40vh] overflow-y-auto -mx-2">
         {debounced.length < 3 && (
-          <p className="text-sm text-fg-4 font-body text-center py-6 px-2">
+          <p className="text-sm text-fg-4 font-body text-center py-4 px-2">
             Kamida 3 ta belgi kiriting
           </p>
         )}
         {debounced.length >= 3 && isLoading && (
-          <p className="text-sm text-fg-3 font-body text-center py-6 px-2">
+          <p className="text-sm text-fg-3 font-body text-center py-4 px-2">
             Qidirilmoqda...
           </p>
         )}
-        {debounced.length >= 3 && (isError || data?.ok === false) && (
-          <div className="px-2 py-4 text-center">
+        {searchFailed && (
+          <div className="px-2 py-3 text-center">
             <p className="text-sm text-danger font-body">
               Qidirish xato — tasnif.soliq.uz vaqtinchalik mavjud emas
             </p>
             <p className="text-xs text-fg-4 font-body mt-1">
-              Birozdan keyin qaytadan urinib ko'ring yoki o'tkazib yuboring
+              Kodni qo'lda kiriting (pastda)
             </p>
           </div>
         )}
-        {debounced.length >= 3 && data?.ok && results.length === 0 && (
-          <p className="text-sm text-fg-3 font-body text-center py-6 px-2">
+        {searchEmpty && (
+          <p className="text-sm text-fg-3 font-body text-center py-4 px-2">
             Hech narsa topilmadi
           </p>
         )}
@@ -89,6 +113,66 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {/* ─── Manual entry ─── */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <button
+          type="button"
+          onClick={() => setManualOpen((v) => !v)}
+          className="w-full flex items-center justify-between text-left"
+          aria-expanded={manualOpen}
+        >
+          <span className="text-sm font-display font-medium text-fg-1">
+            Yoki MXIK kodini qo'lda kiriting
+          </span>
+          <RiArrowDownSLine
+            size={18}
+            className={cn(
+              'text-fg-3 shrink-0 transition-transform duration-base',
+              manualOpen && 'rotate-180',
+            )}
+          />
+        </button>
+        {manualOpen && (
+          <div className="mt-3 space-y-2">
+            <Input
+              fullWidth
+              inputMode="numeric"
+              maxLength={17}
+              value={manualCode}
+              onChange={(e) => {
+                setManualCode(e.target.value.replace(/\D/g, '').slice(0, 17));
+                setManualError(null);
+              }}
+              placeholder="01234567890123456"
+              hint="17 raqamli MXIK kodi"
+              error={manualError || undefined}
+            />
+            <p className="text-[10px] text-fg-4 font-mono text-right">
+              {manualCode.length}/17
+            </p>
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
+              iconLeft={<RiCheckLine size={16} />}
+              disabled={manualCode.length !== 17}
+              onClick={submitManual}
+            >
+              Kodni tasdiqlash
+            </Button>
+            <a
+              href="https://tasnif.soliq.uz/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-secondary hover:underline font-body"
+            >
+              MXIK kodini bilmaysizmi? tasnif.soliq.uz dan toping
+              <RiExternalLinkLine size={12} />
+            </a>
+          </div>
         )}
       </div>
 
