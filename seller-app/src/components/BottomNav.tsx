@@ -33,7 +33,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Asosiy navigatsiya"
-      className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-full p-1.5 backdrop-blur-xl shadow-xl"
+      className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-full p-2 px-3 backdrop-blur-xl shadow-xl"
       style={{
         bottom:     'calc(24px + env(safe-area-inset-bottom))',
         background: 'rgba(28, 28, 28, 0.92)',
@@ -48,20 +48,23 @@ export function BottomNav() {
             aria-label={item.label}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'inline-flex items-center justify-center gap-1.5 rounded-full transition-all duration-base',
+              'flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1.5 min-w-[56px] transition-colors duration-base',
               active
-                ? 'bg-brand text-white px-3 py-2'
-                : 'p-2 text-white/50 hover:text-white/80',
+                ? 'bg-brand text-white'
+                : 'text-white/50 hover:text-white/80',
             )}
           >
             <span className="inline-flex items-center justify-center">
               {item.icon}
             </span>
-            {active && (
-              <span className="text-xs font-medium font-display whitespace-nowrap">
-                {item.label}
-              </span>
-            )}
+            <span
+              className={cn(
+                'text-[10px] leading-tight font-medium font-display whitespace-nowrap transition-colors duration-base',
+                active ? 'text-white' : 'text-white/50',
+              )}
+            >
+              {item.label}
+            </span>
           </Link>
         );
       })}
