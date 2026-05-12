@@ -46,7 +46,7 @@ function AppShell() {
 
   return (
     <>
-      <div className={cn(showNav && 'pb-24')}>
+      <div className={cn(showNav && 'pb-20')}>
         <Routes>
           <Route path="/"                          element={<DashboardScreen />} />
           <Route path="/products"                  element={<ProductsScreen />} />
