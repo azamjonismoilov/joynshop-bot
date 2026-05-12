@@ -17,6 +17,7 @@ import type {
   CustomersQuery,
   CustomerDetail,
   CustomerHistoryResponse,
+  CustomerUpdateBody,
   LegalInfo,
   ShopsResponse,
   ShopDetail,
@@ -196,6 +197,18 @@ export function useSellerCustomerDetail(cuid: string | undefined) {
     queryFn: () => apiGet<CustomerDetail>(`/seller/customers/${cuid}`),
     staleTime: THREE_MIN,
     enabled: Boolean(cuid),
+  });
+}
+
+export function useUpdateCustomer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cuid, payload }: { cuid: string; payload: CustomerUpdateBody }) =>
+      apiPatch<{ ok: true }>(`/seller/customers/${cuid}`, payload),
+    onSuccess: (_data, { cuid }) => {
+      qc.invalidateQueries({ queryKey: ['seller', 'customers'] });
+      qc.invalidateQueries({ queryKey: ['seller', 'customers', 'detail', cuid] });
+    },
   });
 }
 

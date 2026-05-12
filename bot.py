@@ -1518,15 +1518,18 @@ def seller_handle_cb(cb):
             parts = d.split('_')
             cuid, tag = parts[2], parts[3]
             if cuid in my_customers:
-                tags = my_customers[cuid].get('tags', [])
-                if tag in tags:
-                    tags.remove(tag); msg = f"🏷 Teg olib tashlandi: {tag}"
+                current = my_customers[cuid].get('tags', [])
+                if tag in current:
+                    new_tags = [t for t in current if t != tag]
+                    msg = f"🏷 Teg olib tashlandi: {tag}"
                 else:
-                    tags.append(tag); msg = f"✅ Teg qo'shildi: {tag}"
-                my_customers[cuid]['tags'] = tags
-                customers[sid] = my_customers
-                save_data()
-                send_seller(uid, msg)
+                    new_tags = current + [tag]
+                    msg = f"✅ Teg qo'shildi: {tag}"
+                ok, _ = do_update_customer(sid, cuid, {'tags': new_tags})
+                if ok:
+                    send_seller(uid, msg)
+                else:
+                    send_seller(uid, "❌ Tegni yangilab bo'lmadi")
             return
 
         # ─── XABAR YUBORISH ───
@@ -4581,9 +4584,8 @@ def seller_handle_msg(msg):
             cuid = s.get('target_cuid')
             target_name = s.get('target_name')
             del seller_state[uid]
-            if sid in customers and cuid in customers[sid]:
-                customers[sid][cuid]['note'] = text[:300]
-                save_data()
+            ok, _ = do_update_customer(sid, cuid, {'note': text})
+            if ok:
                 send_seller(cid, f"✅ Izoh <b>{target_name}</b> uchun saqlandi.",
                     {'inline_keyboard': [[{'text': "👤 Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}]]}
                 )
@@ -8171,6 +8173,63 @@ def do_close_product(pid):
     save_data()
     return True
 
+# ─── CUSTOMER ACTION HELPERS ────────────────────────────────────────
+# do_update_customer — bot webhook (crm_tag, crm_add_note) va Mini App
+# API endpoint'lari ikkalasi ham shu helper'dan foydalanadi.
+CUSTOMER_ALLOWED_TAGS = ('vip', 'problem', 'loyal')
+CUSTOMER_EDITABLE_FIELDS = ('tags', 'note')
+
+def do_update_customer(sid, cuid, payload):
+    """Mijoz tags va note ni yangilaydi. Caller ownership'ni
+    (customers[sid][cuid] mavjudligini) tekshirgan bo'lishi shart.
+    Returns (ok: bool, errors: dict|None)."""
+    bucket = customers.get(str(sid))
+    if not bucket or cuid not in bucket:
+        return False, {'_': 'not_found'}
+    errors  = {}
+    updates = {}
+
+    if 'tags' in payload:
+        raw = payload.get('tags')
+        if not isinstance(raw, list):
+            errors['tags'] = "Teglar massiv bo'lishi kerak"
+        else:
+            seen = set()
+            cleaned = []
+            invalid = False
+            for t in raw:
+                if not isinstance(t, str) or t not in CUSTOMER_ALLOWED_TAGS:
+                    invalid = True
+                    break
+                if t in seen:
+                    continue
+                seen.add(t)
+                cleaned.append(t)
+            if invalid:
+                errors['tags'] = "Faqat ruxsat etilgan teglar: vip | problem | loyal"
+            else:
+                updates['tags'] = cleaned
+
+    if 'note' in payload:
+        raw = payload.get('note')
+        if raw is None:
+            raw = ''
+        if not isinstance(raw, str):
+            errors['note'] = "Izoh matn bo'lishi kerak"
+        else:
+            updates['note'] = raw.strip()[:300]
+
+    if errors:
+        return False, errors
+
+    c = bucket[cuid]
+    # Defensive — eski entry'larda 'tags' yo'q bo'lishi mumkin
+    c.setdefault('tags', [])
+    for k, v in updates.items():
+        c[k] = v
+    save_data()
+    return True, None
+
 ORDER_STATUS_META = {
     'pending':    {'emoji': '⏳', 'label': "To'lov kutilmoqda"},
     'confirming': {'emoji': '🔄', 'label': "Tasdiqlash kutilmoqda"},
@@ -8566,6 +8625,24 @@ def api_seller_customer_detail(cuid):
             {'id': 'loyal',   'label': "💎 Doimiy"},
         ],
     })
+
+@app.route('/api/v1/seller/customers/<cuid>', methods=['PATCH'])
+@require_seller
+def api_seller_update_customer(cuid):
+    """Mijoz tags va/yoki note ni yangilash."""
+    uid = g.seller_uid
+    sid = str(uid)
+    c = customers.get(sid, {}).get(cuid)
+    if not c:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+    body = request.get_json(silent=True) or {}
+    payload = {k: v for k, v in body.items() if k in CUSTOMER_EDITABLE_FIELDS}
+    if not payload:
+        return jsonify({'ok': False, 'errors': {'_': 'no_fields'}}), 400
+    ok, errors = do_update_customer(sid, cuid, payload)
+    if not ok:
+        return jsonify({'ok': False, 'errors': errors}), 400
+    return jsonify({'ok': True}), 200
 
 @app.route('/api/v1/seller/customers/<cuid>/history', methods=['GET'])
 @require_seller

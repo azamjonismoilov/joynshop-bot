@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   RiArrowLeftSFill,
   RiArrowRightSFill,
+  RiEdit2Line,
   RiPhoneFill,
   RiTimeFill,
   RiVipCrownFill,
@@ -17,9 +19,11 @@ import {
 } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
-import { useSellerCustomerDetail } from '@/api/seller';
+import { useSellerCustomerDetail, useUpdateCustomer } from '@/api/seller';
+import { EditCustomerNoteModal } from '@/components/EditCustomerNoteModal';
 import type { CustomerActivity, CustomerDetail } from '@/api/types';
 import { ErrorState } from '@/components/ErrorState';
+import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 
 const ACTIVITY_BADGE: Record<CustomerActivity, BadgeVariant> = {
@@ -58,8 +62,8 @@ export function CustomerDetailScreen() {
       <div className="px-4 mt-4 space-y-3">
         <ProfileHeader data={data} />
         <StatsGrid data={data} />
-        {data.tags.length > 0 && <TagsCard data={data} />}
-        {data.note && <NoteCard note={data.note} />}
+        <TagsCard data={data} />
+        <NoteCard data={data} />
         <ActionButtons data={data} />
       </div>
     </div>
@@ -124,33 +128,97 @@ function StatBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-const TAG_LABEL: Record<string, string> = {
-  vip:     'VIP',
-  problem: 'Muammoli',
-  loyal:   'Doimiy',
-};
-
 function TagsCard({ data }: { data: CustomerDetail }) {
+  const mutation = useUpdateCustomer();
+  // Optimistic state — clicked tag updates immediately, mutation patches server
+  const [pendingTags, setPendingTags] = useState<string[] | null>(null);
+  const active = pendingTags ?? data.tags;
+
+  const toggle = (tagId: string) => {
+    if (mutation.isPending) return;
+    const next = active.includes(tagId)
+      ? active.filter((t) => t !== tagId)
+      : [...active, tagId];
+    setPendingTags(next);
+    mutation.mutate(
+      { cuid: data.cuid, payload: { tags: next } },
+      {
+        onSettled: () => setPendingTags(null),
+      },
+    );
+  };
+
+  const opts = data.available_tags.length
+    ? data.available_tags
+    : [
+        { id: 'vip',     label: '⭐ VIP' },
+        { id: 'problem', label: '🔴 Muammoli' },
+        { id: 'loyal',   label: '💎 Doimiy' },
+      ];
+
   return (
     <Card padding="sm">
       <p className="text-xs text-fg-3 font-body mb-2">Teglar</p>
-      <div className="flex gap-1 flex-wrap">
-        {data.tags.map((t) => (
-          <Badge key={t} variant={t === 'vip' ? 'orange' : 'gray'} size="sm">
-            {TAG_LABEL[t] || t}
-          </Badge>
-        ))}
+      <div className="flex gap-1.5 flex-wrap">
+        {opts.map((opt) => {
+          const isActive = active.includes(opt.id);
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => toggle(opt.id)}
+              disabled={mutation.isPending}
+              className={cn(
+                'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium font-display transition-colors duration-base',
+                isActive
+                  ? 'bg-brand text-white'
+                  : 'bg-bg-3 text-fg-2 border border-border hover:border-border-strong',
+                mutation.isPending && 'opacity-50',
+              )}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
+      {mutation.isError && (
+        <p className="text-xs text-danger font-body mt-2">
+          Tegni yangilab bo'lmadi
+        </p>
+      )}
     </Card>
   );
 }
 
-function NoteCard({ note }: { note: string }) {
+function NoteCard({ data }: { data: CustomerDetail }) {
+  const [showEdit, setShowEdit] = useState(false);
+  const hasNote = Boolean(data.note);
   return (
-    <Card padding="sm">
-      <p className="text-xs text-fg-3 font-body mb-1">Sotuvchi izohi</p>
-      <p className="text-sm text-fg-1 font-body whitespace-pre-wrap">{note}</p>
-    </Card>
+    <>
+      <Card padding="sm">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs text-fg-3 font-body">Sotuvchi izohi</p>
+          <button
+            onClick={() => setShowEdit(true)}
+            aria-label="Izohni tahrirlash"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-fg-3 hover:bg-bg-2 hover:text-brand transition-colors duration-base shrink-0"
+          >
+            <RiEdit2Line size={14} />
+          </button>
+        </div>
+        {hasNote ? (
+          <p className="text-sm text-fg-1 font-body whitespace-pre-wrap mt-1">{data.note}</p>
+        ) : (
+          <p className="text-sm text-fg-4 font-body mt-1">Izoh qo'shilmagan</p>
+        )}
+      </Card>
+      <EditCustomerNoteModal
+        isOpen={showEdit}
+        onClose={() => setShowEdit(false)}
+        cuid={data.cuid}
+        currentNote={data.note || ''}
+      />
+    </>
   );
 }
 

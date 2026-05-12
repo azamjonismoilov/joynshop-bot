@@ -365,6 +365,11 @@ export interface CustomerDetail {
   available_tags:  CustomerTagOption[];
 }
 
+export interface CustomerUpdateBody {
+  tags?: string[];
+  note?: string;
+}
+
 export interface CustomerHistoryItem {
   code:    string;   // "" for legacy entries created before the field was added
   product: string;
