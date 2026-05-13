@@ -99,6 +99,7 @@ export function OrdersScreen() {
         {/* Search */}
         <Input
           fullWidth
+          pill
           inputSize="md"
           placeholder="Qidirish: kod yoki mijoz ismi"
           iconLeft={<RiSearchLine size={16} />}
@@ -181,11 +182,11 @@ function FilterBar({
             key={tab.key}
             onClick={() => { hapticSelection(); onChange(tab.key); }}
             className={cn(
-              'inline-flex items-center gap-1.5 px-3 h-9 rounded-md text-sm font-medium font-display',
+              'inline-flex items-center gap-1.5 px-4 h-9 rounded-full text-sm font-medium font-display',
               'whitespace-nowrap transition-colors duration-base shrink-0',
               active
                 ? 'bg-brand text-brand-fg'
-                : 'bg-bg-1 text-fg-2 border border-border hover:bg-bg-3',
+                : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
             )}
           >
             {tab.label}
@@ -244,7 +245,6 @@ function OrderCard({ order }: { order: OrderItem }) {
             </div>
           </div>
 
-          <RiArrowRightSLine size={20} className="text-fg-4 shrink-0 mt-0.5" />
         </div>
       </Card>
     </Link>

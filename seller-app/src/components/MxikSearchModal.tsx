@@ -60,6 +60,7 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
       </p>
       <Input
         fullWidth
+        pill
         autoFocus
         value={query}
         onChange={(e) => setQuery(e.target.value)}

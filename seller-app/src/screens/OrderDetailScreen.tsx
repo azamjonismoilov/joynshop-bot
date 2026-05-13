@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   RiCheckFill,
@@ -25,11 +25,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { colorFromName, formatPrice, getInitials } from '@/lib/format';
-import { useMainButton } from '@/lib/useMainButton';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
-
-const isInTelegram = (): boolean =>
-  typeof window !== 'undefined' && !!window.Telegram?.WebApp?.initData;
 
 const STATUS_BANNER_BG: Record<OrderStatus, string> = {
   pending:    'bg-bg-3 text-fg-2',
@@ -355,25 +351,26 @@ function ActionButtons({ data }: { data: OrderDetailResponse }) {
     );
   };
 
-  // Tasdiqlash → MainButton; reject modal ochiq bo'lsa MainButton yashirin
-  useMainButton({
-    text:    'Tasdiqlash',
-    enabled: !!canConfirm && !showReject && !isPending,
-    loading: confirmMut.isPending,
-    onClick: handleConfirm,
-  });
-  const inTelegram = isInTelegram();
+  // Telegram native MainButton/SecondaryButton ishlatilmaydi — bu ekranda
+  // HTML Tasdiqlash/Rad etish tugmalari content ichida. Boshqa screen'dan
+  // qolgan native button'larni mount'da yashirib qo'yamiz, unmount'da ham.
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    try { tg?.MainButton?.hide(); } catch { /* ignore */ }
+    try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
+    return () => {
+      try { tg?.MainButton?.hide(); } catch { /* ignore */ }
+      try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
+    };
+  }, []);
 
   if (!canConfirm && !canReject) return null;
 
   return (
     <>
       <div className="space-y-2">
-        <div className={cn(
-          'gap-2',
-          inTelegram ? 'flex flex-col' : 'grid grid-cols-2',
-        )}>
-          {canConfirm && !inTelegram && (
+        <div className="grid grid-cols-2 gap-2">
+          {canConfirm && (
             <Button
               variant="success"
               size="lg"

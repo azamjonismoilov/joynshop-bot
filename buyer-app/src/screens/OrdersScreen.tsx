@@ -92,10 +92,10 @@ export function OrdersScreen() {
                   type="button"
                   onClick={() => { hapticSelection(); setFilter(f.key); }}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-xs font-medium font-display border shrink-0 transition-colors duration-base',
+                    'inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
                     active
-                      ? 'bg-brand text-brand-fg border-brand'
-                      : 'bg-bg-1 text-fg-2 border-border',
+                      ? 'bg-brand text-brand-fg'
+                      : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
                   )}
                 >
                   {f.label}

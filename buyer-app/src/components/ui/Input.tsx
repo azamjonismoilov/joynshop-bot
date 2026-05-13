@@ -11,6 +11,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?:      string;
   error?:     string;
   fullWidth?: boolean;
+  /** Telegram-style search pill — rounded-full + bg-bg-3, border yo'q. */
+  pill?:      boolean;
 }
 
 const SIZE_HEIGHT: Record<InputSize, string> = {
@@ -36,6 +38,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     hint,
     error,
     fullWidth,
+    pill,
     disabled,
     className,
     id: idProp,
@@ -59,12 +62,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       )}
       <div
         className={cn(
-          'flex items-center gap-2 px-3 bg-bg-1 border rounded-input transition-colors duration-base',
+          'flex items-center gap-2 px-4 transition-colors duration-base',
           SIZE_HEIGHT[inputSize],
-          hasError ? 'border-danger' : 'border-border',
-          !disabled && !hasError &&
+          pill
+            ? 'rounded-full bg-bg-3 hover:bg-bg-muted'
+            : 'rounded-input bg-bg-1 border',
+          !pill && (hasError ? 'border-danger' : 'border-border'),
+          !disabled && !hasError && !pill &&
             'focus-within:border-border-focus focus-within:ring-2 focus-within:ring-brand-subtle',
-          !disabled && hasError &&
+          !disabled && hasError && !pill &&
             'focus-within:ring-2 focus-within:ring-danger-subtle',
           disabled && 'bg-bg-2 cursor-not-allowed',
           className,

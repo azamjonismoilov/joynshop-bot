@@ -220,7 +220,7 @@ function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Mahsulot yoki do'kon qidirish"
-          className="w-full h-10 pl-10 pr-3 rounded-lg bg-white/20 border border-white/25 text-sm text-white placeholder:text-white/70 font-body outline-none focus:bg-white focus:text-fg-1 focus:placeholder:text-fg-4 focus:border-white transition-colors duration-base"
+          className="w-full h-10 pl-10 pr-4 rounded-full bg-white/15 text-sm text-white placeholder:text-white/70 font-body outline-none focus:bg-white focus:text-fg-1 focus:placeholder:text-fg-4 transition-colors duration-base"
         />
       </label>
     </header>
@@ -243,10 +243,10 @@ function FilterBar({
             type="button"
             onClick={() => onChange(f.key)}
             className={cn(
-              'inline-flex items-center gap-1 px-3.5 h-8 rounded-full text-xs font-medium font-display border shrink-0 transition-colors duration-base',
+              'inline-flex items-center gap-1 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
               active
-                ? 'bg-brand text-brand-fg border-brand'
-                : 'bg-bg-1 text-fg-2 border-border',
+                ? 'bg-brand text-brand-fg'
+                : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
             )}
           >
             {f.icon}
@@ -306,10 +306,10 @@ function CatChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center px-3 h-7 rounded-full text-xs font-medium font-display border shrink-0 transition-colors duration-base',
+        'inline-flex items-center px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
         active
-          ? 'bg-brand text-brand-fg border-brand'
-          : 'bg-bg-1 text-fg-2 border-border',
+          ? 'bg-brand text-brand-fg'
+          : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
       )}
     >
       {children}
