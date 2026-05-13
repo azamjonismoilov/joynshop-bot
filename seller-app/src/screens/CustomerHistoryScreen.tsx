@@ -179,7 +179,7 @@ function ListSkeleton() {
 function EmptyHistory() {
   return (
     <div className="text-center py-16">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-3 text-fg-4 mb-3">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-1 shadow-xs text-fg-4 mb-3">
         <RiHistoryFill size={32} />
       </div>
       <p className="text-sm text-fg-3 font-body">Hali xaridlar yo'q</p>

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RiHome5Line,
-  RiShoppingBag3Fill,
   RiShoppingBag3Line,
 } from '@remixicon/react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,7 +13,7 @@ import { OrderDetailSheet } from '@/components/OrderDetailSheet';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
-import type { BuyerOrderItem, OrderStatus } from '@/api/types';
+import type { OrderStatus } from '@/api/types';
 import { cn } from '@/lib/cn';
 import { hapticImpact, hapticSelection } from '@/lib/haptic';
 import { getTgUser } from '@/lib/telegram';
@@ -36,8 +35,8 @@ export function OrdersScreen() {
   const query    = useBuyerOrders(uid);
   const qc       = useQueryClient();
 
-  const [filter, setFilter]     = useState<Filter>('all');
-  const [selected, setSelected] = useState<BuyerOrderItem | null>(null);
+  const [filter, setFilter]             = useState<Filter>('all');
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   const orders = query.data || [];
 
@@ -51,15 +50,8 @@ export function OrdersScreen() {
     return orders.filter((o) => DONE_STATUSES.includes(o.status));
   }, [orders, filter]);
 
-  // selected re-sync — agar query yangilanib status o'zgarsa, sheet'dagi
-  // ko'rinish ham yangi statusni ko'rsatsin
-  const selectedFresh = useMemo(() => {
-    if (!selected) return null;
-    return orders.find((o) => o.code === selected.code) || selected;
-  }, [orders, selected]);
-
   return (
-    <PullToRefresh onRefresh={handleRefresh} disabled={!!selected}>
+    <PullToRefresh onRefresh={handleRefresh} disabled={!!selectedCode}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <AppHeader tagline="Buyurtmalarim" />
 
@@ -77,40 +69,41 @@ export function OrdersScreen() {
         </div>
       ) : (
         <main className="px-4 mt-3 space-y-3">
-          {/* Filter chips */}
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            {FILTERS.map((f) => {
-              const active = filter === f.key;
-              const count  = f.key === 'all'
-                ? orders.length
-                : f.key === 'active'
-                  ? orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length
-                  : orders.filter((o) => DONE_STATUSES.includes(o.status)).length;
-              return (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => { hapticSelection(); setFilter(f.key); }}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
-                    active
-                      ? 'bg-brand text-brand-fg shadow-none'
-                      : 'text-fg-1 shadow-xs hover:bg-bg-muted',
-                  )}
-                  style={active ? undefined : { background: 'var(--color-card-bg)' }}
-                >
-                  {f.label}
-                  {count > 0 && (
-                    <span className={cn(
-                      'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold',
-                      active ? 'bg-white/25 text-white' : 'bg-bg-3 text-fg-3',
-                    )}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Segmented control — iOS Wallet pattern */}
+          <div className="overflow-x-auto no-scrollbar pb-1">
+            <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+              {FILTERS.map((f) => {
+                const active = filter === f.key;
+                const count  = f.key === 'all'
+                  ? orders.length
+                  : f.key === 'active'
+                    ? orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length
+                    : orders.filter((o) => DONE_STATUSES.includes(o.status)).length;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => { hapticSelection(); setFilter(f.key); }}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
+                      active
+                        ? 'bg-bg-1 shadow-sm text-fg-1'
+                        : 'bg-transparent text-fg-3 hover:text-fg-2',
+                    )}
+                  >
+                    {f.label}
+                    {count > 0 && (
+                      <span className={cn(
+                        'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold',
+                        active ? 'bg-brand text-brand-fg' : 'bg-bg-1 text-fg-3',
+                      )}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Body */}
@@ -135,7 +128,7 @@ export function OrdersScreen() {
             />
           ) : filtered.length === 0 ? (
             <EmptyState
-              icon={<RiShoppingBag3Fill size={36} />}
+              icon={<RiShoppingBag3Line size={36} />}
               title="Bu filtrda buyurtma yo'q"
               description="Boshqa filtrni tanlab ko'ring."
             />
@@ -145,7 +138,7 @@ export function OrdersScreen() {
                 <OrderCard
                   key={o.code}
                   order={o}
-                  onClick={() => { hapticImpact('light'); setSelected(o); }}
+                  onClick={() => { hapticImpact('light'); setSelectedCode(o.code); }}
                 />
               ))}
             </div>
@@ -154,10 +147,10 @@ export function OrdersScreen() {
       )}
 
       <OrderDetailSheet
-        isOpen={!!selected}
-        order={selectedFresh}
+        isOpen={!!selectedCode}
+        code={selectedCode}
         uid={uid}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedCode(null)}
         snapPoints={['half', 'full']}
         initialSnap="half"
       />

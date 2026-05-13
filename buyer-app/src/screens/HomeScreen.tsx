@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  RiBox3Fill,
+  RiBox3Line,
   RiFireFill,
   RiFlashlightFill,
   RiPriceTag3Fill,
@@ -153,7 +153,7 @@ export function HomeScreen() {
           <ProductGridSkeleton />
         ) : filtered.length === 0 ? (
           <EmptyState
-            icon={<RiBox3Fill size={36} />}
+            icon={<RiBox3Line size={36} />}
             title="Mahsulot topilmadi"
             description="Filter va qidiruvni tekshiring yoki keyinroq qayting."
           />
@@ -234,27 +234,28 @@ function FilterBar({
   value, onChange,
 }: { value: Filter; onChange: (v: Filter) => void }) {
   return (
-    <div className="flex gap-1.5 px-4 mt-4 overflow-x-auto no-scrollbar">
-      {FILTERS.map((f) => {
-        const active = value === f.key;
-        return (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => onChange(f.key)}
-            className={cn(
-              'inline-flex items-center gap-1 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
-              active
-                ? 'bg-brand text-brand-fg shadow-none'
-                : 'text-fg-1 shadow-xs hover:bg-bg-muted',
-            )}
-            style={active ? undefined : { background: 'var(--color-card-bg)' }}
-          >
-            {f.icon}
-            {f.label}
-          </button>
-        );
-      })}
+    <div className="px-4 mt-4 overflow-x-auto no-scrollbar">
+      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+        {FILTERS.map((f) => {
+          const active = value === f.key;
+          return (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => onChange(f.key)}
+              className={cn(
+                'inline-flex items-center gap-1 px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
+                active
+                  ? 'bg-bg-1 shadow-sm text-fg-1'
+                  : 'bg-transparent text-fg-3 hover:text-fg-2',
+              )}
+            >
+              {f.icon}
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -272,29 +273,33 @@ function CategoryBar({
 }) {
   if (isLoading) {
     return (
-      <div className="flex gap-1.5 px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} width={88} height={28} rounded="full" />
-        ))}
+      <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} width={80} height={26} rounded="full" />
+          ))}
+        </div>
       </div>
     );
   }
   if (items.length === 0) return null;
   return (
-    <div className="flex gap-1.5 px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
-      <CatChip active={value === 'all'} onClick={() => onChange('all')}>
-        Hammasi
-      </CatChip>
-      {items.map((c) => (
-        <CatChip
-          key={c.name}
-          active={value === c.name}
-          onClick={() => onChange(c.name)}
-        >
-          <span className="mr-1">{c.icon}</span>
-          {c.name}
+    <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
+      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+        <CatChip active={value === 'all'} onClick={() => onChange('all')}>
+          Hammasi
         </CatChip>
-      ))}
+        {items.map((c) => (
+          <CatChip
+            key={c.name}
+            active={value === c.name}
+            onClick={() => onChange(c.name)}
+          >
+            <span className="mr-1">{c.icon}</span>
+            {c.name}
+          </CatChip>
+        ))}
+      </div>
     </div>
   );
 }
@@ -307,12 +312,11 @@ function CatChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
+        'inline-flex items-center px-3 h-6 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
         active
-          ? 'bg-brand text-brand-fg shadow-none'
-          : 'text-fg-1 shadow-xs hover:bg-bg-muted',
+          ? 'bg-bg-1 shadow-sm text-fg-1'
+          : 'bg-transparent text-fg-3 hover:text-fg-2',
       )}
-      style={active ? undefined : { background: 'var(--color-card-bg)' }}
     >
       {children}
     </button>

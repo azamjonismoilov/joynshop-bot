@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BottomSheet, type SnapPoint } from './BottomSheet';
 import {
   RiCloseFill,
@@ -6,6 +6,7 @@ import {
   RiMapPinLine,
   RiPhoneLine,
   RiShoppingBag3Fill,
+  RiShoppingBag3Line,
   RiStore3Fill,
   RiTelegramFill,
   RiTimeLine,
@@ -15,7 +16,7 @@ import {
 import { Badge, Button, Modal } from '@/components/ui';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
 import { ProductImage } from './ProductImage';
-import { useCancelOrder } from '@/api/buyer';
+import { useBuyerOrders, useCancelOrder } from '@/api/buyer';
 import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
@@ -24,7 +25,9 @@ import { isInTelegram, tgWebApp } from '@/lib/telegram';
 
 interface Props {
   isOpen:       boolean;
-  order:        BuyerOrderItem | null;
+  /** Buyurtma kodi — server cache'dan reactive ravishda olinadi
+   * (status yangilanishi sheet'da darhol ko'rinadi). */
+  code:         string | null;
   uid:          number | null;
   onClose:      () => void;
   snapPoints?:  SnapPoint[];
@@ -48,13 +51,21 @@ const STATUS_HINT: Record<OrderStatus, string> = {
 };
 
 export function OrderDetailSheet({
-  isOpen, order, uid, onClose,
+  isOpen, code, uid, onClose,
   snapPoints  = ['full'],
   initialSnap = 'full',
 }: Props) {
   const [showCancelConfirm, setCancelConfirm] = useState(false);
   const cancelMut = useCancelOrder(uid);
   const toast = useToast();
+
+  // Buyurtmalar cache'idan reaktiv ravishda topish — OrdersScreen'dagi
+  // hook bilan bir xil queryKey (uid bo'yicha), demak qayta fetch yo'q.
+  const ordersQuery = useBuyerOrders(uid);
+  const order = useMemo<BuyerOrderItem | null>(() => {
+    if (!code || !ordersQuery.data) return null;
+    return ordersQuery.data.find((o) => o.code === code) || null;
+  }, [code, ordersQuery.data]);
 
   // Reset cancel state when sheet opens
   useEffect(() => {
@@ -76,8 +87,6 @@ export function OrderDetailSheet({
     };
   }, [isOpen]);
 
-  if (!order) return null;
-
   return (
     <>
       <BottomSheet
@@ -87,7 +96,7 @@ export function OrderDetailSheet({
         initialSnap={initialSnap}
         zIndex={50}
         surface="gray"
-        ariaLabel={`Buyurtma ${order.code}`}
+        ariaLabel={order ? `Buyurtma ${order.code}` : 'Buyurtma'}
       >
         <button
           type="button"
@@ -98,19 +107,26 @@ export function OrderDetailSheet({
           <RiCloseFill size={18} />
         </button>
 
-        <StatusBanner order={order} />
-
-        <div className="px-5 pb-5 space-y-3">
-          <ProductInfo order={order} />
-          <DetailsCard order={order} />
-          {(order.contact || order.shop_phone) && <SellerCard order={order} />}
-          <ActionsBlock
-            order={order}
-            onCancel={() => { hapticImpact('light'); setCancelConfirm(true); }}
-            onClose={onClose}
-            error={cancelMut.isError ? cancelMut.error : null}
-          />
-        </div>
+        {order ? (
+          <>
+            <StatusBanner order={order} />
+            <div className="px-5 pb-5 space-y-3">
+              <ProductInfo order={order} />
+              <DetailsCard order={order} />
+              {(order.contact || order.shop_phone) && <SellerCard order={order} />}
+              <ActionsBlock
+                order={order}
+                onCancel={() => { hapticImpact('light'); setCancelConfirm(true); }}
+                onClose={onClose}
+                error={cancelMut.isError ? cancelMut.error : null}
+              />
+            </div>
+          </>
+        ) : ordersQuery.isLoading ? (
+          <LoadingBody />
+        ) : (
+          <NotFoundBody onClose={onClose} />
+        )}
       </BottomSheet>
 
       <Modal
@@ -140,7 +156,7 @@ export function OrderDetailSheet({
             size="lg"
             disabled={cancelMut.isPending}
             onClick={() => {
-              if (!uid) return;
+              if (!uid || !order) return;
               hapticImpact('medium');
               cancelMut.mutate(
                 { code: order.code },
@@ -173,6 +189,38 @@ export function OrderDetailSheet({
 // ═══════════════════════════════════════════════════════════════
 //  Sub-components
 // ═══════════════════════════════════════════════════════════════
+function LoadingBody() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-6">
+      <div
+        className="w-10 h-10 rounded-full border-[3px] border-brand-subtle border-t-brand mb-3"
+        style={{ animation: 'spin 0.8s linear infinite' }}
+      />
+      <p className="text-sm text-fg-3 font-body">Buyurtma yuklanmoqda...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function NotFoundBody({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-12">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-1 shadow-xs text-fg-3 mb-3">
+        <RiShoppingBag3Line size={28} />
+      </div>
+      <h2 className="font-display text-base font-semibold text-fg-1 mb-1">
+        Buyurtma topilmadi
+      </h2>
+      <p className="text-sm text-fg-3 font-body text-center mb-4">
+        Buyurtmalar ro'yxati yangilangan bo'lishi mumkin.
+      </p>
+      <Button variant="outline" size="md" onClick={onClose}>
+        Yopish
+      </Button>
+    </div>
+  );
+}
+
 function StatusBanner({ order }: { order: BuyerOrderItem }) {
   const cls = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
   const hint = STATUS_HINT[order.status] || '';

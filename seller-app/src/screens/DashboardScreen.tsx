@@ -187,14 +187,16 @@ function PeriodFilter({
   value, onChange,
 }: { value: PeriodOption; onChange: (p: PeriodOption) => void }) {
   return (
-    <div className="flex gap-1 bg-bg-3 rounded-md p-0.5 overflow-x-auto">
+    <div className="inline-flex w-full bg-bg-3 rounded-full p-1 gap-0.5">
       {PERIODS.map((p) => (
         <button
           key={p.key}
           onClick={() => { hapticSelection(); onChange(p); }}
           className={cn(
-            'flex-1 px-3 py-1.5 text-xs font-medium font-display rounded-sm transition-colors duration-base whitespace-nowrap',
-            value.key === p.key ? 'bg-bg-1 text-fg-1 shadow-xs' : 'text-fg-3 hover:text-fg-2',
+            'flex-1 px-3 h-7 text-xs font-medium font-display rounded-full transition-colors duration-base whitespace-nowrap',
+            value.key === p.key
+              ? 'bg-bg-1 shadow-sm text-fg-1'
+              : 'bg-transparent text-fg-3 hover:text-fg-2',
           )}
         >
           {p.label}
