@@ -19,7 +19,7 @@ import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import { hapticImpact, hapticSelection } from '@/lib/haptic';
 import { tgWebApp } from '@/lib/telegram';
-import { useTelegramExpanded } from '@/lib/useTelegramExpanded';
+import { useShouldShowHeader } from '@/lib/usePlatform';
 
 type Filter = 'all' | 'hot' | 'almost' | 'new';
 
@@ -201,8 +201,8 @@ const SECTION_TITLES: Record<Filter, string> = {
 //  Header + search (Home-spetsifik, brand orange)
 // ═══════════════════════════════════════════════════════════════
 function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string) => void }) {
-  const expanded = useTelegramExpanded();
-  if (!expanded) return null;
+  const showHeader = useShouldShowHeader();
+  if (!showHeader) return null;
   return (
     <header className="bg-brand text-white pt-safe-top pb-3 px-4 motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out">
       <div className="flex items-center justify-center pb-2">
