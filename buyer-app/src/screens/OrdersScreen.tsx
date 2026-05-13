@@ -94,9 +94,10 @@ export function OrdersScreen() {
                   className={cn(
                     'inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
                     active
-                      ? 'bg-brand text-brand-fg'
-                      : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
+                      ? 'bg-brand text-brand-fg shadow-none'
+                      : 'text-fg-1 shadow-xs hover:bg-bg-muted',
                   )}
+                  style={active ? undefined : { background: 'var(--color-card-bg)' }}
                 >
                   {f.label}
                   {count > 0 && (

@@ -19,7 +19,6 @@ import { useCancelOrder } from '@/api/buyer';
 import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
-import { useMainButton } from '@/lib/useMainButton';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
 import { isInTelegram, tgWebApp } from '@/lib/telegram';
 
@@ -63,12 +62,19 @@ export function OrderDetailSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  useMainButton({
-    text:    'Yopish',
-    enabled: isOpen && !showCancelConfirm,
-    loading: false,
-    onClick: onClose,
-  });
+  // Telegram MainButton — bu sheet'da kerakmas (X close tugma yetadi).
+  // OrderDetailSheet ochilganda native button paydo bo'lmaslik uchun
+  // mount va unmount'da hide.
+  useEffect(() => {
+    if (!isOpen) return;
+    const tg = window.Telegram?.WebApp;
+    try { tg?.MainButton?.hide(); } catch { /* ignore */ }
+    try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
+    return () => {
+      try { tg?.MainButton?.hide(); } catch { /* ignore */ }
+      try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
+    };
+  }, [isOpen]);
 
   if (!order) return null;
 

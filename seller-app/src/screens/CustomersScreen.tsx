@@ -231,9 +231,10 @@ function FilterBar({
               'inline-flex items-center gap-1.5 px-4 h-9 rounded-full text-sm font-medium font-display',
               'whitespace-nowrap transition-colors duration-base shrink-0',
               active
-                ? 'bg-brand text-brand-fg'
-                : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
+                ? 'bg-brand text-brand-fg shadow-none'
+                : 'text-fg-1 shadow-xs hover:bg-bg-muted',
             )}
+            style={active ? undefined : { background: 'var(--color-card-bg)' }}
           >
             {tab.label}
             {count !== null && count > 0 && (

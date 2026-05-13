@@ -22,12 +22,14 @@ import { cn } from '@/lib/cn';
 import { formatPrice, formatPriceShort } from '@/lib/format';
 import { hapticImpact } from '@/lib/haptic';
 import { getTgUser, isInTelegram, tgWebApp, openBuyerBotDeeplink } from '@/lib/telegram';
+import { useAvatar } from '@/lib/useAvatar';
 
 export function ProfileScreen() {
   const navigate = useNavigate();
   const user     = getTgUser();
   const uid      = user?.id ?? null;
   const query    = useBuyerProfile(uid);
+  const avatar   = useAvatar();
 
   const [showReferral, setShowReferral] = useState(false);
 
@@ -57,7 +59,7 @@ export function ProfileScreen() {
         {/* Header card */}
         <Card padding="md">
           <div className="flex items-center gap-3">
-            <Avatar name={name} photoUrl={user.photo_url} size={64} />
+            <Avatar name={name} photoUrl={avatar} size={64} />
             <div className="flex-1 min-w-0">
               <h2 className="font-display text-xl font-bold text-fg-1 truncate">{name}</h2>
               {user.username

@@ -245,9 +245,10 @@ function FilterBar({
             className={cn(
               'inline-flex items-center gap-1 px-4 h-8 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
               active
-                ? 'bg-brand text-brand-fg'
-                : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
+                ? 'bg-brand text-brand-fg shadow-none'
+                : 'text-fg-1 shadow-xs hover:bg-bg-muted',
             )}
+            style={active ? undefined : { background: 'var(--color-card-bg)' }}
           >
             {f.icon}
             {f.label}
@@ -308,9 +309,10 @@ function CatChip({
       className={cn(
         'inline-flex items-center px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
         active
-          ? 'bg-brand text-brand-fg'
-          : 'bg-bg-3 text-fg-1 hover:bg-bg-muted',
+          ? 'bg-brand text-brand-fg shadow-none'
+          : 'text-fg-1 shadow-xs hover:bg-bg-muted',
       )}
+      style={active ? undefined : { background: 'var(--color-card-bg)' }}
     >
       {children}
     </button>
@@ -335,33 +337,40 @@ function StatsRow({
   return (
     <section className="grid grid-cols-3 gap-3 px-4 mt-4">
       <StatCard
-        icon={<RiFireFill size={18} className="text-brand" />}
+        icon={<RiFireFill size={22} />}
+        iconBg="bg-brand-subtle text-brand"
         value={active}
-        label="Faol guruhlar"
+        label="Faol"
       />
       <StatCard
-        icon={<RiFlashlightFill size={18} className="text-warning" />}
+        icon={<RiFlashlightFill size={22} />}
+        iconBg="bg-warning-subtle text-warning"
         value={ending}
         label="Tugayapti"
       />
       <StatCard
-        icon={<RiPriceTag3Fill size={18} className="text-success" />}
+        icon={<RiPriceTag3Fill size={22} />}
+        iconBg="bg-success-subtle text-success"
         value={`${avgDisc}%`}
-        label="O'rtacha chegirma"
+        label="Chegirma"
       />
     </section>
   );
 }
 
-function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number | string; label: string }) {
+function StatCard({
+  icon, iconBg, value, label,
+}: { icon: React.ReactNode; iconBg: string; value: number | string; label: string }) {
   return (
     <div
-      className="shadow-xs rounded-xl p-3 text-center"
+      className="shadow-xs rounded-3xl p-5 text-center"
       style={{ background: 'var(--color-card-bg)' }}
     >
-      <div className="inline-flex items-center justify-center mb-1">{icon}</div>
+      <div className={cn('inline-flex items-center justify-center w-9 h-9 rounded-full mb-2', iconBg)}>
+        {icon}
+      </div>
       <p className="font-mono text-2xl font-bold tabular-nums text-fg-1 leading-none">{value}</p>
-      <p className="text-[11px] text-fg-3 font-body leading-tight mt-1">{label}</p>
+      <p className="text-[11px] text-fg-3 font-body leading-tight mt-1.5 whitespace-nowrap">{label}</p>
     </div>
   );
 }
