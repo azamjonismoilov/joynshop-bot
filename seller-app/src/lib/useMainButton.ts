@@ -38,7 +38,17 @@ export function useMainButton({
       return;
     }
     const handler = () => handlerRef.current();
-    try { tg.MainButton.setText(text.slice(0, 64)); } catch { /* ignore */ }
+    // setParams — brand orange, har callsite uchun avtomatik. Telegram
+    // dark theme yoki user accent o'zgartirsa ham brand identity saqlanadi.
+    try {
+      tg.MainButton.setParams({
+        text:       text.slice(0, 64),
+        color:      '#FA7319',  // --color-brand
+        text_color: '#FFFFFF',  // --color-brand-fg
+        is_active:  true,
+        is_visible: true,
+      });
+    } catch { /* ignore */ }
     try { tg.MainButton.onClick(handler); } catch { /* ignore */ }
     try { tg.MainButton.show(); } catch { /* ignore */ }
     return () => {

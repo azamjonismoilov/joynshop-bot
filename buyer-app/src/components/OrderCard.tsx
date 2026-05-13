@@ -9,6 +9,7 @@ import type { BuyerOrderItem, OrderStatus } from '@/api/types';
 import { ProductImage } from './ProductImage';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
+import { STATUS_META } from '@/lib/status';
 
 interface Props {
   order:   BuyerOrderItem;
@@ -51,7 +52,7 @@ export function OrderCard({ order, onClick }: Props) {
               {order.name || '—'}
             </h3>
             <Badge variant={variant} size="sm">
-              <span className="mr-1">{order.status_icon}</span>
+              <StatusBadgeIcon status={order.status} />
               {order.status_text}
             </Badge>
           </div>
@@ -91,4 +92,9 @@ export function OrderCard({ order, onClick }: Props) {
       </div>
     </Card>
   );
+}
+
+function StatusBadgeIcon({ status }: { status: OrderStatus }) {
+  const Icon = STATUS_META[status]?.Icon || STATUS_META.pending.Icon;
+  return <Icon size={11} className="inline mr-1 -mt-0.5" />;
 }

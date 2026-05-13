@@ -29,6 +29,7 @@ import { cn } from '@/lib/cn';
 import { formatPrice, formatPriceShort } from '@/lib/format';
 import type { ProductDetailResponse, ProductSaleType } from '@/api/types';
 import { hapticNotify } from '@/lib/haptic';
+import { PRODUCT_STATUS_META } from '@/lib/status';
 
 const SALE_TYPE_LABEL: Record<ProductSaleType, string> = {
   both:  'Guruh va yakka',
@@ -106,7 +107,7 @@ function DetailContent({
       {/* Status + name + status banner */}
       <Card padding="md">
         <div className="flex items-start gap-3">
-          <div className="text-2xl shrink-0 select-none">{data.status_emoji}</div>
+          <ProductStatusIcon status={data.status} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <Badge
@@ -362,6 +363,22 @@ function EditIconButton({ onClick }: { onClick: () => void }) {
     >
       <RiEdit2Line size={16} />
     </button>
+  );
+}
+
+function ProductStatusIcon({ status }: { status: ProductDetailResponse['status'] }) {
+  const meta = PRODUCT_STATUS_META[status] || PRODUCT_STATUS_META.draft;
+  const Icon = meta.Icon;
+  return (
+    <div
+      className="inline-flex items-center justify-center w-10 h-10 rounded-full shrink-0 text-white"
+      style={{
+        background: meta.bg,
+        boxShadow:  `0 4px 12px 0 ${meta.glow}`,
+      }}
+    >
+      <Icon size={20} />
+    </div>
   );
 }
 

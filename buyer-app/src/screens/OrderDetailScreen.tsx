@@ -19,18 +19,10 @@ import { ProductImage } from '@/components/ProductImage';
 import { useToast } from '@/components/Toast';
 import { useBuyerOrders, useCancelOrder } from '@/api/buyer';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
-import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
+import { STATUS_META } from '@/lib/status';
 import { getTgUser, tgWebApp } from '@/lib/telegram';
-
-const STATUS_BANNER_BG: Record<OrderStatus, string> = {
-  pending:    'bg-bg-3 text-fg-2',
-  confirming: 'bg-warning-subtle text-warning',
-  confirmed:  'bg-success-subtle text-success',
-  rejected:   'bg-danger-subtle text-danger',
-  cancelled:  'bg-bg-3 text-fg-2',
-};
 
 const STATUS_HINT: Record<OrderStatus, string> = {
   pending:    "To'lov tizimi tez orada ulanadi — sotuvchi bilan bog'lanib oling.",
@@ -189,21 +181,30 @@ export default OrderDetailScreen;
 // ═══════════════════════════════════════════════════════════════
 
 function StatusBanner({ order }: { order: BuyerOrderItem }) {
-  const cls  = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
+  const meta = STATUS_META[order.status] || STATUS_META.pending;
+  const Icon = meta.Icon;
   const hint = STATUS_HINT[order.status] || '';
   return (
-    <div className={cn('rounded-card p-4', cls)}>
+    <div
+      className="rounded-card p-4 text-white"
+      style={{
+        background: meta.bg,
+        boxShadow:  `0 4px 16px 0 ${meta.glow}`,
+      }}
+    >
       <div className="flex items-center gap-3">
-        <div className="text-3xl shrink-0 select-none">{order.status_icon}</div>
+        <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/20 shrink-0">
+          <Icon size={22} />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="font-display text-base font-bold leading-tight">{order.status_text}</p>
-          <p className="text-xs opacity-80 font-body mt-0.5">
+          <p className="text-xs opacity-85 font-body mt-0.5">
             {order.cancelled_at && order.status === 'cancelled' ? `Bekor qilindi: ${order.cancelled_at}` : order.created}
           </p>
         </div>
       </div>
       {hint && (
-        <p className="text-xs opacity-80 font-body mt-2.5 leading-snug">{hint}</p>
+        <p className="text-xs opacity-85 font-body mt-3 leading-snug">{hint}</p>
       )}
     </div>
   );

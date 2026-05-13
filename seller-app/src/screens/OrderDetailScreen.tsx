@@ -18,7 +18,6 @@ import {
 } from '@/api/seller';
 import type {
   OrderDetailResponse,
-  OrderStatus,
   OrderTimelineEvent,
 } from '@/api/types';
 import { AppHeader } from '@/components/AppHeader';
@@ -26,14 +25,7 @@ import { ErrorState } from '@/components/ErrorState';
 import { cn } from '@/lib/cn';
 import { colorFromName, formatPrice, getInitials } from '@/lib/format';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
-
-const STATUS_BANNER_BG: Record<OrderStatus, string> = {
-  pending:    'bg-bg-3 text-fg-2',
-  confirming: 'bg-warning-subtle text-warning',
-  confirmed:  'bg-success-subtle text-success',
-  rejected:   'bg-danger-subtle text-danger',
-  cancelled:  'bg-bg-3 text-fg-2',
-};
+import { ORDER_STATUS_META } from '@/lib/status';
 
 export function OrderDetailScreen() {
   const { code } = useParams<{ code: string }>();
@@ -74,13 +66,22 @@ export function OrderDetailScreen() {
 // ════════════════════════════════════════════════════════════════════
 
 function StatusBanner({ data }: { data: OrderDetailResponse }) {
-  const cls = STATUS_BANNER_BG[data.status] || STATUS_BANNER_BG.pending;
+  const meta = ORDER_STATUS_META[data.status] || ORDER_STATUS_META.pending;
+  const Icon = meta.Icon;
   return (
-    <div className={cn('rounded-card p-4 flex items-center gap-3', cls)}>
-      <div className="text-2xl shrink-0 select-none">{data.status_emoji}</div>
+    <div
+      className="rounded-card p-4 flex items-center gap-3 text-white"
+      style={{
+        background: meta.bg,
+        boxShadow:  `0 4px 16px 0 ${meta.glow}`,
+      }}
+    >
+      <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-white/20 shrink-0">
+        <Icon size={22} />
+      </div>
       <div className="flex-1 min-w-0">
         <p className="font-display text-base font-semibold">{data.status_label}</p>
-        <p className="text-xs opacity-80 font-body">{data.created}</p>
+        <p className="text-xs opacity-85 font-body">{data.created}</p>
       </div>
     </div>
   );
