@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   RiBox3Fill,
   RiFireFill,
@@ -14,6 +15,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailSheet } from '@/components/ProductDetailSheet';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import { hapticImpact, hapticSelection } from '@/lib/haptic';
 import { tgWebApp } from '@/lib/telegram';
@@ -37,6 +39,14 @@ export function HomeScreen() {
   const [openPid,  setOpenPid]  = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutType, setCheckoutType] = useState<'group' | 'solo'>('group');
+  const qc = useQueryClient();
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ['buyer', 'products'] }),
+      qc.refetchQueries({ queryKey: ['buyer', 'categories'] }),
+    ]);
+  };
 
   // Deep link parsing — mount paytida bir marta
   const deepLinkProcessed = useRef(false);
@@ -110,7 +120,10 @@ export function HomeScreen() {
     }
   }, [products.data, category, search, filter]);
 
+  const anyModalOpen = !!openPid || showCheckout;
+
   return (
+    <PullToRefresh onRefresh={handleRefresh} disabled={anyModalOpen}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <HomeHeader search={search} onSearch={setSearch} />
 
@@ -162,6 +175,8 @@ export function HomeScreen() {
         pid={openPid}
         onClose={() => setOpenPid(null)}
         onBuyClick={(t) => { setCheckoutType(t); setShowCheckout(true); }}
+        snapPoints={['half', 'full']}
+        initialSnap="half"
       />
       <CheckoutSheet
         isOpen={showCheckout}
@@ -170,6 +185,7 @@ export function HomeScreen() {
         onClose={() => setShowCheckout(false)}
       />
     </div>
+    </PullToRefresh>
   );
 }
 

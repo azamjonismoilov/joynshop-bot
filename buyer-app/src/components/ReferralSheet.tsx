@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BottomSheet } from './BottomSheet';
 import {
   RiCloseFill,
   RiFileCopyLine,
@@ -7,7 +8,6 @@ import {
 } from '@remixicon/react';
 import { Button } from '@/components/ui';
 import { useMainButton } from '@/lib/useMainButton';
-import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
 import { isInTelegram, tgWebApp } from '@/lib/telegram';
 import { formatPrice } from '@/lib/format';
@@ -29,19 +29,9 @@ export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
   const toast = useToast();
 
   useEffect(() => {
-    if (!isOpen) return;
-    setCopied(false);
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen, onClose]);
+    if (isOpen) setCopied(false);
+  }, [isOpen]);
 
-  useTelegramBackButton(onClose, isOpen);
 
   const refLink = uid
     ? `https://t.me/${(import.meta.env.VITE_BUYER_BOT_USERNAME || 'joynshop_bot')}?start=ref_${uid}`
@@ -79,16 +69,14 @@ export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
     onClick: share,
   });
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[105] flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
-      role="dialog"
-      aria-modal="true"
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      snapPoints={['full']}
+      zIndex={105}
+      ariaLabel="Do'stni taklif qilish"
     >
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-      <Sheet onSwipeDown={onClose}>
         <button
           type="button"
           onClick={onClose}
@@ -156,8 +144,7 @@ export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
             ikkala tomon cashback oladi.
           </p>
         </div>
-      </Sheet>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -166,48 +153,6 @@ function Stat({ label, value, valueClass }: { label: string; value: string; valu
     <div className="bg-bg-2 rounded-xl p-3 text-center">
       <p className={`font-mono text-base font-bold leading-tight ${valueClass ?? 'text-fg-1'}`}>{value}</p>
       <p className="text-[10px] text-fg-3 font-body mt-0.5">{label}</p>
-    </div>
-  );
-}
-
-function Sheet({ onSwipeDown, children }: { onSwipeDown: () => void; children: React.ReactNode }) {
-  const ref  = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ start: number; current: number } | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest('[data-sheet-handle]')) return;
-    drag.current = { start: e.touches[0].clientY, current: 0 };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!drag.current) return;
-    const dy = e.touches[0].clientY - drag.current.start;
-    if (dy <= 0) return;
-    drag.current.current = dy;
-    if (ref.current) ref.current.style.transform = `translateY(${dy}px)`;
-  };
-  const onTouchEnd = () => {
-    if (!drag.current) return;
-    const dy = drag.current.current;
-    if (ref.current) ref.current.style.transform = '';
-    if (dy > 120) onSwipeDown();
-    drag.current = null;
-  };
-
-  return (
-    <div
-      ref={ref}
-      className="relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col animate-[slideUp_240ms_ease-out] overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      <div data-sheet-handle className="pt-2.5 pb-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing">
-        <div className="w-10 h-1 rounded-full bg-neutral-300" />
-      </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        {children}
-      </div>
     </div>
   );
 }

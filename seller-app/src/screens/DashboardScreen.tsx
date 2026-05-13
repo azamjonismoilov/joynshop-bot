@@ -26,9 +26,11 @@ import {
   SkeletonListItem,
   SkeletonStats,
 } from '@/components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSellerMe, useSellerStats, useSellerStatsChart } from '@/api/seller';
 import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import {
   colorFromName,
@@ -64,6 +66,7 @@ export function DashboardScreen() {
   const me    = useSellerMe();
   const stats = useSellerStats(period.key);
   const chart = useSellerStatsChart(period.days);
+  const qc    = useQueryClient();
 
   // me — critical, full-screen error/loading
   if (me.isLoading) return <DashboardSkeleton />;
@@ -72,7 +75,15 @@ export function DashboardScreen() {
 
   const profile = me.data;
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ['seller', 'me'] }),
+      qc.refetchQueries({ queryKey: ['seller', 'stats'] }),
+    ]);
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-8">
       <AppHeader tagline="Bosh sahifa" />
 
@@ -164,6 +175,7 @@ export function DashboardScreen() {
         </Card>
       </main>
     </div>
+    </PullToRefresh>
   );
 }
 

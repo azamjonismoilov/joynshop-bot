@@ -19,8 +19,10 @@ import type { ProductItem } from '@/api/types';
 import { AppHeader } from '@/components/AppHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { ErrorState } from '@/components/ErrorState';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import { hapticImpact } from '@/lib/haptic';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function ProductsScreen() {
   const [page, setPage] = useState(0);
@@ -29,12 +31,18 @@ export function ProductsScreen() {
     limit: 10,
     filter: 'active',
   });
+  const qc = useQueryClient();
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data || data.total === 0) return <EmptyState />;
 
+  const handleRefresh = async () => {
+    await qc.refetchQueries({ queryKey: ['seller', 'products'] });
+  };
+
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-6">
       <AppHeader tagline="Mahsulotlar" />
       {/* List */}
@@ -75,6 +83,7 @@ export function ProductsScreen() {
 
       <CreateProductFab />
     </div>
+    </PullToRefresh>
   );
 }
 

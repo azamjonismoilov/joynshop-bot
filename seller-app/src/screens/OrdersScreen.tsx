@@ -15,10 +15,12 @@ import {
   SkeletonListItem,
 } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSellerOrders } from '@/api/seller';
 import type { OrderFilter, OrderItem, OrderStatus } from '@/api/types';
 import { AppHeader } from '@/components/AppHeader';
 import { ErrorState } from '@/components/ErrorState';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { hapticSelection } from '@/lib/haptic';
@@ -76,8 +78,14 @@ export function OrdersScreen() {
     limit:  20,
     search: debouncedSearch,
   });
+  const qc = useQueryClient();
+
+  const handleRefresh = async () => {
+    await qc.refetchQueries({ queryKey: ['seller', 'orders'] });
+  };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-8">
       <AppHeader tagline="Buyurtmalar" />
       <div className="px-4 mt-4 space-y-3">
@@ -146,6 +154,7 @@ export function OrdersScreen() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }
 

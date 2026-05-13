@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
@@ -13,10 +13,10 @@ import { Badge, Button, Skeleton } from '@/components/ui';
 import { useProduct } from '@/api/buyer';
 import type { ProductDetail } from '@/api/types';
 import { ProductImage } from './ProductImage';
+import { BottomSheet, type SnapPoint } from './BottomSheet';
 import { cn } from '@/lib/cn';
 import { discountPct, formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
-import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 import { hapticImpact } from '@/lib/haptic';
 import { isInTelegram } from '@/lib/telegram';
 
@@ -37,25 +37,17 @@ interface Props {
  * - Telegram MainButton — "Guruhga qo'shilish" / "Sotib olish"
  *   (Sprint 2 da checkout flow ulanadi)
  */
-export function ProductDetailSheet({ isOpen, pid, onClose, onBuyClick }: Props) {
+interface ExtendedProps extends Props {
+  snapPoints?:  SnapPoint[];
+  initialSnap?: SnapPoint;
+}
+
+export function ProductDetailSheet({
+  isOpen, pid, onClose, onBuyClick,
+  snapPoints  = ['full'],
+  initialSnap = 'full',
+}: ExtendedProps) {
   const { data, isLoading, isError, error } = useProduct(pid);
-
-  // Scroll lock + ESC
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [isOpen, onClose]);
-
-  useTelegramBackButton(onClose, isOpen);
 
   const ctaText = data
     ? data.sale_type === 'solo'
@@ -79,84 +71,15 @@ export function ProductDetailSheet({ isOpen, pid, onClose, onBuyClick }: Props) 
 
   const inTelegram = isInTelegram();
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
-      role="dialog"
-      aria-modal="true"
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      snapPoints={snapPoints}
+      initialSnap={initialSnap}
+      zIndex={100}
+      ariaLabel={data?.name || 'Mahsulot tafsilotlari'}
     >
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <SheetSurface onClose={onClose}>
-        {isError ? (
-          <ErrorBody error={error} />
-        ) : isLoading || !data ? (
-          <LoadingBody />
-        ) : (
-          <DetailBody data={data} inTelegram={inTelegram} onBuy={triggerBuy} />
-        )}
-      </SheetSurface>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Sheet surface — swipe down handler + close button
-// ═══════════════════════════════════════════════════════════════
-function SheetSurface({
-  onClose,
-  children,
-}: {
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const dragY    = useRef<{ start: number; current: number } | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    // Faqat sheet top'idagi 60px zonada drag — boshqa joy normal scroll
-    const target = e.target as HTMLElement;
-    const handle = target.closest('[data-sheet-handle]');
-    if (!handle) return;
-    dragY.current = { start: e.touches[0].clientY, current: 0 };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!dragY.current) return;
-    const dy = e.touches[0].clientY - dragY.current.start;
-    if (dy <= 0) return; // faqat pastga
-    dragY.current.current = dy;
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = `translateY(${dy}px)`;
-    }
-  };
-  const onTouchEnd = () => {
-    if (!dragY.current) return;
-    const dy = dragY.current.current;
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = '';
-    }
-    if (dy > 120) onClose();
-    dragY.current = null;
-  };
-
-  return (
-    <div
-      ref={sheetRef}
-      className="relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col animate-[slideUp_240ms_ease-out] overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* Drag handle */}
-      <div data-sheet-handle className="pt-2.5 pb-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing">
-        <div className="w-10 h-1 rounded-full bg-neutral-300" />
-      </div>
-
-      {/* Close (brauzer fallback) */}
       <button
         type="button"
         onClick={onClose}
@@ -165,11 +88,14 @@ function SheetSurface({
       >
         <RiCloseFill size={18} />
       </button>
-
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        {children}
-      </div>
-    </div>
+      {isError ? (
+        <ErrorBody error={error} />
+      ) : isLoading || !data ? (
+        <LoadingBody />
+      ) : (
+        <DetailBody data={data} inTelegram={inTelegram} onBuy={triggerBuy} />
+      )}
+    </BottomSheet>
   );
 }
 

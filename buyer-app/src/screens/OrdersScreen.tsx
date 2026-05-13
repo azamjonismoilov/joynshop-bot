@@ -5,11 +5,13 @@ import {
   RiShoppingBag3Fill,
   RiShoppingBag3Line,
 } from '@remixicon/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBuyerOrders } from '@/api/buyer';
 import { AppHeader } from '@/components/AppHeader';
 import { Button, Card, Skeleton } from '@/components/ui';
 import { OrderCard } from '@/components/OrderCard';
 import { OrderDetailSheet } from '@/components/OrderDetailSheet';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import type { BuyerOrderItem, OrderStatus } from '@/api/types';
@@ -32,11 +34,16 @@ export function OrdersScreen() {
   const navigate = useNavigate();
   const uid      = getTgUser()?.id ?? null;
   const query    = useBuyerOrders(uid);
+  const qc       = useQueryClient();
 
   const [filter, setFilter]     = useState<Filter>('all');
   const [selected, setSelected] = useState<BuyerOrderItem | null>(null);
 
   const orders = query.data || [];
+
+  const handleRefresh = async () => {
+    await qc.refetchQueries({ queryKey: ['buyer', 'orders', uid] });
+  };
 
   const filtered = useMemo(() => {
     if (filter === 'all')    return orders;
@@ -52,6 +59,7 @@ export function OrdersScreen() {
   }, [orders, selected]);
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} disabled={!!selected}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <AppHeader tagline="Buyurtmalarim" />
 
@@ -149,8 +157,11 @@ export function OrdersScreen() {
         order={selectedFresh}
         uid={uid}
         onClose={() => setSelected(null)}
+        snapPoints={['half', 'full']}
+        initialSnap="half"
       />
     </div>
+    </PullToRefresh>
   );
 }
 

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RiHeart3Line, RiHome5Line } from '@remixicon/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWishlist } from '@/api/buyer';
 import { AppHeader } from '@/components/AppHeader';
 import { Button, SkeletonProductCard } from '@/components/ui';
 import { ProductCard } from '@/components/ProductCard';
 import { ProductDetailSheet } from '@/components/ProductDetailSheet';
 import { CheckoutSheet } from '@/components/CheckoutSheet';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { hapticImpact } from '@/lib/haptic';
@@ -16,6 +18,7 @@ export function WishlistScreen() {
   const navigate = useNavigate();
   const uid      = getTgUser()?.id ?? null;
   const list     = useWishlist(uid);
+  const qc       = useQueryClient();
 
   // Modal stack — HomeScreen pattern bilan parallel
   const [openPid, setOpenPid]   = useState<string | null>(null);
@@ -24,7 +27,16 @@ export function WishlistScreen() {
 
   const items = list.data || [];
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      qc.refetchQueries({ queryKey: ['buyer', 'wishlist', uid] }),
+      qc.refetchQueries({ queryKey: ['buyer', 'wishlist-ids', uid] }),
+    ]);
+  };
+  const anyModalOpen = !!openPid || showCheckout;
+
   return (
+    <PullToRefresh onRefresh={handleRefresh} disabled={anyModalOpen}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <AppHeader tagline="Saqlanganlar" />
 
@@ -81,6 +93,8 @@ export function WishlistScreen() {
         pid={openPid}
         onClose={() => setOpenPid(null)}
         onBuyClick={(t) => { setType(t); setShow(true); }}
+        snapPoints={['half', 'full']}
+        initialSnap="half"
       />
       <CheckoutSheet
         isOpen={showCheckout}
@@ -89,5 +103,6 @@ export function WishlistScreen() {
         onClose={() => { setShow(false); }}
       />
     </div>
+    </PullToRefresh>
   );
 }

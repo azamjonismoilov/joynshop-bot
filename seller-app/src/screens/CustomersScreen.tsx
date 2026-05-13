@@ -16,7 +16,9 @@ import {
 } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
 import { Avatar } from '@/components/Avatar';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSellerCustomers } from '@/api/seller';
+import { PullToRefresh } from '@/components/PullToRefresh';
 import type {
   CustomerActivity,
   CustomerBrief,
@@ -78,8 +80,14 @@ export function CustomersScreen() {
     limit: 20,
     search: debouncedSearch,
   });
+  const qc = useQueryClient();
+
+  const handleRefresh = async () => {
+    await qc.refetchQueries({ queryKey: ['seller', 'customers'] });
+  };
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-8">
       <AppHeader tagline="Mijozlar" />
       <div className="px-4 mt-4 space-y-3">
@@ -142,6 +150,7 @@ export function CustomersScreen() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }
 

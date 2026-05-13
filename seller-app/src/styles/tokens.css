@@ -137,6 +137,24 @@
   /* iOS-spesifik kichik o'zgartirishlar (optional) */
 }
 
+/* iOS pull-to-refresh / overscroll bounce'ni o'chirish — Mini App'da
+ * native gesture konfliktini oldini olish (Sprint 7). */
+html, body {
+  overscroll-behavior-y: none;
+}
+
+/* Reduced motion — animation'larni o'chirish (a11y) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+    scroll-behavior:      auto !important;
+  }
+}
+
 /* Skeleton shimmer animation */
 @keyframes shimmer {
   0%   { background-position: 200% 0; }

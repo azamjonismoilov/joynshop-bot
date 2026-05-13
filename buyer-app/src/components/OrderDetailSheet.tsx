@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BottomSheet, type SnapPoint } from './BottomSheet';
 import {
   RiCloseFill,
   RiFileCopyLine,
@@ -19,15 +20,16 @@ import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
-import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
 import { isInTelegram, tgWebApp } from '@/lib/telegram';
 
 interface Props {
-  isOpen:  boolean;
-  order:   BuyerOrderItem | null;
-  uid:     number | null;
-  onClose: () => void;
+  isOpen:       boolean;
+  order:        BuyerOrderItem | null;
+  uid:          number | null;
+  onClose:      () => void;
+  snapPoints?:  SnapPoint[];
+  initialSnap?: SnapPoint;
 }
 
 const STATUS_BANNER_BG: Record<OrderStatus, string> = {
@@ -46,31 +48,20 @@ const STATUS_HINT: Record<OrderStatus, string> = {
   cancelled:  "Buyurtma bekor qilindi.",
 };
 
-export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
+export function OrderDetailSheet({
+  isOpen, order, uid, onClose,
+  snapPoints  = ['full'],
+  initialSnap = 'full',
+}: Props) {
   const [showCancelConfirm, setCancelConfirm] = useState(false);
   const cancelMut = useCancelOrder(uid);
   const toast = useToast();
-
-  // Body scroll lock + ESC
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen, onClose]);
 
   // Reset cancel state when sheet opens
   useEffect(() => {
     if (isOpen) { setCancelConfirm(false); cancelMut.reset(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  useTelegramBackButton(onClose, isOpen);
 
   useMainButton({
     text:    'Yopish',
@@ -79,16 +70,18 @@ export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
     onClick: onClose,
   });
 
-  if (!isOpen || !order) return null;
+  if (!order) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <Sheet onSwipeDown={onClose}>
+    <>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        snapPoints={snapPoints}
+        initialSnap={initialSnap}
+        zIndex={100}
+        ariaLabel={`Buyurtma ${order.code}`}
+      >
         <button
           type="button"
           onClick={onClose}
@@ -111,7 +104,7 @@ export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
             error={cancelMut.isError ? cancelMut.error : null}
           />
         </div>
-      </Sheet>
+      </BottomSheet>
 
       <Modal
         isOpen={showCancelConfirm}
@@ -166,52 +159,7 @@ export function OrderDetailSheet({ isOpen, order, uid, onClose }: Props) {
           </Button>
         </div>
       </Modal>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Sheet surface
-// ═══════════════════════════════════════════════════════════════
-function Sheet({ onSwipeDown, children }: { onSwipeDown: () => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ start: number; current: number } | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest('[data-sheet-handle]')) return;
-    drag.current = { start: e.touches[0].clientY, current: 0 };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!drag.current) return;
-    const dy = e.touches[0].clientY - drag.current.start;
-    if (dy <= 0) return;
-    drag.current.current = dy;
-    if (ref.current) ref.current.style.transform = `translateY(${dy}px)`;
-  };
-  const onTouchEnd = () => {
-    if (!drag.current) return;
-    const dy = drag.current.current;
-    if (ref.current) ref.current.style.transform = '';
-    if (dy > 120) onSwipeDown();
-    drag.current = null;
-  };
-
-  return (
-    <div
-      ref={ref}
-      className="relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col animate-[slideUp_240ms_ease-out] overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      <div data-sheet-handle className="pt-2.5 pb-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing">
-        <div className="w-10 h-1 rounded-full bg-neutral-300" />
-      </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        {children}
-      </div>
-    </div>
+    </>
   );
 }
 

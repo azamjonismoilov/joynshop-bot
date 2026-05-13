@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useToast } from './Toast';
+import { BottomSheet } from './BottomSheet';
 import {
   RiCheckboxCircleFill,
   RiCloseFill,
@@ -16,6 +17,8 @@ import { formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
 import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
 import { hapticImpact, hapticNotify, hapticSelection } from '@/lib/haptic';
+// useTelegramBackButton — Checkout uchun step-aware back BottomSheet'dan
+// alohida boshqariladi (step navigation muhim).
 import { getTgUser, isInTelegram, tgWebApp } from '@/lib/telegram';
 
 interface Props {
@@ -61,18 +64,7 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialStep]);
 
-  // ESC + body scroll lock
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [isOpen, onClose]);
+  // ESC va body scroll lock — BottomSheet komponent ichida boshqariladi
 
   // Step-aware back: BackButton va swipe-down ham shu logic
   const handleBack = () => {
@@ -163,123 +155,81 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
     onClick: onMain,
   });
 
-  if (!isOpen) return null;
+  // Checkout uchun BackButton bir oz murakkab — step navigation BottomSheet'dan
+  // alohida boshqariladi. BottomSheet o'zining handleBack'ini ham qo'shadi
+  // (full → half), lekin CheckoutSheet single snap (`['full']`) ishlatadi —
+  // ziddiyat yo'q. swipeToClose faqat birinchi step'larda.
+  useTelegramBackButton(handleBack, isOpen);
 
   return (
-    <div
-      className="fixed inset-0 z-[110] flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
-      role="dialog"
-      aria-modal="true"
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      snapPoints={['full']}
+      zIndex={110}
+      swipeToClose={step === 'variant' || step === 'delivery'}
+      ariaLabel="Buyurtma berish"
     >
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-      <Sheet onSwipeDown={step === 'variant' || step === 'delivery' ? onClose : undefined}>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Yopish"
-          className="absolute top-2 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bg-3 text-fg-2 hover:bg-bg-muted z-10"
-        >
-          <RiCloseFill size={18} />
-        </button>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Yopish"
+        className="absolute top-2 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bg-3 text-fg-2 hover:bg-bg-muted z-10"
+      >
+        <RiCloseFill size={18} />
+      </button>
 
-        {product.isError ? (
-          <BodyError msg={product.error instanceof Error ? product.error.message : 'Xato yuz berdi'} />
-        ) : !data ? (
-          <BodyLoading />
-        ) : (
-          <>
-            <StepHeader step={step} hasVariants={data.variants.length > 0} />
-            <div className="px-5 pb-5 space-y-4">
-              {step === 'variant'  && <VariantStep data={data} value={variant} onChange={setVariant} />}
-              {step === 'delivery' && (
-                <DeliveryStep
-                  data={data}
-                  delivery={delivery}
-                  onDelivery={setDelivery}
-                  address={address}
-                  onAddress={setAddress}
-                />
-              )}
-              {step === 'confirm'  && (
-                <ConfirmStep
-                  data={data}
-                  type={defaultType}
-                  variant={variant}
-                  delivery={delivery}
-                  address={address}
-                  error={mutation.isError ? mutation.error : null}
-                />
-              )}
-              {step === 'success'  && <SuccessStep code={code} />}
+      {product.isError ? (
+        <BodyError msg={product.error instanceof Error ? product.error.message : 'Xato yuz berdi'} />
+      ) : !data ? (
+        <BodyLoading />
+      ) : (
+        <>
+          <StepHeader step={step} hasVariants={data.variants.length > 0} />
+          <div className="px-5 pb-5 space-y-4">
+            {step === 'variant'  && <VariantStep data={data} value={variant} onChange={setVariant} />}
+            {step === 'delivery' && (
+              <DeliveryStep
+                data={data}
+                delivery={delivery}
+                onDelivery={setDelivery}
+                address={address}
+                onAddress={setAddress}
+              />
+            )}
+            {step === 'confirm'  && (
+              <ConfirmStep
+                data={data}
+                type={defaultType}
+                variant={variant}
+                delivery={delivery}
+                address={address}
+                error={mutation.isError ? mutation.error : null}
+              />
+            )}
+            {step === 'success'  && <SuccessStep code={code} />}
 
-              {/* Brauzer fallback CTA (Telegram'da MainButton bor) */}
-              {!isInTelegram() && step !== 'success' && (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  disabled={!mainBtn.enabled}
-                  onClick={onMain}
-                >
-                  {mutation.isPending ? 'Yuborilmoqda...' : mainBtn.text}
-                </Button>
-              )}
-              {!isInTelegram() && step === 'success' && (
-                <Button variant="primary" size="lg" fullWidth onClick={onClose}>
-                  🏠 Bosh sahifaga qaytish
-                </Button>
-              )}
-            </div>
-          </>
-        )}
-      </Sheet>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Sheet surface
-// ═══════════════════════════════════════════════════════════════
-function Sheet({ onSwipeDown, children }: { onSwipeDown?: () => void; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ start: number; current: number } | null>(null);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (!onSwipeDown) return;
-    const target = e.target as HTMLElement;
-    if (!target.closest('[data-sheet-handle]')) return;
-    drag.current = { start: e.touches[0].clientY, current: 0 };
-  };
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (!drag.current) return;
-    const dy = e.touches[0].clientY - drag.current.start;
-    if (dy <= 0) return;
-    drag.current.current = dy;
-    if (ref.current) ref.current.style.transform = `translateY(${dy}px)`;
-  };
-  const onTouchEnd = () => {
-    if (!drag.current) return;
-    const dy = drag.current.current;
-    if (ref.current) ref.current.style.transform = '';
-    if (dy > 120 && onSwipeDown) onSwipeDown();
-    drag.current = null;
-  };
-
-  return (
-    <div
-      ref={ref}
-      className="relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl max-h-[92vh] flex flex-col animate-[slideUp_240ms_ease-out] overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-    >
-      <div data-sheet-handle className="pt-2.5 pb-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing">
-        <div className="w-10 h-1 rounded-full bg-neutral-300" />
-      </div>
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        {children}
-      </div>
-    </div>
+            {/* Brauzer fallback CTA (Telegram'da MainButton bor) */}
+            {!isInTelegram() && step !== 'success' && (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={!mainBtn.enabled}
+                onClick={onMain}
+              >
+                {mutation.isPending ? 'Yuborilmoqda...' : mainBtn.text}
+              </Button>
+            )}
+            {!isInTelegram() && step === 'success' && (
+              <Button variant="primary" size="lg" fullWidth onClick={onClose}>
+                🏠 Bosh sahifaga qaytish
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+    </BottomSheet>
   );
 }
 
