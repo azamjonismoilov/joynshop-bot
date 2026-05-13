@@ -170,7 +170,7 @@ function StatusBanner({ order }: { order: BuyerOrderItem }) {
   const cls = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
   const hint = STATUS_HINT[order.status] || '';
   return (
-    <div className={cn('mx-5 mt-1 mb-4 rounded-card p-4', cls)}>
+    <div className={cn('mx-5 mt-1 mb-4 rounded-card p-5', cls)}>
       <div className="flex items-center gap-3">
         <div className="text-3xl shrink-0 select-none">{order.status_icon}</div>
         <div className="flex-1 min-w-0">
@@ -190,33 +190,38 @@ function StatusBanner({ order }: { order: BuyerOrderItem }) {
 function ProductInfo({ order }: { order: BuyerOrderItem }) {
   const photo = order.photo_url || (order.photo_id ? `/api/photo/${order.photo_id}` : '');
   return (
-    <div className="flex items-start gap-3">
-      <div
-        className="shrink-0 rounded-lg overflow-hidden"
-        style={{ width: 80, height: 80 }}
-      >
-        <ProductImage
-          src={photo}
-          alt={order.name}
-          className="w-full h-full object-cover"
-          fallbackSize={36}
-        />
-      </div>
-      <div className="flex-1 min-w-0 pt-0.5">
-        <h2 className="font-display text-base font-bold text-fg-1 leading-tight">{order.name}</h2>
-        {order.shop_name && (
-          <p className="text-xs text-fg-3 font-body inline-flex items-center gap-1 mt-1">
-            <RiStore3Fill size={12} className="text-fg-4" />
-            {order.shop_name}
-          </p>
-        )}
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <Badge variant="orange" size="sm">
-            {order.type === 'solo' ? '👤 Yakka' : '👥 Guruh'}
-          </Badge>
-          <Badge variant="gray" size="sm">
-            {order.delivery === 'deliver' ? '🚚 Yetkazish' : '🏪 Olib ketish'}
-          </Badge>
+    <div
+      className="rounded-card p-5"
+      style={{ background: 'var(--color-card-bg)' }}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="shrink-0 rounded-lg overflow-hidden"
+          style={{ width: 80, height: 80 }}
+        >
+          <ProductImage
+            src={photo}
+            alt={order.name}
+            className="w-full h-full object-cover"
+            fallbackSize={36}
+          />
+        </div>
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h2 className="font-display text-base font-bold text-fg-1 leading-tight">{order.name}</h2>
+          {order.shop_name && (
+            <p className="text-xs text-fg-3 font-body inline-flex items-center gap-1 mt-1">
+              <RiStore3Fill size={12} className="text-fg-4" />
+              {order.shop_name}
+            </p>
+          )}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <Badge variant="orange" size="sm">
+              {order.type === 'solo' ? '👤 Yakka' : '👥 Guruh'}
+            </Badge>
+            <Badge variant="gray" size="sm">
+              {order.delivery === 'deliver' ? '🚚 Yetkazish' : '🏪 Olib ketish'}
+            </Badge>
+          </div>
         </div>
       </div>
     </div>
@@ -235,7 +240,13 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
     }
   };
   return (
-    <div className="bg-bg-2 rounded-card p-3 space-y-2">
+    <div
+      className="p-5 space-y-2"
+      style={{
+        background:    'var(--color-card-bg)',
+        borderRadius:  'var(--radius-block)',
+      }}
+    >
       <Row
         icon={<RiFileCopyLine size={14} />}
         label="Kod"
@@ -273,7 +284,10 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
           value={<span className="font-body text-sm break-words">{order.address}</span>}
         />
       )}
-      <div className="border-t border-border mt-2 pt-3 flex items-baseline justify-between">
+      <div
+        className="mt-2 pt-3 flex items-baseline justify-between border-t"
+        style={{ borderColor: 'rgba(0, 0, 0, 0.06)' }}
+      >
         <span className="inline-flex items-center gap-1.5 text-xs text-fg-2 font-body">
           <RiWalletLine size={14} className="text-fg-3" />
           Jami
@@ -318,7 +332,10 @@ function SellerCard({ order }: { order: BuyerOrderItem }) {
 
   const isTelegram = contact.startsWith('@');
   return (
-    <div className="bg-bg-1 border border-border rounded-card p-3">
+    <div
+      className="rounded-card p-5"
+      style={{ background: 'var(--color-card-bg)' }}
+    >
       <p className="text-xs text-fg-3 font-body mb-2 inline-flex items-center gap-1.5">
         <RiStore3Fill size={12} className="text-fg-4" />
         Sotuvchi
