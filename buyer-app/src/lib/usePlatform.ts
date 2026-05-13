@@ -50,9 +50,51 @@ function detect(): Platform {
 }
 
 /**
+ * Telegram WebApp fullscreen rejimi reactive kuzatuv (Bot API 8.0+).
+ * Foydalanuvchi drag-up yoki menu orqali fullscreen'ga o'tsa, darhol
+ * yangilanadi. Eski Telegram client'larda (8.0 dan past) — `isFullscreen`
+ * undefined, `onEvent` ham yo'q bo'lishi mumkin → silent false.
+ */
+export function useIsTelegramFullscreen(): boolean {
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    return typeof window !== 'undefined'
+      && window.Telegram?.WebApp?.isFullscreen === true;
+  });
+
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg || typeof tg.onEvent !== 'function') return;
+
+    const handler = () => setIsFullscreen(tg.isFullscreen === true);
+    tg.onEvent('fullscreenChanged', handler);
+
+    // Mount paytida ham bir marta sync (state initial qiymati boshlanish
+    // momentida olingan — Telegram SDK keyinroq tayyor bo'lsa, qaytadan o'qiymiz)
+    handler();
+
+    return () => {
+      if (typeof tg.offEvent === 'function') {
+        tg.offEvent('fullscreenChanged', handler);
+      }
+    };
+  }, []);
+
+  return isFullscreen;
+}
+
+/**
  * Joynshop app header'ini ko'rsatish shartlari.
- * Telegram va PWA'da o'zining chrome'i bor — dublikat oldini olamiz.
+ *
+ * - Brauzer (har xil — desktop, mobile tab) → ko'rinadi
+ * - Telegram fullscreen rejim (Bot API 8.0+) → ko'rinadi
+ * - Telegram normal/expanded/desktop → yashirin (Telegram o'z chrome'i)
+ * - PWA standalone → yashirin (OS o'z chrome'i)
  */
 export function useShouldShowHeader(): boolean {
-  return usePlatform() === 'browser';
+  const platform     = usePlatform();
+  const isFullscreen = useIsTelegramFullscreen();
+
+  if (platform === 'browser') return true;
+  if (platform === 'telegram' && isFullscreen) return true;
+  return false;
 }
