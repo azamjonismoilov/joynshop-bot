@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { RiArrowLeftSLine } from '@remixicon/react';
 import { useTelegramBackButton } from '@/lib/useTelegramBackButton';
+import { useTelegramExpanded } from '@/lib/useTelegramExpanded';
 import { isInTelegram } from '@/lib/telegram';
 
 interface AppHeaderProps {
@@ -11,11 +12,13 @@ interface AppHeaderProps {
 
 /**
  * Default xaridor sahifa header'i — brand orange.
- * Telegram'da BackButton native, brauzer'da HTML back ko'rsatiladi.
- * HomeScreen alohida custom header (search bar bilan) ishlatadi.
+ * Compact rejimda yashiriladi (Telegram'ning native bot header'i dublikat
+ * bo'lmasligi uchun). Fullscreen rejimda smooth animation bilan paydo
+ * bo'ladi. Browser'da har doim ko'rinadi.
  */
 export function AppHeader({ tagline, showBack, onBack }: AppHeaderProps) {
   const navigate = useNavigate();
+  const expanded = useTelegramExpanded();
   const handleBack = () => {
     if (onBack) onBack();
     else navigate(-1);
@@ -23,9 +26,11 @@ export function AppHeader({ tagline, showBack, onBack }: AppHeaderProps) {
 
   useTelegramBackButton(handleBack, !!showBack);
 
+  if (!expanded) return null;
+
   const showHtmlBack = showBack && !isInTelegram();
   return (
-    <header className="bg-brand text-white pt-safe-top pb-4 px-4">
+    <header className="bg-brand text-white pt-safe-top pb-4 px-4 motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out">
       <div className="relative flex items-center justify-center min-h-[40px]">
         {showHtmlBack && (
           <button
