@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
-  RiArrowRightSFill,
+  RiArrowRightSLine,
   RiEdit2Line,
-  RiPhoneFill,
-  RiTimeFill,
+  RiPhoneLine,
+  RiTimeLine,
   RiVipCrownFill,
   RiHistoryFill,
 } from '@remixicon/react';
@@ -112,7 +112,7 @@ function StatBox({ label, value }: { label: string; value: string }) {
   return (
     <Card padding="sm">
       <p className="text-xs text-fg-3 font-body">{label}</p>
-      <p className="font-mono text-base font-semibold text-fg-1 mt-0.5">{value}</p>
+      <p className="font-mono text-2xl font-bold tabular-nums text-fg-1 mt-1 leading-none">{value}</p>
     </Card>
   );
 }
@@ -223,7 +223,7 @@ function ActionButtons({ data }: { data: CustomerDetail }) {
           size="lg"
           fullWidth
           iconLeft={<RiHistoryFill size={18} />}
-          iconRight={<RiArrowRightSFill size={18} />}
+          iconRight={<RiArrowRightSLine size={18} />}
         >
           Xaridlar tarixi ({data.total_orders})
         </Button>
@@ -234,14 +234,14 @@ function ActionButtons({ data }: { data: CustomerDetail }) {
             variant="outline"
             size="lg"
             fullWidth
-            iconLeft={<RiPhoneFill size={18} />}
+            iconLeft={<RiPhoneLine size={18} />}
           >
             Bog'lanish: {data.phone}
           </Button>
         </a>
       )}
       <p className="text-xs text-fg-4 font-mono inline-flex items-center gap-1 pt-1">
-        <RiTimeFill size={12} />
+        <RiTimeLine size={12} />
         Oxirgi xarid: {data.last_order || '—'}
       </p>
     </div>

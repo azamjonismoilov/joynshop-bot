@@ -6,13 +6,13 @@ import {
   RiExternalLinkLine,
   RiGlobalFill,
   RiInstagramFill,
-  RiMapPinFill,
-  RiPhoneFill,
+  RiMapPinLine,
+  RiPhoneLine,
   RiShoppingBag3Fill,
   RiStore3Fill,
   RiTelegramFill,
-  RiTruckFill,
-  RiWalletFill,
+  RiTruckLine,
+  RiWalletLine,
 } from '@remixicon/react';
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { useSellerShopDetail } from '@/api/seller';
@@ -82,7 +82,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
           <Stat icon={<RiBox3Fill size={16} />} label="Mahsulot" value={String(data.products_count)} />
           <Stat icon={<RiShoppingBag3Fill size={16} />} label="Buyurtma" value={String(data.orders_confirmed)} />
-          <Stat icon={<RiWalletFill size={16} />} label="Daromad" value={formatPriceShort(data.revenue)} />
+          <Stat icon={<RiWalletLine size={16} />} label="Daromad" value={formatPriceShort(data.revenue)} />
         </div>
       </Card>
 
@@ -90,21 +90,21 @@ function ShopContent({ data }: { data: ShopDetail }) {
       <Card padding="md">
         <SectionHeader label="Asosiy ma'lumotlar" onEdit={() => setEdit('contact')} />
         <InfoRow
-          icon={<RiPhoneFill size={14} />}
+          icon={<RiPhoneLine size={14} />}
           label="Telefon"
           value={data.phone || '—'}
           mono
         />
         {data.phone2 && (
           <InfoRow
-            icon={<RiPhoneFill size={14} />}
+            icon={<RiPhoneLine size={14} />}
             label="Qo'shimcha telefon"
             value={data.phone2}
             mono
           />
         )}
         <InfoRow
-          icon={<RiMapPinFill size={14} />}
+          icon={<RiMapPinLine size={14} />}
           label="Manzil"
           value={data.address || '—'}
         />
@@ -114,7 +114,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
       <Card padding="md">
         <SectionHeader label="Yetkazib berish" onEdit={() => setEdit('delivery')} />
         <div className="flex items-center gap-2.5 py-1">
-          <RiTruckFill size={18} className="text-brand shrink-0" />
+          <RiTruckLine size={18} className="text-brand shrink-0" />
           <span className="text-sm text-fg-1 font-body">
             {data.delivery_label || '—'}
           </span>
@@ -249,11 +249,11 @@ function socialHref(key: string, value: string): string | null {
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-bg-3 text-fg-3 mb-1">
+      <div className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-bg-3 text-fg-3 mb-1.5">
         {icon}
       </div>
-      <p className="font-mono text-sm font-semibold text-fg-1">{value}</p>
-      <p className="text-[10px] text-fg-3 font-body">{label}</p>
+      <p className="font-mono text-lg font-bold tabular-nums text-fg-1 leading-none">{value}</p>
+      <p className="text-[10px] text-fg-3 font-body mt-0.5">{label}</p>
     </div>
   );
 }

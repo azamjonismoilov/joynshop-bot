@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import {
-  RiArrowRightSFill,
-  RiMapPinFill,
-  RiPhoneFill,
+  RiArrowRightSLine,
+  RiMapPinLine,
+  RiPhoneLine,
   RiStore3Fill,
   RiTelegramFill,
 } from '@remixicon/react';
@@ -71,7 +71,7 @@ function ShopsList({ shops }: { shops: ShopBrief[] }) {
       </p>
       {shops.map((shop) => (
         <Link key={shop.idx} to={`/settings/shops/${shop.idx}`} className="block">
-          <Card padding="md" className="cursor-pointer hover:border-border-strong transition-colors duration-base">
+          <Card padding="md" interactive>
             <div className="flex items-start gap-3">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-subtle text-brand shrink-0">
                 <RiStore3Fill size={20} />
@@ -87,18 +87,18 @@ function ShopsList({ shops }: { shops: ShopBrief[] }) {
                 </div>
                 {shop.address && (
                   <p className="text-xs text-fg-3 font-body mt-1 flex items-center gap-1">
-                    <RiMapPinFill size={12} className="shrink-0" />
+                    <RiMapPinLine size={12} className="shrink-0" />
                     <span className="truncate">{shop.address}</span>
                   </p>
                 )}
                 {shop.phone && (
                   <p className="text-xs text-fg-3 font-mono mt-0.5 flex items-center gap-1">
-                    <RiPhoneFill size={12} className="shrink-0" />
+                    <RiPhoneLine size={12} className="shrink-0" />
                     <span>{shop.phone}</span>
                   </p>
                 )}
               </div>
-              <RiArrowRightSFill size={20} className="text-fg-4 shrink-0 mt-1" />
+              <RiArrowRightSLine size={20} className="text-fg-4 shrink-0 mt-1" />
             </div>
           </Card>
         </Link>

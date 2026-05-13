@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  RiArrowRightSFill,
+  RiArrowRightSLine,
   RiLockFill,
   RiPlugFill,
 } from '@remixicon/react';
@@ -64,10 +64,8 @@ function IntegrationCard({ item }: { item: IntegrationItem }) {
   const inner = (
     <Card
       padding="md"
-      className={cn(
-        !isComingSoon && 'cursor-pointer hover:border-border-strong transition-colors duration-base',
-        isComingSoon && 'opacity-60',
-      )}
+      interactive={!isComingSoon}
+      className={cn(isComingSoon && 'opacity-60')}
     >
       <div className="flex items-center gap-3">
         <div
@@ -101,7 +99,7 @@ function IntegrationCard({ item }: { item: IntegrationItem }) {
           </p>
         </div>
         {!isComingSoon && (
-          <RiArrowRightSFill size={20} className="text-fg-4 shrink-0" />
+          <RiArrowRightSLine size={20} className="text-fg-4 shrink-0" />
         )}
       </div>
     </Card>

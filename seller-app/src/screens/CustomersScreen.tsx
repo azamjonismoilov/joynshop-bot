@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
-  RiArrowRightSFill,
-  RiSearchFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
+  RiSearchLine,
   RiUserFill,
   RiVipCrownFill,
 } from '@remixicon/react';
@@ -91,7 +91,7 @@ export function CustomersScreen() {
           fullWidth
           inputSize="md"
           placeholder="Qidirish: ism"
-          iconLeft={<RiSearchFill size={16} />}
+          iconLeft={<RiSearchLine size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -107,7 +107,7 @@ export function CustomersScreen() {
             <p className="text-xs text-fg-3 font-body">
               {data.total} ta · Sahifa {data.page + 1}/{data.pages}
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {data.items.map((c) => (
                 <CustomerCard key={c.cuid} customer={c} />
               ))}
@@ -118,7 +118,7 @@ export function CustomersScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconLeft={<RiArrowLeftSFill size={18} />}
+                  iconLeft={<RiArrowLeftSLine size={18} />}
                   disabled={page === 0 || isFetching}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
@@ -130,7 +130,7 @@ export function CustomersScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconRight={<RiArrowRightSFill size={18} />}
+                  iconRight={<RiArrowRightSLine size={18} />}
                   disabled={!data.has_next || isFetching}
                   onClick={() => setPage((p) => p + 1)}
                 >
@@ -170,7 +170,7 @@ function BigStatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card padding="sm">
       <p className="text-xs text-fg-3 font-body">{label}</p>
-      <p className="font-mono text-xl font-semibold text-fg-1 mt-0.5">{value}</p>
+      <p className="font-mono text-2xl font-bold tabular-nums text-fg-1 mt-1 leading-none">{value}</p>
     </Card>
   );
 }
@@ -248,7 +248,7 @@ function CustomerCard({ customer: c }: { customer: CustomerBrief }) {
   const isVip   = c.tags.includes('vip');
   return (
     <Link to={`/customers/${c.cuid}`} className="block">
-      <Card padding="sm" className="cursor-pointer hover:border-border-strong transition-colors duration-base">
+      <Card padding="sm" interactive>
         <div className="flex items-start gap-3">
           <div className="relative shrink-0">
             <Avatar name={c.name} size={44} />
@@ -297,7 +297,7 @@ function CustomerCard({ customer: c }: { customer: CustomerBrief }) {
             )}
           </div>
 
-          <RiArrowRightSFill size={20} className="text-fg-4 shrink-0 mt-0.5" />
+          <RiArrowRightSLine size={20} className="text-fg-4 shrink-0 mt-0.5" />
         </div>
       </Card>
     </Link>
@@ -306,7 +306,7 @@ function CustomerCard({ customer: c }: { customer: CustomerBrief }) {
 
 function ListSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <Card key={i} padding="sm">
           <SkeletonListItem />

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   RiAddLine,
-  RiArrowLeftSFill,
-  RiArrowRightSFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiErrorWarningFill,
   RiFireFill,
   RiLockFill,
@@ -11,7 +11,7 @@ import {
   RiPriceTag3Fill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiTimeFill,
+  RiTimeLine,
 } from '@remixicon/react';
 import { Card, Badge, Button } from '@/components/ui';
 import { useSellerProducts } from '@/api/seller';
@@ -38,7 +38,7 @@ export function ProductsScreen() {
     <div className="min-h-screen bg-bg-2 pb-6">
       <AppHeader tagline="Mahsulotlar" />
       {/* List */}
-      <div className="px-4 mt-4 space-y-2">
+      <div className="px-4 mt-4 space-y-3">
         {data.items.map((item) => (
           <Link key={item.id} to={`/products/${item.id}`} className="block">
             <ProductCard item={item} />
@@ -52,7 +52,7 @@ export function ProductsScreen() {
           <Button
             variant="ghost"
             size="sm"
-            iconLeft={<RiArrowLeftSFill size={18} />}
+            iconLeft={<RiArrowLeftSLine size={18} />}
             disabled={page === 0 || isFetching}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
@@ -64,7 +64,7 @@ export function ProductsScreen() {
           <Button
             variant="ghost"
             size="sm"
-            iconRight={<RiArrowRightSFill size={18} />}
+            iconRight={<RiArrowRightSLine size={18} />}
             disabled={!data.has_next || isFetching}
             onClick={() => setPage((p) => p + 1)}
           >
@@ -102,7 +102,7 @@ function ProductCard({ item }: ProductCardProps) {
   const showArchived   = item.status_label === 'Yopilgan' || item.status_label === 'Muddati tugagan';
 
   return (
-    <Card padding="sm" className="cursor-pointer hover:border-border-strong transition-colors duration-base">
+    <Card padding="sm" interactive>
       <div className="flex items-center gap-3">
         <ProductPhoto src={item.photo_url} />
 
@@ -165,14 +165,14 @@ function ProductCard({ item }: ProductCardProps) {
           </div>
         </div>
 
-        <RiArrowRightSFill size={20} className="text-fg-4 shrink-0" />
+        <RiArrowRightSLine size={20} className="text-fg-4 shrink-0" />
       </div>
     </Card>
   );
 }
 
 function ArchivedIcon({ label }: { label: string }) {
-  if (label === 'Muddati tugagan') return <RiTimeFill size={14} className="text-danger" />;
+  if (label === 'Muddati tugagan') return <RiTimeLine size={14} className="text-danger" />;
   // 'Yopilgan'
   return <RiLockFill size={14} className="text-fg-4" />;
 }

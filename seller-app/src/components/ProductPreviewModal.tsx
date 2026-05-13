@@ -2,10 +2,10 @@ import { useState } from 'react';
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
-  RiMapPinFill,
-  RiPhoneFill,
+  RiMapPinLine,
+  RiPhoneLine,
   RiTeamFill,
-  RiTimeFill,
+  RiTimeLine,
 } from '@remixicon/react';
 import { Button, Modal } from '@/components/ui';
 import type {
@@ -180,7 +180,7 @@ export function ProductPreviewModal({
             </p>
           )}
           <p className="text-sm text-fg-2 font-body inline-flex items-center gap-1">
-            <RiTimeFill size={14} className="text-fg-3" />
+            <RiTimeLine size={14} className="text-fg-3" />
             Muddat: <span className="font-medium">{deadlineLabel}</span>
           </p>
 
@@ -206,13 +206,13 @@ export function ProductPreviewModal({
               </p>
               {data.shop.address && (
                 <p className="text-xs text-fg-3 font-body inline-flex items-start gap-1">
-                  <RiMapPinFill size={12} className="shrink-0 mt-0.5" />
+                  <RiMapPinLine size={12} className="shrink-0 mt-0.5" />
                   <span className="break-words">{data.shop.address}</span>
                 </p>
               )}
               {data.shop.phone && (
                 <p className="text-xs text-fg-3 font-mono inline-flex items-center gap-1">
-                  <RiPhoneFill size={12} />
+                  <RiPhoneLine size={12} />
                   {data.shop.phone}
                 </p>
               )}

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
-  RiArrowRightSFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiClipboardFill,
-  RiSearchFill,
-  RiTimeFill,
+  RiSearchLine,
+  RiTimeLine,
 } from '@remixicon/react';
 import {
   Card,
@@ -93,7 +93,7 @@ export function OrdersScreen() {
           fullWidth
           inputSize="md"
           placeholder="Qidirish: kod yoki mijoz ismi"
-          iconLeft={<RiSearchFill size={16} />}
+          iconLeft={<RiSearchLine size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -110,7 +110,7 @@ export function OrdersScreen() {
             <p className="text-xs text-fg-3 font-body">
               {data.total} ta · Sahifa {data.page + 1}/{data.pages}
             </p>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {data.items.map((order) => (
                 <OrderCard key={order.code} order={order} />
               ))}
@@ -122,7 +122,7 @@ export function OrdersScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconLeft={<RiArrowLeftSFill size={18} />}
+                  iconLeft={<RiArrowLeftSLine size={18} />}
                   disabled={page === 0 || isFetching}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
@@ -134,7 +134,7 @@ export function OrdersScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconRight={<RiArrowRightSFill size={18} />}
+                  iconRight={<RiArrowRightSLine size={18} />}
                   disabled={!data.has_next || isFetching}
                   onClick={() => setPage((p) => p + 1)}
                 >
@@ -199,10 +199,7 @@ function OrderCard({ order }: { order: OrderItem }) {
   const variant = STATUS_BADGE[order.status] || 'gray';
   return (
     <Link to={`/orders/${order.code}`} className="block">
-      <Card
-        padding="sm"
-        className="cursor-pointer hover:border-border-strong transition-colors duration-base"
-      >
+      <Card padding="sm" interactive>
         <div className="flex items-start gap-3">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-bg-3 text-fg-3 shrink-0">
             <RiClipboardFill size={20} />
@@ -232,13 +229,13 @@ function OrderCard({ order }: { order: OrderItem }) {
                 {formatPrice(order.amount)} so'm
               </span>
               <span className="text-xs text-fg-3 font-mono inline-flex items-center gap-1 shrink-0">
-                <RiTimeFill size={12} />
+                <RiTimeLine size={12} />
                 {order.created}
               </span>
             </div>
           </div>
 
-          <RiArrowRightSFill size={20} className="text-fg-4 shrink-0 mt-0.5" />
+          <RiArrowRightSLine size={20} className="text-fg-4 shrink-0 mt-0.5" />
         </div>
       </Card>
     </Link>
@@ -247,7 +244,7 @@ function OrderCard({ order }: { order: OrderItem }) {
 
 function ListSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <Card key={i} padding="sm">
           <SkeletonListItem />

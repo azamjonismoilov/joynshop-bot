@@ -105,12 +105,14 @@
   --radius-card:           var(--radius-xl);
   --radius-badge:          var(--radius-sm);
 
-  /* ───── Shadows ───── */
-  --shadow-xs:             0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-sm:             0 1px 3px 0 rgba(0, 0, 0, 0.10), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md:             0 4px 6px -1px rgba(0, 0, 0, 0.10), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg:             0 10px 15px -3px rgba(0, 0, 0, 0.10), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl:             0 20px 25px -5px rgba(0, 0, 0, 0.10), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  /* ───── Shadows — soft elevation (Wallet pattern, Sprint 6) ─────
+   * Single-blur, low-opacity. Layered shadows o'rniga keng diffuse
+   * — kontent rangini "yumshatadi" o'rniga to'qroq qilmaydi. */
+  --shadow-xs:             0 1px 2px  0 rgba(0, 0, 0, 0.04);
+  --shadow-sm:             0 2px 8px  0 rgba(0, 0, 0, 0.04);
+  --shadow-md:             0 4px 16px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg:             0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  --shadow-xl:             0 16px 48px 0 rgba(0, 0, 0, 0.12);
 
   /* ───── Transitions ───── */
   --transition-fast:       100ms ease-out;
@@ -149,7 +151,8 @@
     var(--color-neutral-100) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s linear infinite;
+  /* Sekinroq + yumshoqroq — Wallet pattern (Sprint 6) */
+  animation: shimmer 2s ease-in-out infinite;
 }
 
 /* Modal animations */

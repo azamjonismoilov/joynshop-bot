@@ -8,8 +8,8 @@ import {
   RiHeart3Fill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiTimeFill,
-  RiWalletFill,
+  RiTimeLine,
+  RiWalletLine,
 } from '@remixicon/react';
 import {
   Badge,
@@ -140,25 +140,27 @@ function DetailContent({
         editable={canEdit}
         onEdit={() => onEdit('pricing')}
       >
+        {data.sale_type !== 'solo' && data.group_price > 0 && (
+          <div className="mb-3 pb-3 border-b border-border">
+            <p className="text-xs text-fg-3 font-body font-medium uppercase tracking-wide mb-1.5">
+              Guruh narxi
+            </p>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="font-mono text-3xl font-bold tabular-nums text-brand leading-none">
+                {formatPrice(data.group_price)}
+              </span>
+              <span className="text-sm text-fg-3 font-body">so'm</span>
+              {discount > 0 && (
+                <Badge variant="green" size="sm">-{discount}%</Badge>
+              )}
+            </div>
+          </div>
+        )}
         <InfoRow
           label="Sotuv turi"
           value={SALE_TYPE_LABEL[data.sale_type]}
         />
         <InfoRow label="Asl narx" value={`${formatPrice(data.original_price)} so'm`} mono />
-        {data.sale_type !== 'solo' && (
-          <InfoRow
-            label="Guruh narxi"
-            value={
-              <span>
-                <span className="font-mono text-brand font-semibold">{formatPrice(data.group_price)}</span>
-                <span className="text-fg-3 ml-1">so'm</span>
-                {discount > 0 && (
-                  <Badge variant="green" size="sm" className="ml-2">-{discount}%</Badge>
-                )}
-              </span>
-            }
-          />
-        )}
         {data.sale_type !== 'group' && (
           <InfoRow label="Yakka narx" value={`${formatPrice(data.solo_price)} so'm`} mono />
         )}
@@ -196,7 +198,7 @@ function DetailContent({
         onEdit={() => onEdit('deadline')}
       >
         <div className="flex items-center gap-2">
-          <RiTimeFill size={18} className="text-brand shrink-0" />
+          <RiTimeLine size={18} className="text-brand shrink-0" />
           <Countdown secondsLeft={data.deadline_seconds_left} display={data.deadline} />
         </div>
       </SectionCard>
@@ -250,7 +252,7 @@ function DetailContent({
             value={String(data.stats.orders_total)}
           />
           <Stat
-            icon={<RiWalletFill size={16} />}
+            icon={<RiWalletLine size={16} />}
             label="Daromad"
             value={formatPriceShort(data.stats.revenue)}
           />
@@ -379,11 +381,11 @@ function InfoRow({
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="text-center">
-      <div className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-bg-3 text-fg-3 mb-1">
+      <div className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-bg-3 text-fg-3 mb-1.5">
         {icon}
       </div>
-      <p className="font-mono text-sm font-semibold text-fg-1">{value}</p>
-      <p className="text-[10px] text-fg-3 font-body">{label}</p>
+      <p className="font-mono text-lg font-bold tabular-nums text-fg-1 leading-none">{value}</p>
+      <p className="text-[10px] text-fg-3 font-body mt-0.5">{label}</p>
     </div>
   );
 }

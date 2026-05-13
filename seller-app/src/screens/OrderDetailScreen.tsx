@@ -5,10 +5,10 @@ import {
   RiCloseFill,
   RiPriceTag3Fill,
   RiShoppingBag3Fill,
-  RiTimeFill,
-  RiTruckFill,
+  RiTimeLine,
+  RiTruckLine,
   RiUserFill,
-  RiWalletFill,
+  RiWalletLine,
 } from '@remixicon/react';
 import { Card, Button, Badge, Modal, Skeleton } from '@/components/ui';
 import {
@@ -212,7 +212,7 @@ function SummaryCard({ data }: { data: OrderDetailResponse }) {
           value="1 ta"
         />
         <SummaryRow
-          icon={<RiTruckFill size={16} className="text-fg-3" />}
+          icon={<RiTruckLine size={16} className="text-fg-3" />}
           label="Yetkazib berish"
           value={data.delivery_label}
         />
@@ -225,7 +225,7 @@ function SummaryCard({ data }: { data: OrderDetailResponse }) {
         )}
         {data.payment_method && (
           <SummaryRow
-            icon={<RiWalletFill size={16} className="text-fg-3" />}
+            icon={<RiWalletLine size={16} className="text-fg-3" />}
             label="To'lov usuli"
             value={data.payment_method}
           />
@@ -233,8 +233,8 @@ function SummaryCard({ data }: { data: OrderDetailResponse }) {
       </div>
       <div className="mt-4 pt-4 border-t border-border flex items-baseline justify-between">
         <span className="text-sm font-medium text-fg-2 font-body">Jami</span>
-        <span className="font-mono text-2xl font-bold text-brand">
-          {formatPrice(data.amount)} <span className="text-base font-semibold text-fg-3">so'm</span>
+        <span className="font-mono text-3xl font-bold tabular-nums text-brand leading-none">
+          {formatPrice(data.amount)} <span className="text-sm font-semibold text-fg-3">so'm</span>
         </span>
       </div>
     </Card>
@@ -275,8 +275,8 @@ const TIMELINE_META: Record<OrderTimelineEvent['event'], {
   color: string;
   bg: string;
 }> = {
-  created:   { icon: <RiTimeFill size={14} />,   label: 'Yaratildi',     color: 'text-fg-2',     bg: 'bg-bg-3' },
-  payment:   { icon: <RiWalletFill size={14} />, label: "To'landi",      color: 'text-secondary', bg: 'bg-secondary-subtle' },
+  created:   { icon: <RiTimeLine size={14} />,   label: 'Yaratildi',     color: 'text-fg-2',     bg: 'bg-bg-3' },
+  payment:   { icon: <RiWalletLine size={14} />, label: "To'landi",      color: 'text-secondary', bg: 'bg-secondary-subtle' },
   confirmed: { icon: <RiCheckFill size={14} />,  label: 'Tasdiqlangan',  color: 'text-success',  bg: 'bg-success-subtle' },
   rejected:  { icon: <RiCloseFill size={14} />,  label: 'Rad etildi',    color: 'text-danger',   bg: 'bg-danger-subtle' },
   cancelled: { icon: <RiCloseFill size={14} />,  label: 'Bekor qilindi', color: 'text-fg-3',     bg: 'bg-bg-3' },

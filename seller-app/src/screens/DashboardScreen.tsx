@@ -10,14 +10,14 @@ import {
 } from 'recharts';
 import {
   RiAddFill,
-  RiArrowRightSFill,
+  RiArrowRightSLine,
   RiBarChart2Fill,
   RiBox3Fill,
   RiCheckboxCircleFill,
   RiClipboardFill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiWalletFill,
+  RiWalletLine,
 } from '@remixicon/react';
 import {
   Button,
@@ -201,7 +201,7 @@ function StatsGrid({ data }: { data: StatsResponse }) {
   return (
     <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <StatCard
-        icon={<RiWalletFill size={20} />}
+        icon={<RiWalletLine size={20} />}
         iconBg="bg-brand-subtle"
         iconColor="text-brand"
         label="GMV"
@@ -283,7 +283,7 @@ function StatCard({
       <p className="text-xs text-fg-3 mt-3 font-body">{label}</p>
       <div className="mt-1 flex items-baseline gap-1">
         <span className={cn(
-          'font-mono text-2xl font-bold leading-none',
+          'font-mono text-3xl font-bold tabular-nums leading-none',
           valueColor || 'text-fg-1',
         )}>
           {value}
@@ -389,7 +389,7 @@ function SectionHeader({
           className="inline-flex items-center gap-0.5 text-xs font-medium text-brand hover:text-brand-hover"
         >
           {linkLabel || 'Hammasi'}
-          <RiArrowRightSFill size={14} />
+          <RiArrowRightSLine size={14} />
         </Link>
       )}
     </div>

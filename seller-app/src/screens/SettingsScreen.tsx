@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import {
-  RiArrowRightSFill,
+  RiArrowRightSLine,
   RiFileTextFill,
   RiPlugFill,
   RiStore3Fill,
@@ -44,10 +44,10 @@ export function SettingsScreen() {
   return (
     <div className="min-h-screen bg-bg-2 pb-8">
       <AppHeader tagline="Sozlamalar" />
-      <main className="px-4 mt-4 space-y-2.5">
+      <main className="px-4 mt-4 space-y-3">
         {items.map((it) => (
           <Link key={it.to} to={it.to} className="block">
-            <Card padding="md" className="cursor-pointer hover:border-border-strong transition-colors duration-base">
+            <Card padding="md" interactive>
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand-subtle text-brand shrink-0">
                   {it.icon}
@@ -60,7 +60,7 @@ export function SettingsScreen() {
                     {it.description}
                   </p>
                 </div>
-                <RiArrowRightSFill size={20} className="text-fg-4 shrink-0" />
+                <RiArrowRightSLine size={20} className="text-fg-4 shrink-0" />
               </div>
             </Card>
           </Link>

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-  RiArrowLeftSFill,
-  RiArrowRightSFill,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
   RiHistoryFill,
   RiShoppingBag3Fill,
 } from '@remixicon/react';
@@ -92,7 +92,7 @@ export function CustomerHistoryScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconLeft={<RiArrowLeftSFill size={18} />}
+                  iconLeft={<RiArrowLeftSLine size={18} />}
                   disabled={page === 0 || historyQ.isFetching}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                 >
@@ -104,7 +104,7 @@ export function CustomerHistoryScreen() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  iconRight={<RiArrowRightSFill size={18} />}
+                  iconRight={<RiArrowRightSLine size={18} />}
                   disabled={!data.has_next || historyQ.isFetching}
                   onClick={() => setPage((p) => p + 1)}
                 >
@@ -129,10 +129,7 @@ function HistoryRow({ item }: { item: CustomerHistoryItem }) {
   const type    = item.type ? TYPE_LABEL[item.type] : null;
 
   const body = (
-    <Card
-      padding="sm"
-      className={item.code ? 'cursor-pointer hover:border-border-strong transition-colors duration-base' : undefined}
-    >
+    <Card padding="sm" interactive={!!item.code}>
       <div className="flex items-start gap-3">
         <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-bg-3 text-fg-3 shrink-0">
           <RiShoppingBag3Fill size={20} />
