@@ -83,18 +83,38 @@ export function useIsTelegramFullscreen(): boolean {
 }
 
 /**
- * Joynshop app header'ini ko'rsatish shartlari.
+ * Telegram WebApp client platform — `tg.platform`.
+ * Mount paytida bir marta o'qiladi, qayta o'zgarmaydi.
+ * Mumkin qiymatlar: 'ios' | 'android' | 'tdesktop' | 'macos' | 'web' | 'unknown'.
+ */
+export function useTelegramPlatform(): string | null {
+  const [tgPlatform] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return window.Telegram?.WebApp?.platform || null;
+  });
+  return tgPlatform;
+}
+
+const TG_MOBILE_PLATFORMS = ['ios', 'android'] as const;
+
+/**
+ * Joynshop app header'ini ko'rsatish shartlari — eng tor.
  *
- * - Brauzer (har xil — desktop, mobile tab) → ko'rinadi
- * - Telegram fullscreen rejim (Bot API 8.0+) → ko'rinadi
- * - Telegram normal/expanded/desktop → yashirin (Telegram o'z chrome'i)
- * - PWA standalone → yashirin (OS o'z chrome'i)
+ * Faqat **Telegram mobile (iOS/Android) fullscreen** rejimida ko'rinadi.
+ * Boshqa hamma joyda yashirin:
+ *   - Telegram desktop / macOS / web → Telegram o'z chrome'i kifoya
+ *   - Telegram mobile compact/expanded → Telegram chat top bar bor
+ *   - Brauzer, PWA standalone → URL bar yoki OS chrome bor
  */
 export function useShouldShowHeader(): boolean {
   const platform     = usePlatform();
   const isFullscreen = useIsTelegramFullscreen();
+  const tgPlatform   = useTelegramPlatform();
 
-  if (platform === 'browser') return true;
-  if (platform === 'telegram' && isFullscreen) return true;
-  return false;
+  return (
+    platform === 'telegram'
+    && isFullscreen
+    && tgPlatform !== null
+    && (TG_MOBILE_PLATFORMS as readonly string[]).includes(tgPlatform)
+  );
 }
