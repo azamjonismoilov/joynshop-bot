@@ -80,6 +80,7 @@ export function OrderDetailSheet({
         snapPoints={snapPoints}
         initialSnap={initialSnap}
         zIndex={50}
+        surface="gray"
         ariaLabel={`Buyurtma ${order.code}`}
       >
         <button

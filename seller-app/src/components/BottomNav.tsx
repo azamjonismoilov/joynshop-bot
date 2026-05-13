@@ -34,10 +34,11 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Asosiy navigatsiya"
-      className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 rounded-full p-2 px-3 backdrop-blur-xl shadow-xl"
+      className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 rounded-full p-2 px-3"
       style={{
-        bottom:     'calc(8px + env(safe-area-inset-bottom))',
-        background: 'rgba(28, 28, 28, 0.92)',
+        bottom:     'calc(16px + env(safe-area-inset-bottom))',
+        background: '#FFFFFF',
+        boxShadow:  '0 4px 16px rgba(0, 0, 0, 0.08)',
       }}
     >
       {ITEMS.map((item) => {
@@ -53,7 +54,7 @@ export function BottomNav() {
               'flex flex-col items-center justify-center gap-0.5 rounded-full px-2.5 py-1.5 min-w-[56px] transition-colors duration-base',
               active
                 ? 'bg-brand text-white'
-                : 'text-white/50 hover:text-white/80',
+                : 'text-fg-3 hover:text-fg-1',
             )}
           >
             <span className="inline-flex items-center justify-center">
@@ -62,7 +63,7 @@ export function BottomNav() {
             <span
               className={cn(
                 'text-[10px] leading-tight font-medium font-display whitespace-nowrap transition-colors duration-base',
-                active ? 'text-white' : 'text-white/50',
+                active ? 'text-white' : 'text-fg-3',
               )}
             >
               {item.label}

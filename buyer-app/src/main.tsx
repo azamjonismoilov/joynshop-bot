@@ -12,7 +12,7 @@ if (tg) {
   try { tg.expand(); } catch { /* ignore */ }
   // Chrome rangini Telegram theme'ga moslashtirish — ikon kontrasti uchun
   try { tg.setHeaderColor?.('secondary_bg_color'); } catch { /* ignore */ }
-  try { tg.setBackgroundColor?.('#FAFAFA'); } catch { /* ignore */ }
+  try { tg.setBackgroundColor?.('#F2F2F7'); } catch { /* ignore */ }  // iOS systemGroupedBackground
   try { tg.setBottomBarColor?.('#FFFFFF'); } catch { /* ignore */ }
 }
 

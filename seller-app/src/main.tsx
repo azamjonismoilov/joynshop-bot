@@ -15,7 +15,7 @@ if (tg) {
   // Telegram avtomatik ikon ranglarini moslashtiradi. AppHeader o'zining
   // brand orange'ini ichkarida saqlaydi.
   try { tg.setHeaderColor?.('secondary_bg_color'); } catch { /* ignore */ }
-  try { tg.setBackgroundColor?.('#F5F5F4'); } catch { /* ignore */ } // bg-bg-2
+  try { tg.setBackgroundColor?.('#F2F2F7'); } catch { /* ignore */ } // iOS systemGroupedBackground
   try { tg.setBottomBarColor?.('#FFFFFF'); } catch { /* ignore */ }  // Bot API 7.10+
 }
 

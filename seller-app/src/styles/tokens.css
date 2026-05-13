@@ -67,10 +67,14 @@
   --color-fg-on-brand:     var(--color-brand-fg);
 
   /* ───── Background semantic ───── */
-  --color-bg-1:            var(--color-neutral-0);   /* page */
-  --color-bg-2:            var(--color-neutral-50);  /* section */
-  --color-bg-3:            var(--color-neutral-100); /* subtle hover */
+  /* Sprint 8 P4 — iOS layered surface */
+  --color-bg-1:            var(--color-neutral-0);  /* #FFFFFF elevated */
+  --color-bg-2:            #F2F2F7;                 /* iOS systemGroupedBackground */
+  --color-bg-3:            var(--color-neutral-100);
   --color-bg-muted:        var(--color-neutral-200);
+
+  /* Sheet va Card surface aliases — pure white */
+  --color-sheet-bg:        #FFFFFF;
 
   /* ───── Border semantic ───── */
   --color-border:          var(--color-neutral-200);
@@ -114,8 +118,8 @@
   --radius-block:          16px;  /* Sprint 8 — info blok'lar uchun (kichikroq) */
   --radius-badge:          var(--radius-sm);
 
-  /* Sprint 8 — neutral surface card'lar uchun (sheet'ning oq bg'idan ajraladi) */
-  --color-card-bg:         #F7F7F7;
+  /* Card surface — pure white (Sprint 8 P4 — gray screen ustida ko'tariladi) */
+  --color-card-bg:         #FFFFFF;
 
   /* ───── Shadows — soft elevation (Wallet pattern, Sprint 6) ─────
    * Single-blur, low-opacity. Layered shadows o'rniga keng diffuse

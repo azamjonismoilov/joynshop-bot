@@ -41,7 +41,7 @@ export function Skeleton({
 /** Mahsulot grid uchun — image + name + price */
 export function SkeletonProductCard() {
   return (
-    <div className="bg-bg-1 border border-border rounded-card overflow-hidden">
+    <div className="rounded-card overflow-hidden" style={{ background: 'var(--color-card-bg)' }}>
       <Skeleton height="100%" rounded="none" style={{ aspectRatio: '1 / 1' }} />
       <div className="p-2.5 space-y-1.5">
         <Skeleton height={14} width="85%" />
@@ -55,7 +55,7 @@ export function SkeletonProductCard() {
 /** Stats card skeleton */
 export function SkeletonStats() {
   return (
-    <div className="bg-bg-1 border border-border rounded-card p-3 text-center space-y-2">
+    <div className="rounded-card p-3 text-center space-y-2" style={{ background: 'var(--color-card-bg)' }}>
       <Skeleton height={20} width="40%" className="mx-auto" />
       <Skeleton height={10} width="70%" className="mx-auto" />
     </div>

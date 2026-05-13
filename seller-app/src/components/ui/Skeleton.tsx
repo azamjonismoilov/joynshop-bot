@@ -41,7 +41,7 @@ export function Skeleton({
 // ─── SkeletonCard — mahsulot card holatida (~ProductsScreen card) ───
 export function SkeletonCard() {
   return (
-    <div className="bg-bg-1 border border-border rounded-card p-3">
+    <div className="rounded-card p-3" style={{ background: 'var(--color-card-bg)' }}>
       <div className="flex items-center gap-3">
         <Skeleton width={64} height={64} rounded="lg" />
         <div className="flex-1 min-w-0 space-y-2">
@@ -74,7 +74,7 @@ export function SkeletonListItem() {
 // ─── SkeletonStats — stat card (icon + label + raqam) ───
 export function SkeletonStats() {
   return (
-    <div className="bg-bg-1 border border-border rounded-card p-4">
+    <div className="rounded-card p-4" style={{ background: 'var(--color-card-bg)' }}>
       <div className="flex items-start justify-between gap-2">
         <Skeleton width={36} height={36} rounded="lg" />
         <Skeleton width={48} height={20} rounded="md" />

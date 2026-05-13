@@ -30,6 +30,9 @@ interface BottomSheetProps {
   ariaLabel?:    string;
   /** Sheet root'iga qo'shimcha class. */
   className?:    string;
+  /** Sheet content surface — `white` (default) yoki `gray` (cardlar ajraladigan
+   * iOS-style hierarchy uchun). Drag handle har holatda oq sheet container'da. */
+  surface?:      'white' | 'gray';
 }
 
 // Snap → translateY % qiymati. `full` 8% (92vh ko'rinadi), `half` 50%.
@@ -54,6 +57,7 @@ export function BottomSheet({
   onSnapChange,
   ariaLabel,
   className,
+  surface      = 'white',
 }: BottomSheetProps) {
   const sheetRef    = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -251,14 +255,15 @@ export function BottomSheet({
         <div
           ref={sheetRef}
           className={cn(
-            'relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl',
+            'relative w-full max-w-md rounded-t-3xl shadow-xl',
             'flex flex-col overflow-hidden pointer-events-auto',
             'motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out',
             className,
           )}
           style={{
-            height:    '92vh',
-            transform: `translateY(${SNAP_TRANSLATE[snap]}%)`,
+            background: 'var(--color-sheet-bg)',  // drag handle ham shu fonda
+            height:     '92vh',
+            transform:  `translateY(${SNAP_TRANSLATE[snap]}%)`,
             transitionProperty: dragging ? 'none' : undefined,
             touchAction: 'pan-y',
           }}
@@ -280,6 +285,7 @@ export function BottomSheet({
               'flex-1 overscroll-contain',
               snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden',
             )}
+            style={surface === 'gray' ? { background: 'var(--color-bg-2)' } : undefined}
           >
             {children}
           </div>
