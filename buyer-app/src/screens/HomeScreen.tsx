@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  RiBox3Line,
+  RiBox3Fill,
   RiFireFill,
   RiFlashlightFill,
   RiPriceTag3Fill,
-  RiSearchLine,
+  RiSearchFill,
   RiSparkling2Fill,
 } from '@remixicon/react';
 import { useCategories, useProducts } from '@/api/buyer';
@@ -153,7 +153,7 @@ export function HomeScreen() {
           <ProductGridSkeleton />
         ) : filtered.length === 0 ? (
           <EmptyState
-            icon={<RiBox3Line size={36} />}
+            icon={<RiBox3Fill size={36} />}
             title="Mahsulot topilmadi"
             description="Filter va qidiruvni tekshiring yoki keyinroq qayting."
           />
@@ -211,7 +211,7 @@ function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string
         </h1>
       </div>
       <label className="relative block">
-        <RiSearchLine
+        <RiSearchFill
           size={18}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"
         />
@@ -235,7 +235,10 @@ function FilterBar({
 }: { value: Filter; onChange: (v: Filter) => void }) {
   return (
     <div className="px-4 mt-4 overflow-x-auto no-scrollbar">
-      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+      <div
+        className="inline-flex rounded-full p-1 gap-0.5"
+        style={{ background: 'var(--color-segmented-bg)' }}
+      >
         {FILTERS.map((f) => {
           const active = value === f.key;
           return (
@@ -274,7 +277,10 @@ function CategoryBar({
   if (isLoading) {
     return (
       <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
-        <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+        <div
+        className="inline-flex rounded-full p-1 gap-0.5"
+        style={{ background: 'var(--color-segmented-bg)' }}
+      >
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} width={80} height={26} rounded="full" />
           ))}
@@ -285,7 +291,10 @@ function CategoryBar({
   if (items.length === 0) return null;
   return (
     <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
-      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+      <div
+        className="inline-flex rounded-full p-1 gap-0.5"
+        style={{ background: 'var(--color-segmented-bg)' }}
+      >
         <CatChip active={value === 'all'} onClick={() => onChange('all')}>
           Hammasi
         </CatChip>

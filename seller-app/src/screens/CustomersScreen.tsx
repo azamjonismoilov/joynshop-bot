@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
-  RiSearchLine,
+  RiSearchFill,
   RiUserFill,
   RiVipCrownFill,
 } from '@remixicon/react';
@@ -100,7 +100,7 @@ export function CustomersScreen() {
           pill
           inputSize="md"
           placeholder="Qidirish: ism"
-          iconLeft={<RiSearchLine size={16} />}
+          iconLeft={<RiSearchFill size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -220,7 +220,10 @@ function FilterBar({
 }) {
   return (
     <div className="overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
-      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+      <div
+        className="inline-flex rounded-full p-1 gap-0.5"
+        style={{ background: 'var(--color-segmented-bg)' }}
+      >
         {FILTER_TABS.map((tab) => {
           const count  = tab.countKey && summary ? (summary[tab.countKey] as number) : null;
           const active = value === tab.key;

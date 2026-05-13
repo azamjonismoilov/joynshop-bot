@@ -1,4 +1,4 @@
-import { RiHeart3Fill, RiHeart3Line } from '@remixicon/react';
+import { RiHeart3Fill } from '@remixicon/react';
 import { useAddWishlist, useRemoveWishlist, useWishlistIds } from '@/api/buyer';
 import { useToast } from './Toast';
 import { cn } from '@/lib/cn';
@@ -68,7 +68,7 @@ export function WishlistButton({ pid, size = 'md' }: Props) {
         pending && 'opacity-70',
       )}
     >
-      {saved ? <RiHeart3Fill size={ic} /> : <RiHeart3Line size={ic} />}
+      {saved ? <RiHeart3Fill size={ic} /> : <RiHeart3Fill size={ic} />}
     </button>
   );
 }

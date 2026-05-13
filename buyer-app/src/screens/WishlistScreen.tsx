@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RiHeart3Line, RiHome5Line } from '@remixicon/react';
+import { RiHeart3Fill, RiHome5Line } from '@remixicon/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlist } from '@/api/buyer';
 import { AppHeader } from '@/components/AppHeader';
@@ -43,7 +43,7 @@ export function WishlistScreen() {
       <main className="px-4 mt-4">
         {!uid ? (
           <EmptyState
-            icon={<RiHeart3Line size={36} />}
+            icon={<RiHeart3Fill size={36} />}
             title="Telegram orqali kiring"
             description="Saqlangan mahsulotlar Telegram hisobingiz bilan bog'liq."
           />
@@ -55,7 +55,7 @@ export function WishlistScreen() {
           </div>
         ) : items.length === 0 ? (
           <EmptyState
-            icon={<RiHeart3Line size={36} />}
+            icon={<RiHeart3Fill size={36} />}
             title="Saqlangan mahsulot yo'q"
             description="Yoqtirgan mahsulotlarni saqlasangiz — bu yerda paydo bo'ladi."
             action={

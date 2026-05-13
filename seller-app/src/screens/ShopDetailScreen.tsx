@@ -6,13 +6,13 @@ import {
   RiExternalLinkLine,
   RiGlobalFill,
   RiInstagramFill,
-  RiMapPinLine,
-  RiPhoneLine,
+  RiMapPinFill,
+  RiPhoneFill,
   RiShoppingBag3Fill,
   RiStore3Fill,
   RiTelegramFill,
-  RiTruckLine,
-  RiWalletLine,
+  RiTruckFill,
+  RiWalletFill,
 } from '@remixicon/react';
 import { Badge, Card, Skeleton } from '@/components/ui';
 import { useSellerShopDetail } from '@/api/seller';
@@ -82,7 +82,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
         <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
           <Stat icon={<RiBox3Fill size={16} />} label="Mahsulot" value={String(data.products_count)} />
           <Stat icon={<RiShoppingBag3Fill size={16} />} label="Buyurtma" value={String(data.orders_confirmed)} />
-          <Stat icon={<RiWalletLine size={16} />} label="Daromad" value={formatPriceShort(data.revenue)} />
+          <Stat icon={<RiWalletFill size={16} />} label="Daromad" value={formatPriceShort(data.revenue)} />
         </div>
       </Card>
 
@@ -90,21 +90,21 @@ function ShopContent({ data }: { data: ShopDetail }) {
       <Card padding="md">
         <SectionHeader label="Asosiy ma'lumotlar" onEdit={() => setEdit('contact')} />
         <InfoRow
-          icon={<RiPhoneLine size={14} />}
+          icon={<RiPhoneFill size={14} />}
           label="Telefon"
           value={data.phone || '—'}
           mono
         />
         {data.phone2 && (
           <InfoRow
-            icon={<RiPhoneLine size={14} />}
+            icon={<RiPhoneFill size={14} />}
             label="Qo'shimcha telefon"
             value={data.phone2}
             mono
           />
         )}
         <InfoRow
-          icon={<RiMapPinLine size={14} />}
+          icon={<RiMapPinFill size={14} />}
           label="Manzil"
           value={data.address || '—'}
         />
@@ -114,7 +114,7 @@ function ShopContent({ data }: { data: ShopDetail }) {
       <Card padding="md">
         <SectionHeader label="Yetkazib berish" onEdit={() => setEdit('delivery')} />
         <div className="flex items-center gap-2.5 py-1">
-          <RiTruckLine size={18} className="text-brand shrink-0" />
+          <RiTruckFill size={18} className="text-brand shrink-0" />
           <span className="text-sm text-fg-1 font-body">
             {data.delivery_label || '—'}
           </span>

@@ -4,7 +4,7 @@ import {
   RiAddFill,
   RiCloseFill,
   RiFileTextLine,
-  RiSearchLine,
+  RiSearchFill,
 } from '@remixicon/react';
 import {
   Button,
@@ -562,7 +562,7 @@ export function ProductCreateScreen() {
               <Button
                 variant="outline"
                 size="md"
-                iconLeft={<RiSearchLine size={16} />}
+                iconLeft={<RiSearchFill size={16} />}
                 fullWidth
                 onClick={() => setShowMxik(true)}
               >

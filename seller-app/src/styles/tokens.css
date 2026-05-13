@@ -76,6 +76,11 @@
   /* Sheet va Card surface aliases — pure white */
   --color-sheet-bg:        #FFFFFF;
 
+  /* Segmented control konteyner foni — iOS Wallet pattern.
+   * bg-bg-3 (#F4F4F5) gray screen bg-bg-2 (#F2F2F7) ustida sezilarsiz —
+   * 8% qora overlay yorqin ko'rinadi va active oq chip bilan kontrast yaratadi. */
+  --color-segmented-bg:    rgba(0, 0, 0, 0.06);
+
   /* ───── Border semantic ───── */
   --color-border:          var(--color-neutral-200);
   --color-border-strong:   var(--color-neutral-300);

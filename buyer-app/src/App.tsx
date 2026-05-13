@@ -5,10 +5,11 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { ToastProvider } from './components/Toast';
 
 // Code-split per route — har ekran alohida chunk, initial JS kichraytadi.
-const HomeScreen     = lazy(() => import('./screens/HomeScreen').then((m) => ({ default: m.HomeScreen })));
-const WishlistScreen = lazy(() => import('./screens/WishlistScreen').then((m) => ({ default: m.WishlistScreen })));
-const OrdersScreen   = lazy(() => import('./screens/OrdersScreen').then((m) => ({ default: m.OrdersScreen })));
-const ProfileScreen  = lazy(() => import('./screens/ProfileScreen').then((m) => ({ default: m.ProfileScreen })));
+const HomeScreen        = lazy(() => import('./screens/HomeScreen').then((m) => ({ default: m.HomeScreen })));
+const WishlistScreen    = lazy(() => import('./screens/WishlistScreen').then((m) => ({ default: m.WishlistScreen })));
+const OrdersScreen      = lazy(() => import('./screens/OrdersScreen').then((m) => ({ default: m.OrdersScreen })));
+const OrderDetailScreen = lazy(() => import('./screens/OrderDetailScreen').then((m) => ({ default: m.OrderDetailScreen })));
+const ProfileScreen     = lazy(() => import('./screens/ProfileScreen').then((m) => ({ default: m.ProfileScreen })));
 
 function RouteFallback() {
   return (
@@ -27,11 +28,12 @@ function AppShell() {
     <>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/"         element={<HomeScreen />} />
-          <Route path="/wishlist" element={<WishlistScreen />} />
-          <Route path="/orders"   element={<OrdersScreen />} />
-          <Route path="/profile"  element={<ProfileScreen />} />
-          <Route path="*"         element={<HomeScreen />} />
+          <Route path="/"              element={<HomeScreen />} />
+          <Route path="/wishlist"      element={<WishlistScreen />} />
+          <Route path="/orders"        element={<OrdersScreen />} />
+          <Route path="/orders/:code"  element={<OrderDetailScreen />} />
+          <Route path="/profile"       element={<ProfileScreen />} />
+          <Route path="*"              element={<HomeScreen />} />
         </Routes>
       </Suspense>
       <BottomNav />

@@ -11,7 +11,7 @@ import {
   RiPriceTag3Fill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiTimeLine,
+  RiTimeFill,
 } from '@remixicon/react';
 import { Card, Badge, Button } from '@/components/ui';
 import { useSellerProducts } from '@/api/seller';
@@ -181,7 +181,7 @@ function ProductCard({ item }: ProductCardProps) {
 }
 
 function ArchivedIcon({ label }: { label: string }) {
-  if (label === 'Muddati tugagan') return <RiTimeLine size={14} className="text-danger" />;
+  if (label === 'Muddati tugagan') return <RiTimeFill size={14} className="text-danger" />;
   // 'Yopilgan'
   return <RiLockFill size={14} className="text-fg-4" />;
 }

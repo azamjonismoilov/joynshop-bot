@@ -1,7 +1,7 @@
 import {
-  RiMapPinLine,
+  RiMapPinFill,
   RiStore3Fill,
-  RiTruckLine,
+  RiTruckFill,
 } from '@remixicon/react';
 import { Badge, Card } from '@/components/ui';
 import type { BadgeVariant } from '@/components/ui';
@@ -70,8 +70,8 @@ export function OrderCard({ order, onClick }: Props) {
             order.delivery === 'deliver' ? 'text-fg-2' : 'text-fg-3',
           )}>
             {order.delivery === 'deliver'
-              ? <RiTruckLine   size={11} className="text-brand shrink-0" />
-              : <RiMapPinLine  size={11} className="text-fg-4 shrink-0" />}
+              ? <RiTruckFill   size={11} className="text-brand shrink-0" />
+              : <RiMapPinFill  size={11} className="text-fg-4 shrink-0" />}
             <span className="truncate">
               {order.delivery === 'deliver'
                 ? (order.address || 'Yetkazib berish')

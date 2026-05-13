@@ -4,8 +4,8 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiClipboardFill,
-  RiSearchLine,
-  RiTimeLine,
+  RiSearchFill,
+  RiTimeFill,
 } from '@remixicon/react';
 import {
   Card,
@@ -102,7 +102,7 @@ export function OrdersScreen() {
           pill
           inputSize="md"
           placeholder="Qidirish: kod yoki mijoz ismi"
-          iconLeft={<RiSearchLine size={16} />}
+          iconLeft={<RiSearchFill size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -174,7 +174,10 @@ function FilterBar({
 }) {
   return (
     <div className="overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
-      <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+      <div
+        className="inline-flex rounded-full p-1 gap-0.5"
+        style={{ background: 'var(--color-segmented-bg)' }}
+      >
         {FILTER_TABS.map((tab) => {
           const count = tab.countKey && summary ? summary[tab.countKey] : null;
           const active = value === tab.key;
@@ -241,7 +244,7 @@ function OrderCard({ order }: { order: OrderItem }) {
                 {formatPrice(order.amount)} so'm
               </span>
               <span className="text-xs text-fg-3 font-mono inline-flex items-center gap-1 shrink-0">
-                <RiTimeLine size={12} />
+                <RiTimeFill size={12} />
                 {order.created}
               </span>
             </div>

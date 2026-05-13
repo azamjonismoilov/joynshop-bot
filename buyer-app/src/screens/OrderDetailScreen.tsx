@@ -1,38 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BottomSheet, type SnapPoint } from './BottomSheet';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  RiCloseFill,
   RiFileCopyLine,
-  RiMapPinLine,
-  RiPhoneLine,
+  RiMapPinFill,
+  RiPhoneFill,
   RiShoppingBag3Fill,
-  RiShoppingBag3Line,
   RiStore3Fill,
   RiTelegramFill,
-  RiTimeLine,
-  RiTruckLine,
-  RiWalletLine,
+  RiTimeFill,
+  RiTruckFill,
+  RiWalletFill,
 } from '@remixicon/react';
-import { Badge, Button, Modal } from '@/components/ui';
-import type { BuyerOrderItem, OrderStatus } from '@/api/types';
-import { ProductImage } from './ProductImage';
+import { AppHeader } from '@/components/AppHeader';
+import { Badge, Button, Modal, Skeleton } from '@/components/ui';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ProductImage } from '@/components/ProductImage';
+import { useToast } from '@/components/Toast';
 import { useBuyerOrders, useCancelOrder } from '@/api/buyer';
-import { useToast } from './Toast';
+import type { BuyerOrderItem, OrderStatus } from '@/api/types';
 import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { hapticImpact, hapticNotify } from '@/lib/haptic';
-import { isInTelegram, tgWebApp } from '@/lib/telegram';
-
-interface Props {
-  isOpen:       boolean;
-  /** Buyurtma kodi — server cache'dan reactive ravishda olinadi
-   * (status yangilanishi sheet'da darhol ko'rinadi). */
-  code:         string | null;
-  uid:          number | null;
-  onClose:      () => void;
-  snapPoints?:  SnapPoint[];
-  initialSnap?: SnapPoint;
-}
+import { getTgUser, tgWebApp } from '@/lib/telegram';
 
 const STATUS_BANNER_BG: Record<OrderStatus, string> = {
   pending:    'bg-bg-3 text-fg-2',
@@ -47,37 +37,26 @@ const STATUS_HINT: Record<OrderStatus, string> = {
   confirming: 'Sotuvchi buyurtmangizni ko\'rib chiqmoqda.',
   confirmed:  "Sotuvchi tasdiqlandi! Yetkazib berish/olib ketish bo'yicha kelishasiz.",
   rejected:   'Sotuvchi buyurtmani rad etdi. Boshqa mahsulot tanlashingiz mumkin.',
-  cancelled:  "Buyurtma bekor qilindi.",
+  cancelled:  'Buyurtma bekor qilindi.',
 };
 
-export function OrderDetailSheet({
-  isOpen, code, uid, onClose,
-  snapPoints  = ['full'],
-  initialSnap = 'full',
-}: Props) {
-  const [showCancelConfirm, setCancelConfirm] = useState(false);
-  const cancelMut = useCancelOrder(uid);
-  const toast = useToast();
-
-  // Buyurtmalar cache'idan reaktiv ravishda topish — OrdersScreen'dagi
-  // hook bilan bir xil queryKey (uid bo'yicha), demak qayta fetch yo'q.
+export function OrderDetailScreen() {
+  const { code }   = useParams<{ code: string }>();
+  const navigate   = useNavigate();
+  const uid        = getTgUser()?.id ?? null;
   const ordersQuery = useBuyerOrders(uid);
+  const cancelMut  = useCancelOrder(uid);
+  const toast      = useToast();
+
+  const [showCancelConfirm, setCancelConfirm] = useState(false);
+
   const order = useMemo<BuyerOrderItem | null>(() => {
     if (!code || !ordersQuery.data) return null;
     return ordersQuery.data.find((o) => o.code === code) || null;
   }, [code, ordersQuery.data]);
 
-  // Reset cancel state when sheet opens
+  // Boshqa ekran'lardan qolgan Telegram native button'larni yashirish
   useEffect(() => {
-    if (isOpen) { setCancelConfirm(false); cancelMut.reset(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  // Telegram MainButton — bu sheet'da kerakmas (X close tugma yetadi).
-  // OrderDetailSheet ochilganda native button paydo bo'lmaslik uchun
-  // mount va unmount'da hide.
-  useEffect(() => {
-    if (!isOpen) return;
     const tg = window.Telegram?.WebApp;
     try { tg?.MainButton?.hide(); } catch { /* ignore */ }
     try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
@@ -85,49 +64,87 @@ export function OrderDetailSheet({
       try { tg?.MainButton?.hide(); } catch { /* ignore */ }
       try { (tg as unknown as { SecondaryButton?: { hide(): void } })?.SecondaryButton?.hide(); } catch { /* ignore */ }
     };
-  }, [isOpen]);
+  }, []);
+
+  // Reset cancel mutation when navigating to a different order
+  useEffect(() => {
+    setCancelConfirm(false);
+    cancelMut.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  if (ordersQuery.isError) {
+    return (
+      <div className="min-h-screen bg-bg-2 pb-8">
+        <AppHeader tagline="Buyurtma" showBack />
+        <div className="px-4 mt-4">
+          <ErrorState error={ordersQuery.error} onRetry={() => ordersQuery.refetch()} />
+        </div>
+      </div>
+    );
+  }
+
+  if (ordersQuery.isLoading || !ordersQuery.data) {
+    return <DetailSkeleton code={code} />;
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-bg-2 pb-8">
+        <AppHeader tagline="Buyurtma" showBack />
+        <div className="px-4 mt-4">
+          <EmptyState
+            icon={<RiShoppingBag3Fill size={36} />}
+            title="Buyurtma topilmadi"
+            description={`#${code} kodi bilan buyurtma yo'q yoki o'chirilgan.`}
+            action={
+              <Button variant="primary" size="lg" fullWidth onClick={() => navigate('/orders')}>
+                Buyurtmalarga qaytish
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const handleCancelConfirm = () => {
+    if (!uid) return;
+    hapticImpact('medium');
+    cancelMut.mutate(
+      { code: order.code },
+      {
+        onSuccess: () => {
+          hapticNotify('success');
+          toast.show('Buyurtma bekor qilindi', 'info');
+          setCancelConfirm(false);
+        },
+        onError: (err) => {
+          hapticNotify('error');
+          toast.show(
+            err instanceof Error ? err.message : "Bekor qilib bo'lmadi",
+            'error',
+          );
+        },
+      },
+    );
+  };
 
   return (
-    <>
-      <BottomSheet
-        isOpen={isOpen}
-        onClose={onClose}
-        snapPoints={snapPoints}
-        initialSnap={initialSnap}
-        zIndex={50}
-        surface="gray"
-        ariaLabel={order ? `Buyurtma ${order.code}` : 'Buyurtma'}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Yopish"
-          className="absolute top-2 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bg-3 text-fg-2 hover:bg-bg-muted z-10"
-        >
-          <RiCloseFill size={18} />
-        </button>
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline={`Buyurtma #${order.code}`} showBack />
 
-        {order ? (
-          <>
-            <StatusBanner order={order} />
-            <div className="px-5 pb-5 space-y-3">
-              <ProductInfo order={order} />
-              <DetailsCard order={order} />
-              {(order.contact || order.shop_phone) && <SellerCard order={order} />}
-              <ActionsBlock
-                order={order}
-                onCancel={() => { hapticImpact('light'); setCancelConfirm(true); }}
-                onClose={onClose}
-                error={cancelMut.isError ? cancelMut.error : null}
-              />
-            </div>
-          </>
-        ) : ordersQuery.isLoading ? (
-          <LoadingBody />
-        ) : (
-          <NotFoundBody onClose={onClose} />
-        )}
-      </BottomSheet>
+      <main className="px-4 mt-4 space-y-3">
+        <StatusBanner order={order} />
+        <ProductInfo order={order} />
+        <DetailsCard order={order} />
+        {(order.contact || order.shop_phone) && <SellerCard order={order} />}
+        <ActionsBlock
+          order={order}
+          onCancel={() => { hapticImpact('light'); setCancelConfirm(true); }}
+          error={cancelMut.isError ? cancelMut.error : null}
+        />
+      </main>
 
       <Modal
         isOpen={showCancelConfirm}
@@ -155,77 +172,27 @@ export function OrderDetailSheet({
             variant="danger"
             size="lg"
             disabled={cancelMut.isPending}
-            onClick={() => {
-              if (!uid || !order) return;
-              hapticImpact('medium');
-              cancelMut.mutate(
-                { code: order.code },
-                {
-                  onSuccess: () => {
-                    hapticNotify('success');
-                    toast.show('Buyurtma bekor qilindi', 'info');
-                    setCancelConfirm(false);
-                    onClose();
-                  },
-                  onError: (err) => {
-                    hapticNotify('error');
-                    toast.show(
-                      err instanceof Error ? err.message : "Bekor qilib bo'lmadi",
-                      'error',
-                    );
-                  },
-                },
-              );
-            }}
+            onClick={handleCancelConfirm}
           >
             {cancelMut.isPending ? 'Bekor qilinmoqda...' : 'Ha, bekor qilish'}
           </Button>
         </div>
       </Modal>
-    </>
+    </div>
   );
 }
+
+export default OrderDetailScreen;
 
 // ═══════════════════════════════════════════════════════════════
 //  Sub-components
 // ═══════════════════════════════════════════════════════════════
-function LoadingBody() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-6">
-      <div
-        className="w-10 h-10 rounded-full border-[3px] border-brand-subtle border-t-brand mb-3"
-        style={{ animation: 'spin 0.8s linear infinite' }}
-      />
-      <p className="text-sm text-fg-3 font-body">Buyurtma yuklanmoqda...</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-function NotFoundBody({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center px-6 py-12">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-1 shadow-xs text-fg-3 mb-3">
-        <RiShoppingBag3Line size={28} />
-      </div>
-      <h2 className="font-display text-base font-semibold text-fg-1 mb-1">
-        Buyurtma topilmadi
-      </h2>
-      <p className="text-sm text-fg-3 font-body text-center mb-4">
-        Buyurtmalar ro'yxati yangilangan bo'lishi mumkin.
-      </p>
-      <Button variant="outline" size="md" onClick={onClose}>
-        Yopish
-      </Button>
-    </div>
-  );
-}
 
 function StatusBanner({ order }: { order: BuyerOrderItem }) {
-  const cls = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
+  const cls  = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
   const hint = STATUS_HINT[order.status] || '';
   return (
-    <div className={cn('mx-5 mt-1 mb-3 rounded-card p-4', cls)}>
+    <div className={cn('rounded-card p-4', cls)}>
       <div className="flex items-center gap-3">
         <div className="text-3xl shrink-0 select-none">{order.status_icon}</div>
         <div className="flex-1 min-w-0">
@@ -316,7 +283,7 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
         }
       />
       <Row
-        icon={<RiTimeLine size={14} />}
+        icon={<RiTimeFill size={14} />}
         label="Sana"
         value={<span className="font-mono text-sm">{order.created}</span>}
       />
@@ -328,13 +295,13 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
         />
       )}
       <Row
-        icon={order.delivery === 'deliver' ? <RiTruckLine size={14} /> : <RiMapPinLine size={14} />}
+        icon={order.delivery === 'deliver' ? <RiTruckFill size={14} /> : <RiMapPinFill size={14} />}
         label="Yetkazib berish"
         value={<span className="font-body text-sm">{order.delivery === 'deliver' ? 'Yetkazib berish' : 'Olib ketish'}</span>}
       />
       {order.delivery === 'deliver' && order.address && (
         <Row
-          icon={<RiMapPinLine size={14} />}
+          icon={<RiMapPinFill size={14} />}
           label="Manzil"
           value={<span className="font-body text-sm break-words">{order.address}</span>}
         />
@@ -344,7 +311,7 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
         style={{ borderColor: 'rgba(0, 0, 0, 0.06)' }}
       >
         <span className="inline-flex items-center gap-1.5 text-xs text-fg-2 font-body">
-          <RiWalletLine size={14} className="text-fg-3" />
+          <RiWalletFill size={14} className="text-fg-3" />
           Jami
         </span>
         <span className="flex items-baseline gap-1">
@@ -400,7 +367,7 @@ function SellerCard({ order }: { order: BuyerOrderItem }) {
         variant="outline"
         size="md"
         fullWidth
-        iconLeft={isTelegram ? <RiTelegramFill size={16} /> : <RiPhoneLine size={16} />}
+        iconLeft={isTelegram ? <RiTelegramFill size={16} /> : <RiPhoneFill size={16} />}
         onClick={handleClick}
         disabled={!contact}
       >
@@ -411,26 +378,35 @@ function SellerCard({ order }: { order: BuyerOrderItem }) {
 }
 
 function ActionsBlock({
-  order, onCancel, onClose, error,
-}: { order: BuyerOrderItem; onCancel: () => void; onClose: () => void; error: unknown }) {
+  order, onCancel, error,
+}: { order: BuyerOrderItem; onCancel: () => void; error: unknown }) {
   const canCancel = order.status === 'pending' || order.status === 'confirming';
-  const inTelegram = isInTelegram();
   const msg = error instanceof Error ? error.message : null;
+  if (!canCancel && !msg) return null;
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 pt-1">
       {canCancel && (
         <Button variant="danger" size="lg" fullWidth onClick={onCancel}>
           🚫 Buyurtmani bekor qilish
         </Button>
       )}
-      {!inTelegram && (
-        <Button variant="ghost" size="md" fullWidth onClick={onClose}>
-          Yopish
-        </Button>
-      )}
       {msg && (
         <p className="text-xs text-danger font-body">{msg}</p>
       )}
+    </div>
+  );
+}
+
+function DetailSkeleton({ code }: { code?: string }) {
+  return (
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline={code ? `Buyurtma #${code}` : 'Buyurtma'} showBack />
+      <main className="px-4 mt-4 space-y-3">
+        <Skeleton height={72}  rounded="xl" />
+        <Skeleton height={140} rounded="xl" />
+        <Skeleton height={180} rounded="xl" />
+        <Skeleton height={88}  rounded="xl" />
+      </main>
     </div>
   );
 }

@@ -38,7 +38,7 @@ function IntegrationsList({ items }: { items: IntegrationItem[] }) {
   if (items.length === 0) {
     return (
       <Card padding="lg" className="text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-subtle text-brand mb-3">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-1 shadow-xs text-fg-3 mb-3">
           <RiPlugFill size={32} />
         </div>
         <p className="text-sm text-fg-3 font-body">

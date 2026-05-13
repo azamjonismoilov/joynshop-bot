@@ -8,8 +8,8 @@ import {
   RiHeart3Fill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiTimeLine,
-  RiWalletLine,
+  RiTimeFill,
+  RiWalletFill,
 } from '@remixicon/react';
 import {
   Badge,
@@ -198,7 +198,7 @@ function DetailContent({
         onEdit={() => onEdit('deadline')}
       >
         <div className="flex items-center gap-2">
-          <RiTimeLine size={18} className="text-brand shrink-0" />
+          <RiTimeFill size={18} className="text-brand shrink-0" />
           <Countdown secondsLeft={data.deadline_seconds_left} display={data.deadline} />
         </div>
       </SectionCard>
@@ -252,7 +252,7 @@ function DetailContent({
             value={String(data.stats.orders_total)}
           />
           <Stat
-            icon={<RiWalletLine size={16} />}
+            icon={<RiWalletFill size={16} />}
             label="Daromad"
             value={formatPriceShort(data.stats.revenue)}
           />

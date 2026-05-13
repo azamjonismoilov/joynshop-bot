@@ -9,7 +9,7 @@ import {
   RiShoppingBag3Fill,
   RiTelegramFill,
   RiTeamFill,
-  RiUser3Line,
+  RiUser3Fill,
 } from '@remixicon/react';
 import { Avatar } from '@/components/Avatar';
 import { AppHeader } from '@/components/AppHeader';
@@ -39,7 +39,7 @@ export function ProfileScreen() {
         <AppHeader tagline="Profil" />
         <div className="px-4 mt-4">
           <EmptyState
-            icon={<RiUser3Line size={36} />}
+            icon={<RiUser3Fill size={36} />}
             title="Telegram orqali kiring"
             description="Profil sahifasi Telegram hisobingiz bilan bog'liq."
           />

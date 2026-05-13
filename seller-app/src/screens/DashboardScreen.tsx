@@ -17,7 +17,7 @@ import {
   RiClipboardFill,
   RiShoppingBag3Fill,
   RiTeamFill,
-  RiWalletLine,
+  RiWalletFill,
 } from '@remixicon/react';
 import {
   Button,
@@ -187,7 +187,10 @@ function PeriodFilter({
   value, onChange,
 }: { value: PeriodOption; onChange: (p: PeriodOption) => void }) {
   return (
-    <div className="inline-flex w-full bg-bg-3 rounded-full p-1 gap-0.5">
+    <div
+      className="inline-flex w-full rounded-full p-1 gap-0.5"
+      style={{ background: 'var(--color-segmented-bg)' }}
+    >
       {PERIODS.map((p) => (
         <button
           key={p.key}
@@ -215,7 +218,7 @@ function StatsGrid({ data }: { data: StatsResponse }) {
   return (
     <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       <StatCard
-        icon={<RiWalletLine size={20} />}
+        icon={<RiWalletFill size={20} />}
         iconBg="bg-brand-subtle"
         iconColor="text-brand"
         label="GMV"

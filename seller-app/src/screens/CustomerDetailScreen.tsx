@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import {
   RiArrowRightSLine,
   RiEdit2Line,
-  RiPhoneLine,
-  RiTimeLine,
+  RiPhoneFill,
+  RiTimeFill,
   RiVipCrownFill,
   RiHistoryFill,
 } from '@remixicon/react';
@@ -234,14 +234,14 @@ function ActionButtons({ data }: { data: CustomerDetail }) {
             variant="outline"
             size="lg"
             fullWidth
-            iconLeft={<RiPhoneLine size={18} />}
+            iconLeft={<RiPhoneFill size={18} />}
           >
             Bog'lanish: {data.phone}
           </Button>
         </a>
       )}
       <p className="text-xs text-fg-4 font-mono inline-flex items-center gap-1 pt-1">
-        <RiTimeLine size={12} />
+        <RiTimeFill size={12} />
         Oxirgi xarid: {data.last_order || '—'}
       </p>
     </div>

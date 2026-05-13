@@ -2,14 +2,13 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RiHome5Line,
-  RiShoppingBag3Line,
+  RiShoppingBag3Fill,
 } from '@remixicon/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBuyerOrders } from '@/api/buyer';
 import { AppHeader } from '@/components/AppHeader';
 import { Button, Card, Skeleton } from '@/components/ui';
 import { OrderCard } from '@/components/OrderCard';
-import { OrderDetailSheet } from '@/components/OrderDetailSheet';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
@@ -35,8 +34,7 @@ export function OrdersScreen() {
   const query    = useBuyerOrders(uid);
   const qc       = useQueryClient();
 
-  const [filter, setFilter]             = useState<Filter>('all');
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
 
   const orders = query.data || [];
 
@@ -51,14 +49,14 @@ export function OrdersScreen() {
   }, [orders, filter]);
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} disabled={!!selectedCode}>
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <AppHeader tagline="Buyurtmalarim" />
 
       {!uid ? (
         <div className="px-4 mt-4">
           <EmptyState
-            icon={<RiShoppingBag3Line size={36} />}
+            icon={<RiShoppingBag3Fill size={36} />}
             title="Telegram orqali kiring"
             description="Buyurtmalarni ko'rish uchun Mini App'ni Telegram ichida oching."
           />
@@ -71,7 +69,10 @@ export function OrdersScreen() {
         <main className="px-4 mt-3 space-y-3">
           {/* Segmented control — iOS Wallet pattern */}
           <div className="overflow-x-auto no-scrollbar pb-1">
-            <div className="inline-flex bg-bg-3 rounded-full p-1 gap-0.5">
+            <div
+              className="inline-flex rounded-full p-1 gap-0.5"
+              style={{ background: 'var(--color-segmented-bg)' }}
+            >
               {FILTERS.map((f) => {
                 const active = filter === f.key;
                 const count  = f.key === 'all'
@@ -111,7 +112,7 @@ export function OrdersScreen() {
             <ListSkeleton />
           ) : orders.length === 0 ? (
             <EmptyState
-              icon={<RiShoppingBag3Line size={36} />}
+              icon={<RiShoppingBag3Fill size={36} />}
               title="Hali buyurtma yo'q"
               description="Mahsulot tanlab buyurtma bering — bu yerda ko'rinadi."
               action={
@@ -128,7 +129,7 @@ export function OrdersScreen() {
             />
           ) : filtered.length === 0 ? (
             <EmptyState
-              icon={<RiShoppingBag3Line size={36} />}
+              icon={<RiShoppingBag3Fill size={36} />}
               title="Bu filtrda buyurtma yo'q"
               description="Boshqa filtrni tanlab ko'ring."
             />
@@ -138,22 +139,13 @@ export function OrdersScreen() {
                 <OrderCard
                   key={o.code}
                   order={o}
-                  onClick={() => { hapticImpact('light'); setSelectedCode(o.code); }}
+                  onClick={() => { hapticImpact('light'); navigate(`/orders/${o.code}`); }}
                 />
               ))}
             </div>
           )}
         </main>
       )}
-
-      <OrderDetailSheet
-        isOpen={!!selectedCode}
-        code={selectedCode}
-        uid={uid}
-        onClose={() => setSelectedCode(null)}
-        snapPoints={['half', 'full']}
-        initialSnap="half"
-      />
     </div>
     </PullToRefresh>
   );

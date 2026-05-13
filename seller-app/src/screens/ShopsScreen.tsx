@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import {
   RiArrowRightSLine,
-  RiMapPinLine,
-  RiPhoneLine,
+  RiMapPinFill,
+  RiPhoneFill,
   RiStore3Fill,
   RiTelegramFill,
 } from '@remixicon/react';
@@ -41,7 +41,7 @@ export function ShopsScreen() {
 function EmptySection() {
   return (
     <Card padding="lg" className="text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-subtle text-brand mb-3">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-bg-1 shadow-xs text-fg-3 mb-3">
         <RiStore3Fill size={32} />
       </div>
       <h2 className="font-display text-lg font-semibold text-fg-1 mb-1">
@@ -87,13 +87,13 @@ function ShopsList({ shops }: { shops: ShopBrief[] }) {
                 </div>
                 {shop.address && (
                   <p className="text-xs text-fg-3 font-body mt-1 flex items-center gap-1">
-                    <RiMapPinLine size={12} className="shrink-0" />
+                    <RiMapPinFill size={12} className="shrink-0" />
                     <span className="truncate">{shop.address}</span>
                   </p>
                 )}
                 {shop.phone && (
                   <p className="text-xs text-fg-3 font-mono mt-0.5 flex items-center gap-1">
-                    <RiPhoneLine size={12} className="shrink-0" />
+                    <RiPhoneFill size={12} className="shrink-0" />
                     <span>{shop.phone}</span>
                   </p>
                 )}

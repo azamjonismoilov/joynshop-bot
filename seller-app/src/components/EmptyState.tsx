@@ -7,7 +7,7 @@ export function EmptyState() {
   return (
     <div className="min-h-screen bg-bg-2 flex flex-col items-center justify-center px-6">
       <div className="text-center max-w-sm">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-subtle text-brand mb-4">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-bg-1 shadow-xs text-fg-3 mb-4">
           <RiBox3Fill size={40} />
         </div>
         <h2 className="font-display text-xl font-semibold text-fg-1 mb-2">
