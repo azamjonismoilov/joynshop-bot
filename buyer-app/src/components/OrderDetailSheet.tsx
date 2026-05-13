@@ -93,7 +93,7 @@ export function OrderDetailSheet({
 
         <StatusBanner order={order} />
 
-        <div className="px-5 pb-5 space-y-4">
+        <div className="px-5 pb-5 space-y-3">
           <ProductInfo order={order} />
           <DetailsCard order={order} />
           {(order.contact || order.shop_phone) && <SellerCard order={order} />}
@@ -170,7 +170,7 @@ function StatusBanner({ order }: { order: BuyerOrderItem }) {
   const cls = STATUS_BANNER_BG[order.status] || STATUS_BANNER_BG.pending;
   const hint = STATUS_HINT[order.status] || '';
   return (
-    <div className={cn('mx-5 mt-1 mb-4 rounded-card p-5', cls)}>
+    <div className={cn('mx-5 mt-1 mb-3 rounded-card p-4', cls)}>
       <div className="flex items-center gap-3">
         <div className="text-3xl shrink-0 select-none">{order.status_icon}</div>
         <div className="flex-1 min-w-0">
@@ -191,7 +191,7 @@ function ProductInfo({ order }: { order: BuyerOrderItem }) {
   const photo = order.photo_url || (order.photo_id ? `/api/photo/${order.photo_id}` : '');
   return (
     <div
-      className="rounded-card p-5"
+      className="rounded-card p-4"
       style={{ background: 'var(--color-card-bg)' }}
     >
       <div className="flex items-start gap-3">
@@ -241,7 +241,7 @@ function DetailsCard({ order }: { order: BuyerOrderItem }) {
   };
   return (
     <div
-      className="p-5 space-y-2"
+      className="p-4 space-y-2"
       style={{
         background:    'var(--color-card-bg)',
         borderRadius:  'var(--radius-block)',
@@ -333,7 +333,7 @@ function SellerCard({ order }: { order: BuyerOrderItem }) {
   const isTelegram = contact.startsWith('@');
   return (
     <div
-      className="rounded-card p-5"
+      className="rounded-card p-4"
       style={{ background: 'var(--color-card-bg)' }}
     >
       <p className="text-xs text-fg-3 font-body mb-2 inline-flex items-center gap-1.5">

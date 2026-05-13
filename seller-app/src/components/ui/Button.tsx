@@ -35,11 +35,12 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  xs: 'h-7  px-2.5 text-xs  gap-1',
-  sm: 'h-8  px-3   text-sm  gap-1.5',
-  md: 'h-10 px-4   text-sm  gap-2',
-  lg: 'h-12 px-5   text-base gap-2',
-  xl: 'h-14 px-6   text-lg  gap-2.5',
+  // Pill shape uchun horizontal padding kattaroq (Sprint 8.5 — Telegram style)
+  xs: 'h-7  px-3   text-xs  gap-1',
+  sm: 'h-8  px-3.5 text-sm  gap-1.5',
+  md: 'h-10 px-5   text-sm  gap-2',
+  lg: 'h-12 px-6   text-base gap-2',
+  xl: 'h-14 px-8   text-lg  gap-2.5',
 };
 
 const BASE =

@@ -352,7 +352,10 @@ function StatsRow({
 
 function StatCard({ icon, value, label }: { icon: React.ReactNode; value: number | string; label: string }) {
   return (
-    <div className="bg-bg-1 border border-border/60 shadow-xs rounded-xl p-3 text-center">
+    <div
+      className="shadow-xs rounded-xl p-3 text-center"
+      style={{ background: 'var(--color-card-bg)' }}
+    >
       <div className="inline-flex items-center justify-center mb-1">{icon}</div>
       <p className="font-mono text-2xl font-bold tabular-nums text-fg-1 leading-none">{value}</p>
       <p className="text-[11px] text-fg-3 font-body leading-tight mt-1">{label}</p>

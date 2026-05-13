@@ -13,15 +13,15 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const VARIANT: Record<CardVariant, string> = {
-  // Soft elevation — nozik border + minimal shadow (Wallet pattern)
-  default:  'bg-bg-1 border border-border/60 shadow-xs',
+  // Wallet pattern — neutral card-bg surface, hech qanday stroke yo'q
+  default:  'bg-[var(--color-card-bg)] shadow-xs',
   elevated: 'bg-bg-1 shadow-md',
 };
 
 const PADDING: Record<CardPadding, string> = {
   none: 'p-0',
-  sm:   'p-3.5',   // 14px (eski 12px)
-  md:   'p-5',     // 20px (eski 16px) — generous whitespace
+  sm:   'p-3.5',   // 14px
+  md:   'p-4',     // 16px (Sprint 8.5 — density refinement, oldin 20px)
   lg:   'p-6',     // 24px
 };
 

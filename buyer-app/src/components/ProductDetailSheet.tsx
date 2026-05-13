@@ -162,7 +162,10 @@ function DetailBody({
 
         {/* Contact */}
         {data.contact && (
-          <div className="border-t border-border pt-4">
+          <div
+            className="border-t pt-4"
+            style={{ borderColor: 'rgba(0, 0, 0, 0.06)' }}
+          >
             <p className="inline-flex items-center gap-2 text-sm text-fg-2 font-body">
               <RiPhoneFill size={14} className="text-fg-3" />
               <span className="font-mono">{data.contact}</span>
