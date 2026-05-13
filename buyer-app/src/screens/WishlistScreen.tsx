@@ -1,16 +1,12 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RiHeart3Fill, RiHome5Line } from '@remixicon/react';
+import { RiHeart3Fill } from '@remixicon/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWishlist } from '@/api/buyer';
 import { AppHeader } from '@/components/AppHeader';
-import { Button, SkeletonProductCard } from '@/components/ui';
+import { SkeletonProductCard } from '@/components/ui';
 import { ProductCard } from '@/components/ProductCard';
-import { ProductDetailSheet } from '@/components/ProductDetailSheet';
-import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { ErrorState } from '@/components/ErrorState';
-import { EmptyState } from '@/components/EmptyState';
 import { hapticImpact } from '@/lib/haptic';
 import { getTgUser } from '@/lib/telegram';
 
@@ -20,11 +16,6 @@ export function WishlistScreen() {
   const list     = useWishlist(uid);
   const qc       = useQueryClient();
 
-  // Modal stack — HomeScreen pattern bilan parallel
-  const [openPid, setOpenPid]   = useState<string | null>(null);
-  const [showCheckout, setShow] = useState(false);
-  const [checkoutType, setType] = useState<'group' | 'solo'>('group');
-
   const items = list.data || [];
 
   const handleRefresh = async () => {
@@ -33,17 +24,15 @@ export function WishlistScreen() {
       qc.refetchQueries({ queryKey: ['buyer', 'wishlist-ids', uid] }),
     ]);
   };
-  const anyModalOpen = !!openPid || showCheckout;
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} disabled={anyModalOpen}>
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <AppHeader tagline="Saqlanganlar" />
 
       <main className="px-4 mt-4">
         {!uid ? (
-          <EmptyState
-            icon={<RiHeart3Fill size={36} />}
+          <CenteredEmpty
             title="Telegram orqali kiring"
             description="Saqlangan mahsulotlar Telegram hisobingiz bilan bog'liq."
           />
@@ -54,21 +43,9 @@ export function WishlistScreen() {
             {Array.from({ length: 4 }).map((_, i) => <SkeletonProductCard key={i} />)}
           </div>
         ) : items.length === 0 ? (
-          <EmptyState
-            icon={<RiHeart3Fill size={36} />}
+          <CenteredEmpty
             title="Saqlangan mahsulot yo'q"
-            description="Yoqtirgan mahsulotlarni saqlasangiz — bu yerda paydo bo'ladi."
-            action={
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                iconLeft={<RiHome5Line size={18} />}
-                onClick={() => navigate('/')}
-              >
-                Bosh sahifaga
-              </Button>
-            }
+            description="Yoqqan mahsulotlarni saqlash uchun yurakcha bossin."
           />
         ) : (
           <>
@@ -80,29 +57,33 @@ export function WishlistScreen() {
                 <ProductCard
                   key={p.id}
                   item={p}
-                  onClick={() => { hapticImpact('light'); setOpenPid(p.id); }}
+                  onClick={() => { hapticImpact('light'); navigate(`/products/${p.id}`); }}
                 />
               ))}
             </div>
           </>
         )}
       </main>
-
-      <ProductDetailSheet
-        isOpen={!!openPid && !showCheckout}
-        pid={openPid}
-        onClose={() => setOpenPid(null)}
-        onBuyClick={(t) => { setType(t); setShow(true); }}
-        snapPoints={['half', 'full']}
-        initialSnap="half"
-      />
-      <CheckoutSheet
-        isOpen={showCheckout}
-        pid={openPid}
-        defaultType={checkoutType}
-        onClose={() => { setShow(false); }}
-      />
     </div>
     </PullToRefresh>
+  );
+}
+
+/**
+ * WishlistScreen empty — markazda, CTA tugmasiz.
+ * AppHeader + BottomNav balandligini hisobga oladigan markazlash.
+ */
+function CenteredEmpty({ title, description }: { title: string; description: string }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center text-center px-6"
+      style={{ minHeight: 'calc(100vh - 240px)' }}
+    >
+      <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-bg-1 shadow-xs text-danger mb-4">
+        <RiHeart3Fill size={40} />
+      </div>
+      <h2 className="font-display text-lg font-semibold text-fg-1 mb-1.5">{title}</h2>
+      <p className="text-sm text-fg-3 font-body max-w-xs">{description}</p>
+    </div>
   );
 }

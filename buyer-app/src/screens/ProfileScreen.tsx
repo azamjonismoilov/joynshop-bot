@@ -4,7 +4,7 @@ import {
   RiArrowRightSLine,
   RiHeart3Fill,
   RiInformationFill,
-  RiQuestionLine,
+  RiQuestionFill,
   RiShareForwardFill,
   RiShoppingBag3Fill,
   RiTelegramFill,
@@ -93,22 +93,25 @@ export function ProfileScreen() {
           </section>
         )}
 
-        {/* Referral card */}
-        <Card padding="md" className="!border-brand bg-brand-subtle">
+        {/* Referral card — brand bg (CTA aksent) */}
+        <div
+          className="rounded-card p-4 bg-brand text-brand-fg"
+          style={{ boxShadow: '0 4px 16px 0 rgba(250, 115, 25, 0.15)' }}
+        >
           <div className="flex items-start gap-3">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-brand text-brand-fg shrink-0">
+            <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-white/20 text-brand-fg shrink-0">
               <RiTeamFill size={20} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-display text-sm font-bold text-fg-1">
+              <p className="font-display text-sm font-bold text-brand-fg">
                 Do'stni taklif qiling
               </p>
-              <p className="text-xs text-fg-2 font-body mt-0.5">
+              <p className="text-xs text-brand-fg/85 font-body mt-0.5">
                 Har taklif uchun{' '}
-                <span className="font-mono font-semibold text-brand">10,000 so'm</span> cashback.
+                <span className="font-mono font-semibold">10,000 so'm</span> cashback.
               </p>
               {query.data && query.data.referral_count > 0 && (
-                <p className="text-[11px] text-fg-3 font-body mt-1">
+                <p className="text-[11px] text-brand-fg/75 font-body mt-1">
                   Siz {query.data.referral_count} ta do'st taklif qilgansiz —{' '}
                   <span className="font-mono">{formatPrice(query.data.referral_count * 10000)} so'm</span> cashback yig'gansiz.
                 </p>
@@ -116,14 +119,14 @@ export function ProfileScreen() {
               <button
                 type="button"
                 onClick={() => { hapticImpact('light'); setShowReferral(true); }}
-                className="inline-flex items-center gap-1 mt-2.5 px-3 h-8 rounded-button bg-brand text-brand-fg text-xs font-medium font-display hover:bg-brand-hover transition-colors duration-base"
+                className="inline-flex items-center gap-1 mt-2.5 px-3 h-8 rounded-button bg-bg-1 text-brand text-xs font-medium font-display hover:bg-bg-1/90 transition-colors duration-base"
               >
                 <RiShareForwardFill size={14} />
                 Taklif qilish
               </button>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Menu list */}
         <Card padding="none">
@@ -141,7 +144,7 @@ export function ProfileScreen() {
           />
           <Divider />
           <MenuRow
-            icon={<RiQuestionLine size={18} className="text-secondary" />}
+            icon={<RiQuestionFill size={18} className="text-secondary" />}
             label="Yordam markazi"
             hint="Tez orada"
             disabled
@@ -239,5 +242,17 @@ function MenuRow({
 }
 
 function Divider() {
-  return <div className="h-px bg-border" />;
+  // Wallet pattern — icon tagidan o'tmaydi, text qatorida bo'ladi.
+  // Icon container 36px (w-9) + gap-3 (12px) = 48px chap padding (px-3=12px qoldi → 48-12=36).
+  // px-3 (card outer padding) + w-9 + gap-3 dan keyingi joyda turadi.
+  return (
+    <div
+      className="h-px"
+      style={{
+        marginLeft:  'calc(0.75rem + 2.25rem + 0.75rem)', // px-3 + w-9 + gap-3
+        marginRight: '0.75rem',
+        background:  'rgba(0, 0, 0, 0.06)',
+      }}
+    />
+  );
 }

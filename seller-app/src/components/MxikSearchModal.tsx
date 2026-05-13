@@ -3,7 +3,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
   RiExternalLinkLine,
-  RiSearchFill,
+  RiSearchLine,
 } from '@remixicon/react';
 import { Button, Input, Modal } from '@/components/ui';
 import { useMxikSearch } from '@/api/seller';
@@ -65,7 +65,7 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Qidirish..."
-        iconLeft={<RiSearchFill size={16} />}
+        iconLeft={<RiSearchLine size={16} />}
       />
 
       <div className="mt-3 max-h-[40vh] overflow-y-auto -mx-2">

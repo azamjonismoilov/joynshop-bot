@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
-  RiSearchFill,
+  RiSearchLine,
   RiUserFill,
   RiVipCrownFill,
 } from '@remixicon/react';
@@ -100,7 +100,7 @@ export function CustomersScreen() {
           pill
           inputSize="md"
           placeholder="Qidirish: ism"
-          iconLeft={<RiSearchFill size={16} />}
+          iconLeft={<RiSearchLine size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

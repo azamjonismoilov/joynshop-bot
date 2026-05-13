@@ -4,7 +4,7 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiClipboardFill,
-  RiSearchFill,
+  RiSearchLine,
   RiTimeFill,
 } from '@remixicon/react';
 import {
@@ -102,7 +102,7 @@ export function OrdersScreen() {
           pill
           inputSize="md"
           placeholder="Qidirish: kod yoki mijoz ismi"
-          iconLeft={<RiSearchFill size={16} />}
+          iconLeft={<RiSearchLine size={16} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

@@ -65,7 +65,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           'flex items-center gap-2 px-4 transition-colors duration-base',
           SIZE_HEIGHT[inputSize],
           pill
-            ? 'rounded-full bg-bg-3 hover:bg-bg-muted'
+            ? 'rounded-full'
             : 'rounded-input bg-bg-1 border',
           !pill && (hasError ? 'border-danger' : 'border-border'),
           !disabled && !hasError && !pill &&
@@ -75,6 +75,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           disabled && 'bg-bg-2 cursor-not-allowed',
           className,
         )}
+        style={pill && !disabled ? { background: 'var(--color-segmented-bg)' } : undefined}
       >
         {iconLeft && (
           <span className="inline-flex items-center text-fg-3 shrink-0" aria-hidden>

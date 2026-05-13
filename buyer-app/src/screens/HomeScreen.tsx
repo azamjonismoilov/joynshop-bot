@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   RiBox3Fill,
   RiFireFill,
   RiFlashlightFill,
   RiPriceTag3Fill,
-  RiSearchFill,
+  RiSearchLine,
   RiSparkling2Fill,
 } from '@remixicon/react';
 import { useCategories, useProducts } from '@/api/buyer';
@@ -13,8 +14,6 @@ import { Skeleton, SkeletonProductCard } from '@/components/ui';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { ProductCard } from '@/components/ProductCard';
-import { ProductDetailSheet } from '@/components/ProductDetailSheet';
-import { CheckoutSheet } from '@/components/CheckoutSheet';
 import { PullToRefresh } from '@/components/PullToRefresh';
 import { cn } from '@/lib/cn';
 import { hapticImpact, hapticSelection } from '@/lib/haptic';
@@ -31,15 +30,13 @@ const FILTERS: Array<{ key: Filter; label: string; icon: React.ReactNode }> = [
 ];
 
 export function HomeScreen() {
+  const navigate    = useNavigate();
   const products    = useProducts();
   const categoriesQ = useCategories();
 
   const [filter,   setFilter]   = useState<Filter>('all');
   const [category, setCategory] = useState<string>('all');
   const [search,   setSearch]   = useState('');
-  const [openPid,  setOpenPid]  = useState<string | null>(null);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutType, setCheckoutType] = useState<'group' | 'solo'>('group');
   const qc = useQueryClient();
 
   const handleRefresh = async () => {
@@ -49,7 +46,8 @@ export function HomeScreen() {
     ]);
   };
 
-  // Deep link parsing — mount paytida bir marta
+  // Deep link parsing — mount paytida bir marta. ProductDetailScreen'ga
+  // yo'naltiramiz (?action=buy bo'lsa CheckoutSheet u yerda avtomatik ochiladi).
   const deepLinkProcessed = useRef(false);
   useEffect(() => {
     if (deepLinkProcessed.current) return;
@@ -80,16 +78,12 @@ export function HomeScreen() {
     }
 
     if (pid) {
-      setOpenPid(pid);
-      if (autoCheckout) {
-        // Detail sheet birinchi ko'rinsin, keyin checkout
-        setTimeout(() => {
-          setCheckoutType(type);
-          setShowCheckout(true);
-        }, 400);
-      }
+      const path = autoCheckout
+        ? `/products/${pid}?action=buy&type=${type}`
+        : `/products/${pid}`;
+      navigate(path, { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   // Stats — products dan derive
   const stats = useMemo(() => {
@@ -121,10 +115,8 @@ export function HomeScreen() {
     }
   }, [products.data, category, search, filter]);
 
-  const anyModalOpen = !!openPid || showCheckout;
-
   return (
-    <PullToRefresh onRefresh={handleRefresh} disabled={anyModalOpen}>
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-bg-2 pb-28">
       <HomeHeader search={search} onSearch={setSearch} />
 
@@ -163,28 +155,12 @@ export function HomeScreen() {
               <ProductCard
                 key={p.id}
                 item={p}
-                onClick={() => { hapticImpact('light'); setOpenPid(p.id); }}
+                onClick={() => { hapticImpact('light'); navigate(`/products/${p.id}`); }}
               />
             ))}
           </div>
         )}
       </section>
-
-      {/* Modal stack — Detail birinchi, Checkout ustida */}
-      <ProductDetailSheet
-        isOpen={!!openPid && !showCheckout}
-        pid={openPid}
-        onClose={() => setOpenPid(null)}
-        onBuyClick={(t) => { setCheckoutType(t); setShowCheckout(true); }}
-        snapPoints={['half', 'full']}
-        initialSnap="half"
-      />
-      <CheckoutSheet
-        isOpen={showCheckout}
-        pid={openPid}
-        defaultType={checkoutType}
-        onClose={() => setShowCheckout(false)}
-      />
     </div>
     </PullToRefresh>
   );
@@ -211,7 +187,7 @@ function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string
         </h1>
       </div>
       <label className="relative block">
-        <RiSearchFill
+        <RiSearchLine
           size={18}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"
         />

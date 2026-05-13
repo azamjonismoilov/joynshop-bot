@@ -1,53 +1,66 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
-  RiCloseFill,
   RiInboxFill,
   RiPhoneFill,
+  RiShoppingBag3Fill,
   RiStore3Fill,
   RiTeamFill,
   RiTimeFill,
 } from '@remixicon/react';
 import { Badge, Button, Skeleton } from '@/components/ui';
+import { AppHeader } from '@/components/AppHeader';
+import { CheckoutSheet } from '@/components/CheckoutSheet';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { ProductImage } from '@/components/ProductImage';
 import { useProduct } from '@/api/buyer';
 import type { ProductDetail } from '@/api/types';
-import { ProductImage } from './ProductImage';
-import { BottomSheet, type SnapPoint } from './BottomSheet';
 import { cn } from '@/lib/cn';
 import { discountPct, formatPrice } from '@/lib/format';
 import { useMainButton } from '@/lib/useMainButton';
 import { hapticImpact } from '@/lib/haptic';
 import { isInTelegram } from '@/lib/telegram';
 
-interface Props {
-  isOpen:     boolean;
-  pid:        string | null;
-  onClose:    () => void;
-  /** Buyurtma berish tugmasi bosilganda — parent CheckoutSheet'ni ochadi.
-   * Sale type ham uzatiladi (product.sale_type asosida). */
-  onBuyClick?: (type: 'group' | 'solo') => void;
-}
-
 /**
- * Bottom-sheet — mahsulot detail.
- * - Slide-up animation
- * - Backdrop + tap-to-close
- * - Swipe-down to close (drag handle)
- * - Telegram MainButton — "Guruhga qo'shilish" / "Sotib olish"
- *   (Sprint 2 da checkout flow ulanadi)
+ * /products/:pid — Mahsulot tafsiloti sahifasi.
+ * OrderDetailScreen bilan parallel pattern (Sprint 8 P10).
+ *
+ * Deep link: /products/:pid?action=buy&type=group|solo →
+ * sahifa ochilganda CheckoutSheet avtomatik ochiladi.
  */
-interface ExtendedProps extends Props {
-  snapPoints?:  SnapPoint[];
-  initialSnap?: SnapPoint;
-}
+export function ProductDetailScreen() {
+  const { pid } = useParams<{ pid: string }>();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { data, isLoading, isError, error, refetch } = useProduct(pid || null);
 
-export function ProductDetailSheet({
-  isOpen, pid, onClose, onBuyClick,
-  snapPoints  = ['full'],
-  initialSnap = 'full',
-}: ExtendedProps) {
-  const { data, isLoading, isError, error } = useProduct(pid);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutType, setCheckoutType] = useState<'group' | 'solo'>('group');
+
+  // Deep link — ?action=buy&type=group|solo bo'lsa, mount paytida CheckoutSheet
+  // ochish. URL'dan parametrlar olib tashlanadi (back navigation toza bo'lsin).
+  const autoCheckoutProcessed = useRef(false);
+  useEffect(() => {
+    if (autoCheckoutProcessed.current) return;
+    if (!data) return;
+    autoCheckoutProcessed.current = true;
+
+    if (searchParams.get('action') === 'buy') {
+      const type = searchParams.get('type') === 'solo' ? 'solo' : 'group';
+      setCheckoutType(type);
+      // ProductDetail birinchi ko'rinsin (yumshoq UX), keyin checkout
+      setTimeout(() => setShowCheckout(true), 400);
+
+      // URL'ni tozalash
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      next.delete('type');
+      setSearchParams(next, { replace: true });
+    }
+  }, [data, searchParams, setSearchParams]);
 
   const ctaText = data
     ? data.sale_type === 'solo'
@@ -59,45 +72,71 @@ export function ProductDetailSheet({
     if (!data) return;
     hapticImpact('medium');
     const type: 'group' | 'solo' = data.sale_type === 'solo' ? 'solo' : 'group';
-    if (onBuyClick) onBuyClick(type);
+    setCheckoutType(type);
+    setShowCheckout(true);
   };
 
+  // Telegram MainButton — sahifa ochiq paytda, CheckoutSheet yopiq bo'lsa
   useMainButton({
     text:    ctaText,
-    enabled: isOpen && !!data && !isLoading,
+    enabled: !!data && !isLoading && !showCheckout,
     loading: false,
     onClick: triggerBuy,
   });
 
   const inTelegram = isInTelegram();
 
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-bg-2 pb-8">
+        <AppHeader tagline="Mahsulot" showBack />
+        <div className="px-4 mt-4">
+          <ErrorState error={error} onRetry={() => refetch()} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) {
+    return <DetailSkeleton />;
+  }
+
+  if (!pid) {
+    return (
+      <div className="min-h-screen bg-bg-2 pb-8">
+        <AppHeader tagline="Mahsulot" showBack />
+        <div className="px-4 mt-4">
+          <EmptyState
+            icon={<RiInboxFill size={36} />}
+            title="Mahsulot topilmadi"
+            description="Mahsulot ID noto'g'ri yoki o'chirilgan."
+            action={
+              <Button variant="primary" size="lg" fullWidth onClick={() => navigate('/')}>
+                Bosh sahifaga
+              </Button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <BottomSheet
-      isOpen={isOpen}
-      onClose={onClose}
-      snapPoints={snapPoints}
-      initialSnap={initialSnap}
-      zIndex={50}
-      ariaLabel={data?.name || 'Mahsulot tafsilotlari'}
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Yopish"
-        className="absolute top-2 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-bg-3 text-fg-2 hover:bg-bg-muted z-10"
-      >
-        <RiCloseFill size={18} />
-      </button>
-      {isError ? (
-        <ErrorBody error={error} />
-      ) : isLoading || !data ? (
-        <LoadingBody />
-      ) : (
-        <DetailBody data={data} inTelegram={inTelegram} onBuy={triggerBuy} />
-      )}
-    </BottomSheet>
+    <div className="min-h-screen bg-bg-2 pb-28">
+      <AppHeader tagline={data.name || 'Mahsulot'} showBack />
+      <DetailBody data={data} inTelegram={inTelegram} onBuy={triggerBuy} />
+
+      <CheckoutSheet
+        isOpen={showCheckout}
+        pid={pid}
+        defaultType={checkoutType}
+        onClose={() => setShowCheckout(false)}
+      />
+    </div>
   );
 }
+
+export default ProductDetailScreen;
 
 // ═══════════════════════════════════════════════════════════════
 //  Body — to'liq mahsulot detail
@@ -109,10 +148,10 @@ function DetailBody({
 
   return (
     <>
-      {/* Gallery */}
+      {/* Gallery — full-width edge to edge */}
       <Gallery photos={data.photos} photoUrls={data.photo_urls || []} fallback={data.photo_url || ''} />
 
-      <div className="px-5 pt-4 pb-5 space-y-4">
+      <main className="px-4 pt-4 pb-4 space-y-4">
         {/* Shop */}
         {data.shop_name && (
           <p className="inline-flex items-center gap-1.5 text-xs text-fg-3 font-body">
@@ -175,13 +214,13 @@ function DetailBody({
 
         {/* Brauzer fallback — HTML CTA. Telegram'da MainButton bor */}
         {!inTelegram && (
-          <Button variant="primary" size="lg" fullWidth onClick={onBuy}>
+          <Button variant="primary" size="lg" fullWidth onClick={onBuy} iconLeft={<RiShoppingBag3Fill size={18} />}>
             {data.sale_type === 'solo'
               ? `Sotib olish — ${formatPrice(data.solo_price)} so'm`
               : `Guruhga qo'shilish — ${formatPrice(data.group_price)} so'm`}
           </Button>
         )}
-      </div>
+      </main>
     </>
   );
 }
@@ -227,7 +266,10 @@ function GroupProgress({ count, min, deadline }: { count: number; min: number; d
   const pct = Math.min(100, Math.round((count / min) * 100));
   const needed = Math.max(0, min - count);
   return (
-    <div className="bg-bg-2 rounded-xl p-3">
+    <div
+      className="rounded-card p-3"
+      style={{ background: 'var(--color-card-bg)' }}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-display font-medium text-fg-2">
           <RiTeamFill size={14} className="text-brand" />
@@ -267,7 +309,6 @@ function Gallery({
   const [idx, setIdx] = useState(0);
   const startX = useRef<number | null>(null);
 
-  // src list — photo_urls afzal, file_id proxy fallback
   const sources: string[] = (() => {
     if (photoUrls.length > 0) return photoUrls;
     if (photos.length > 0)    return photos.map((fid) => `/api/photo/${fid}`);
@@ -309,8 +350,6 @@ function Gallery({
               alt=""
               className="w-full h-full object-cover"
               fallbackSize={48}
-              // Faqat current + qo'shni slide'larni darhol yuklash —
-              // qolganlar browser native lazy
               lazy={Math.abs(i - idx) > 1}
               draggable={false}
             />
@@ -355,26 +394,18 @@ function Gallery({
   );
 }
 
-function LoadingBody() {
+function DetailSkeleton() {
   return (
-    <div>
+    <div className="min-h-screen bg-bg-2 pb-8">
+      <AppHeader tagline="Mahsulot" showBack />
       <Skeleton height="100%" rounded="none" style={{ aspectRatio: '1 / 1' }} />
-      <div className="px-5 pt-4 pb-5 space-y-3">
+      <main className="px-4 pt-4 pb-4 space-y-3">
         <Skeleton height={14} width="40%" />
         <Skeleton height={28} width="80%" />
         <Skeleton height={20} width="55%" />
         <Skeleton height={60} rounded="xl" />
         <Skeleton height={80} />
-      </div>
-    </div>
-  );
-}
-
-function ErrorBody({ error }: { error: unknown }) {
-  const msg = error instanceof Error ? error.message : 'Tarmoq xatosi';
-  return (
-    <div className="px-6 py-16 text-center">
-      <p className="text-sm text-danger font-body">{msg}</p>
+      </main>
     </div>
   );
 }
