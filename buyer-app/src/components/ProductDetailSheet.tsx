@@ -77,7 +77,7 @@ export function ProductDetailSheet({
       onClose={onClose}
       snapPoints={snapPoints}
       initialSnap={initialSnap}
-      zIndex={100}
+      zIndex={50}
       ariaLabel={data?.name || 'Mahsulot tafsilotlari'}
     >
       <button

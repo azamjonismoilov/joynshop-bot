@@ -79,7 +79,7 @@ export function OrderDetailSheet({
         onClose={onClose}
         snapPoints={snapPoints}
         initialSnap={initialSnap}
-        zIndex={100}
+        zIndex={50}
         ariaLabel={`Buyurtma ${order.code}`}
       >
         <button

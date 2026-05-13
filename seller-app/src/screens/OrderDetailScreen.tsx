@@ -118,7 +118,7 @@ function BuyerCard({ data }: { data: OrderDetailResponse }) {
             <p className="text-sm text-fg-3 font-mono mt-0.5">{data.buyer.phone}</p>
           )}
           {data.buyer.username && (
-            <p className="text-xs text-secondary font-mono mt-0.5">@{data.buyer.username}</p>
+            <p className="text-xs text-fg-3 font-mono mt-0.5">@{data.buyer.username}</p>
           )}
         </div>
       </div>

@@ -74,7 +74,7 @@ export function ReferralSheet({ isOpen, uid, count, onClose }: Props) {
       isOpen={isOpen}
       onClose={onClose}
       snapPoints={['full']}
-      zIndex={105}
+      zIndex={55}
       ariaLabel="Do'stni taklif qilish"
     >
         <button

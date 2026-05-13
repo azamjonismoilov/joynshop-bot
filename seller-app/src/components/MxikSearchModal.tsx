@@ -167,7 +167,7 @@ export function MxikSearchModal({ isOpen, onClose, onPick }: Props) {
               href="https://tasnif.soliq.uz/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-secondary hover:underline font-body"
+              className="inline-flex items-center gap-1 text-xs text-brand hover:underline font-body"
             >
               MXIK kodini bilmaysizmi? tasnif.soliq.uz dan toping
               <RiExternalLinkLine size={12} />

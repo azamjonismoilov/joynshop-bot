@@ -11,6 +11,14 @@
   --color-brand-subtle:    #FFF3EA;
   --color-brand-fg:        #FFFFFF;
 
+  /* Semantic alias — primary = brand (asosiy action rangi).
+   * Sheet/Modal action tugmalari uchun unified naming. */
+  --color-primary:         var(--color-brand);
+  --color-primary-hover:   var(--color-brand-hover);
+  --color-primary-active:  var(--color-brand-active);
+  --color-primary-subtle:  var(--color-brand-subtle);
+  --color-primary-fg:      var(--color-brand-fg);
+
   --color-secondary:       #335CFF;
   --color-secondary-hover: #2950E5;
   --color-secondary-active:#2143CC;

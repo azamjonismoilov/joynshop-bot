@@ -19,7 +19,9 @@ interface BottomSheetProps {
   snapPoints?:   SnapPoint[];
   /** Boshlang'ich snap holat — default 'full'. */
   initialSnap?:  SnapPoint;
-  /** Stack layer — Detail 100, Checkout 110, Referral 105. */
+  /** Backdrop z-index. Sheet content `zIndex + 1`'da bo'ladi.
+   * BottomNav (z-40) dan yuqorida bo'lishi shart.
+   * Stacking: Detail 50, Referral 55, Checkout 60. */
   zIndex?:       number;
   /** Pastga swipe orqali yopish — default true. */
   swipeToClose?: boolean;
@@ -219,58 +221,70 @@ export function BottomSheet({
 
   if (!isOpen) return null;
 
+  // Z-index hierarchy: backdrop, sheet content sibling fixed elementlar
+  // — parent stacking context yo'q, har biri global z-index'da. Stacking
+  // (CheckoutSheet over ProductDetailSheet) — zIndex prop'ni har sheet
+  // uchun farqlash orqali (50, 55, 60).
+  // BottomNav z-40 dan yuqorida bo'lishi shart.
+  const backdropZ = zIndex;
+  const sheetZ    = zIndex + 1;
+
   return (
-    <div
-      className="fixed inset-0 flex items-end justify-center animate-[fadeIn_120ms_ease-out]"
-      role="dialog"
-      aria-modal="true"
-      aria-label={ariaLabel}
-      style={{ zIndex }}
-    >
+    <>
       <div
         ref={backdropRef}
-        className="absolute inset-0 bg-black motion-safe:transition-opacity motion-safe:duration-300"
-        style={{ opacity: snap === 'full' ? 0.55 : 0.30 }}
+        className="fixed inset-0 bg-black animate-[fadeIn_120ms_ease-out] motion-safe:transition-opacity motion-safe:duration-300"
+        style={{
+          opacity: snap === 'full' ? 0.55 : 0.30,
+          zIndex:  backdropZ,
+        }}
         onClick={onClose}
+        aria-hidden
       />
       <div
-        ref={sheetRef}
-        className={cn(
-          'relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl',
-          'flex flex-col overflow-hidden',
-          'motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out',
-          // Sheet to'liq viewport balandligida (drag bilan tortilganda kichrayadi)
-          className,
-        )}
-        style={{
-          height:    '92vh',
-          transform: `translateY(${SNAP_TRANSLATE[snap]}%)`,
-          // Drag paytida transition o'chiriladi (smooth follow)
-          transitionProperty: dragging ? 'none' : undefined,
-          touchAction: 'pan-y',
-        }}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
+        className="fixed inset-0 flex items-end justify-center pointer-events-none"
+        style={{ zIndex: sheetZ }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
       >
         <div
-          data-sheet-handle
-          className="pt-2.5 pb-1.5 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing"
-        >
-          <div className="w-10 h-1 rounded-full bg-neutral-300" />
-        </div>
-        <div
-          ref={scrollRef}
-          data-scroll-region
+          ref={sheetRef}
           className={cn(
-            'flex-1 overscroll-contain',
-            snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden',
+            'relative w-full max-w-md bg-bg-1 rounded-t-3xl shadow-xl',
+            'flex flex-col overflow-hidden pointer-events-auto',
+            'motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out',
+            className,
           )}
+          style={{
+            height:    '92vh',
+            transform: `translateY(${SNAP_TRANSLATE[snap]}%)`,
+            transitionProperty: dragging ? 'none' : undefined,
+            touchAction: 'pan-y',
+          }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
         >
-          {children}
+          <div
+            data-sheet-handle
+            className="pt-2.5 pb-1.5 flex items-center justify-center shrink-0 cursor-grab active:cursor-grabbing"
+          >
+            <div className="w-10 h-1 rounded-full bg-neutral-300" />
+          </div>
+          <div
+            ref={scrollRef}
+            data-scroll-region
+            className={cn(
+              'flex-1 overscroll-contain',
+              snap === 'full' ? 'overflow-y-auto' : 'overflow-hidden',
+            )}
+          >
+            {children}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

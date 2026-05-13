@@ -166,7 +166,7 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
       isOpen={isOpen}
       onClose={onClose}
       snapPoints={['full']}
-      zIndex={110}
+      zIndex={60}
       swipeToClose={step === 'variant' || step === 'delivery'}
       ariaLabel="Buyurtma berish"
     >
