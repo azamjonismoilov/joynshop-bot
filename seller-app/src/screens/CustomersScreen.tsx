@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   RiArrowLeftSLine,
@@ -218,6 +218,13 @@ function FilterBar({
   onChange: (v: CustomerFilter) => void;
   summary?: CustomersSummary;
 }) {
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    const el = tabRefs.current[value];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [value]);
+
   return (
     <div
       className="w-full rounded-full p-1 overflow-x-auto no-scrollbar"
@@ -230,6 +237,7 @@ function FilterBar({
           return (
             <button
               key={tab.key}
+              ref={(el) => { tabRefs.current[tab.key] = el; }}
               onClick={() => onChange(tab.key)}
               className={cn(
                 'shrink-0 inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-sm font-medium font-display',

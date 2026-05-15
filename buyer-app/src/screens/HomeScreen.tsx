@@ -264,6 +264,13 @@ function CategoryBar({
   items: { name: string; icon: string; count: number }[];
   isLoading: boolean;
 }) {
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  useEffect(() => {
+    const el = tabRefs.current[value];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [value]);
+
   if (isLoading) {
     return (
       <div className="px-4 mt-2 pb-1">
@@ -288,7 +295,11 @@ function CategoryBar({
         style={{ background: 'var(--color-segmented-bg)' }}
       >
         <div className="inline-flex gap-0.5 w-max">
-          <CatChip active={value === 'all'} onClick={() => onChange('all')}>
+          <CatChip
+            active={value === 'all'}
+            onClick={() => onChange('all')}
+            tabRef={(el) => { tabRefs.current['all'] = el; }}
+          >
             Hammasi
           </CatChip>
           {items.map((c) => (
@@ -296,6 +307,7 @@ function CategoryBar({
               key={c.name}
               active={value === c.name}
               onClick={() => onChange(c.name)}
+              tabRef={(el) => { tabRefs.current[c.name] = el; }}
             >
               <span className="mr-1">{c.icon}</span>
               {c.name}
@@ -308,11 +320,17 @@ function CategoryBar({
 }
 
 function CatChip({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  active, onClick, children, tabRef,
+}: {
+  active:   boolean;
+  onClick:  () => void;
+  children: React.ReactNode;
+  tabRef?:  (el: HTMLButtonElement | null) => void;
+}) {
   return (
     <button
       type="button"
+      ref={tabRef}
       onClick={onClick}
       className={cn(
         'inline-flex items-center px-3 h-6 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
