@@ -219,41 +219,39 @@ function FilterBar({
   summary?: CustomersSummary;
 }) {
   return (
-    <div className="overflow-x-auto -mx-4 px-4 pb-1 scrollbar-none">
-      <div
-        className="inline-flex rounded-full p-1 gap-0.5"
-        style={{ background: 'var(--color-segmented-bg)' }}
-      >
-        {FILTER_TABS.map((tab) => {
-          const count  = tab.countKey && summary ? (summary[tab.countKey] as number) : null;
-          const active = value === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => onChange(tab.key)}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full text-sm font-medium font-display',
-                'whitespace-nowrap transition-colors duration-base shrink-0',
-                active
-                  ? 'bg-bg-1 shadow-sm text-fg-1'
-                  : 'bg-transparent text-fg-3 hover:text-fg-2',
-              )}
-            >
-              {tab.label}
-              {count !== null && count > 0 && (
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold',
-                    active ? 'bg-brand text-brand-fg' : 'bg-bg-1 text-fg-3',
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+    <div
+      className="flex w-full rounded-full p-1 gap-0.5"
+      style={{ background: 'var(--color-segmented-bg)' }}
+    >
+      {FILTER_TABS.map((tab) => {
+        const count  = tab.countKey && summary ? (summary[tab.countKey] as number) : null;
+        const active = value === tab.key;
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className={cn(
+              'flex-1 inline-flex items-center justify-center gap-1.5 px-2 h-8 rounded-full text-sm font-medium font-display',
+              'whitespace-nowrap transition-colors duration-base min-w-0',
+              active
+                ? 'bg-bg-1 shadow-sm text-fg-1'
+                : 'bg-transparent text-fg-3 hover:text-fg-2',
+            )}
+          >
+            <span className="truncate">{tab.label}</span>
+            {count !== null && count > 0 && (
+              <span
+                className={cn(
+                  'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold shrink-0',
+                  active ? 'bg-brand text-brand-fg' : 'bg-bg-1 text-fg-3',
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

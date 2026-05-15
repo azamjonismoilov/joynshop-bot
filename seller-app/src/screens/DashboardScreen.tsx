@@ -188,7 +188,7 @@ function PeriodFilter({
 }: { value: PeriodOption; onChange: (p: PeriodOption) => void }) {
   return (
     <div
-      className="inline-flex w-full rounded-full p-1 gap-0.5"
+      className="flex w-full rounded-full p-1 gap-0.5"
       style={{ background: 'var(--color-segmented-bg)' }}
     >
       {PERIODS.map((p) => (

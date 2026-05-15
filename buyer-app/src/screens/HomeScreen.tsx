@@ -210,9 +210,9 @@ function FilterBar({
   value, onChange,
 }: { value: Filter; onChange: (v: Filter) => void }) {
   return (
-    <div className="px-4 mt-4 overflow-x-auto no-scrollbar">
+    <div className="px-4 mt-4">
       <div
-        className="inline-flex rounded-full p-1 gap-0.5"
+        className="flex w-full rounded-full p-1 gap-0.5"
         style={{ background: 'var(--color-segmented-bg)' }}
       >
         {FILTERS.map((f) => {
@@ -223,7 +223,7 @@ function FilterBar({
               type="button"
               onClick={() => onChange(f.key)}
               className={cn(
-                'inline-flex items-center gap-1 px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
+                'flex-1 inline-flex items-center justify-center gap-1 px-2 h-7 rounded-full text-xs font-medium font-display transition-colors duration-base',
                 active
                   ? 'bg-bg-1 shadow-sm text-fg-1'
                   : 'bg-transparent text-fg-3 hover:text-fg-2',
@@ -252,38 +252,42 @@ function CategoryBar({
 }) {
   if (isLoading) {
     return (
-      <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
+      <div className="px-4 mt-2 pb-1">
         <div
-        className="inline-flex rounded-full p-1 gap-0.5"
-        style={{ background: 'var(--color-segmented-bg)' }}
-      >
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} width={80} height={26} rounded="full" />
-          ))}
+          className="w-full rounded-full p-1 overflow-x-auto"
+          style={{ background: 'var(--color-segmented-bg)' }}
+        >
+          <div className="inline-flex gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} width={80} height={26} rounded="full" />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
   if (items.length === 0) return null;
   return (
-    <div className="px-4 mt-2 overflow-x-auto no-scrollbar pb-1">
+    <div className="px-4 mt-2 pb-1">
       <div
-        className="inline-flex rounded-full p-1 gap-0.5"
+        className="w-full rounded-full p-1 overflow-x-auto"
         style={{ background: 'var(--color-segmented-bg)' }}
       >
-        <CatChip active={value === 'all'} onClick={() => onChange('all')}>
-          Hammasi
-        </CatChip>
-        {items.map((c) => (
-          <CatChip
-            key={c.name}
-            active={value === c.name}
-            onClick={() => onChange(c.name)}
-          >
-            <span className="mr-1">{c.icon}</span>
-            {c.name}
+        <div className="inline-flex gap-0.5">
+          <CatChip active={value === 'all'} onClick={() => onChange('all')}>
+            Hammasi
           </CatChip>
-        ))}
+          {items.map((c) => (
+            <CatChip
+              key={c.name}
+              active={value === c.name}
+              onClick={() => onChange(c.name)}
+            >
+              <span className="mr-1">{c.icon}</span>
+              {c.name}
+            </CatChip>
+          ))}
+        </div>
       </div>
     </div>
   );

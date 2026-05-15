@@ -158,6 +158,27 @@
   /* iOS-spesifik kichik o'zgartirishlar (optional) */
 }
 
+/* Global scrollbar yashirin — Telegram Wallet pattern. Scroll ishlaydi
+ * (swipe / wheel / touch), faqat track ko'rinmaydi. */
+*::-webkit-scrollbar {
+  width:  0;
+  height: 0;
+  display: none;
+}
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: transparent; }
+
+* {
+  scrollbar-width:    none;        /* Firefox */
+  -ms-overflow-style: none;        /* IE / old Edge */
+}
+
+/* Backwards-compatible aliaslar — eski callsite'lar */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.no-scrollbar,
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* iOS pull-to-refresh / overscroll bounce'ni o'chirish — Mini App'da
  * native gesture konfliktini oldini olish (Sprint 7). */
 html, body {

@@ -67,44 +67,42 @@ export function OrdersScreen() {
         </div>
       ) : (
         <main className="px-4 mt-3 space-y-3">
-          {/* Segmented control — iOS Wallet pattern */}
-          <div className="overflow-x-auto no-scrollbar pb-1">
-            <div
-              className="inline-flex rounded-full p-1 gap-0.5"
-              style={{ background: 'var(--color-segmented-bg)' }}
-            >
-              {FILTERS.map((f) => {
-                const active = filter === f.key;
-                const count  = f.key === 'all'
-                  ? orders.length
-                  : f.key === 'active'
-                    ? orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length
-                    : orders.filter((o) => DONE_STATUSES.includes(o.status)).length;
-                return (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => { hapticSelection(); setFilter(f.key); }}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-3.5 h-7 rounded-full text-xs font-medium font-display shrink-0 transition-colors duration-base',
-                      active
-                        ? 'bg-bg-1 shadow-sm text-fg-1'
-                        : 'bg-transparent text-fg-3 hover:text-fg-2',
-                    )}
-                  >
-                    {f.label}
-                    {count > 0 && (
-                      <span className={cn(
-                        'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold',
-                        active ? 'bg-brand text-brand-fg' : 'bg-bg-1 text-fg-3',
-                      )}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Segmented control — iOS Wallet pattern, equal width */}
+          <div
+            className="flex w-full rounded-full p-1 gap-0.5"
+            style={{ background: 'var(--color-segmented-bg)' }}
+          >
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              const count  = f.key === 'all'
+                ? orders.length
+                : f.key === 'active'
+                  ? orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length
+                  : orders.filter((o) => DONE_STATUSES.includes(o.status)).length;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => { hapticSelection(); setFilter(f.key); }}
+                  className={cn(
+                    'flex-1 inline-flex items-center justify-center gap-1.5 px-3 h-7 rounded-full text-xs font-medium font-display transition-colors duration-base',
+                    active
+                      ? 'bg-bg-1 shadow-sm text-fg-1'
+                      : 'bg-transparent text-fg-3 hover:text-fg-2',
+                  )}
+                >
+                  {f.label}
+                  {count > 0 && (
+                    <span className={cn(
+                      'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-mono font-semibold',
+                      active ? 'bg-brand text-brand-fg' : 'bg-bg-1 text-fg-3',
+                    )}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Body */}
