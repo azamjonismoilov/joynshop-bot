@@ -179,6 +179,14 @@
 .no-scrollbar,
 .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* iOS momentum scroll va touch-action — gorizontal swipe container'lar
+ * uchun (variant chip lar, search modal). overflow-x-auto bo'lganda
+ * touch-action: pan-x parent vertical scroll bilan ziddiyatni oldini oladi. */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
 /* iOS pull-to-refresh / overscroll bounce'ni o'chirish — Mini App'da
  * native gesture konfliktini oldini olish (Sprint 7). */
 html, body {

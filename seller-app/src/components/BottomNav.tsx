@@ -6,10 +6,14 @@ import {
   RiShoppingBag3Fill,
   RiTeamFill,
 } from '@remixicon/react';
+import { useSellerOrders } from '@/api/seller';
 import { cn } from '@/lib/cn';
 import { hapticSelection } from '@/lib/haptic';
 
+type ItemKey = 'home' | 'products' | 'orders' | 'customers' | 'settings';
+
 interface NavItem {
+  key:    ItemKey;
   to:     string;
   label:  string;
   icon:   React.ReactNode;
@@ -17,11 +21,11 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
-  { to: '/',          label: 'Bosh',     icon: <RiHome5Fill size={22} />,        exact: true },
-  { to: '/products',  label: 'Mahsulot', icon: <RiBox3Fill size={22} /> },
-  { to: '/orders',    label: 'Buyurtma', icon: <RiShoppingBag3Fill size={22} /> },
-  { to: '/customers', label: 'Mijoz',    icon: <RiTeamFill size={22} /> },
-  { to: '/settings',  label: 'Sozlama',  icon: <RiSettings3Fill size={22} /> },
+  { key: 'home',      to: '/',          label: 'Bosh',     icon: <RiHome5Fill size={22} />,        exact: true },
+  { key: 'products',  to: '/products',  label: 'Mahsulot', icon: <RiBox3Fill size={22} /> },
+  { key: 'orders',    to: '/orders',    label: 'Buyurtma', icon: <RiShoppingBag3Fill size={22} /> },
+  { key: 'customers', to: '/customers', label: 'Mijoz',    icon: <RiTeamFill size={22} /> },
+  { key: 'settings',  to: '/settings',  label: 'Sozlama',  icon: <RiSettings3Fill size={22} /> },
 ];
 
 function isActive(pathname: string, to: string, exact?: boolean): boolean {
@@ -31,6 +35,11 @@ function isActive(pathname: string, to: string, exact?: boolean): boolean {
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const ordersQuery  = useSellerOrders();
+
+  // Server'dan summary.pending (yangi, hali tasdiqlanmagan buyurtmalar).
+  const ordersBadge = ordersQuery.data?.summary?.pending ?? 0;
+
   return (
     <nav
       aria-label="Asosiy navigatsiya"
@@ -43,6 +52,7 @@ export function BottomNav() {
     >
       {ITEMS.map((item) => {
         const active = isActive(pathname, item.to, item.exact);
+        const badge  = item.key === 'orders' ? ordersBadge : 0;
         return (
           <Link
             key={item.to}
@@ -51,21 +61,25 @@ export function BottomNav() {
             aria-current={active ? 'page' : undefined}
             onClick={() => { if (!active) hapticSelection(); }}
             className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 min-h-12',
+              'flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-2 min-h-12',
               'motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out',
-              active
-                ? 'bg-brand text-white'
-                : 'text-fg-3 hover:text-fg-1',
             )}
           >
-            <span className="inline-flex items-center justify-center">
+            <span
+              className={cn(
+                'relative inline-flex items-center justify-center',
+                'motion-safe:transition-colors motion-safe:duration-200',
+                active ? 'text-brand' : 'text-fg-3',
+              )}
+            >
               {item.icon}
+              {badge > 0 && <NavBadge count={badge} />}
             </span>
             <span
               className={cn(
                 'text-[11px] leading-tight font-medium font-display whitespace-nowrap truncate max-w-full',
                 'motion-safe:transition-colors motion-safe:duration-200',
-                active ? 'text-white' : 'text-fg-3',
+                active ? 'text-brand' : 'text-fg-3',
               )}
               style={{ letterSpacing: '-0.1px' }}
             >
@@ -75,5 +89,22 @@ export function BottomNav() {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * Tab icon ustida qizil bildirishnoma badge — Telegram pattern.
+ * Bottom Nav oq fonida ko'rinish uchun 2px oq ring.
+ */
+function NavBadge({ count }: { count: number }) {
+  const label = count > 99 ? '99+' : String(count);
+  return (
+    <span
+      aria-hidden
+      className="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold font-mono leading-none"
+      style={{ boxShadow: '0 0 0 2px #FFFFFF' }}
+    >
+      {label}
+    </span>
   );
 }

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   RiHeart3Fill,
@@ -5,23 +6,29 @@ import {
   RiShoppingBag3Fill,
   RiUser3Fill,
 } from '@remixicon/react';
+import { useBuyerOrders } from '@/api/buyer';
 import { cn } from '@/lib/cn';
 import { hapticSelection } from '@/lib/haptic';
+import { getTgUser } from '@/lib/telegram';
+
+type ItemKey = 'home' | 'wishlist' | 'orders' | 'profile';
 
 interface NavItem {
+  key:    ItemKey;
   to:     string;
   label:  string;
   icon:   React.ReactNode;
   exact?: boolean;
 }
 
-// 4 ta xaridor tab. Buyurtmalar va Profil — Sprint 3.
 const ITEMS: NavItem[] = [
-  { to: '/',          label: 'Bosh sahifa', icon: <RiHome5Fill size={22} />,         exact: true },
-  { to: '/wishlist',  label: 'Saqlangan',   icon: <RiHeart3Fill size={22} /> },
-  { to: '/orders',    label: 'Buyurtma',    icon: <RiShoppingBag3Fill size={22} /> },
-  { to: '/profile',   label: 'Profil',      icon: <RiUser3Fill size={22} /> },
+  { key: 'home',     to: '/',          label: 'Bosh sahifa', icon: <RiHome5Fill size={22} />,        exact: true },
+  { key: 'wishlist', to: '/wishlist',  label: 'Saqlangan',   icon: <RiHeart3Fill size={22} /> },
+  { key: 'orders',   to: '/orders',    label: 'Buyurtma',    icon: <RiShoppingBag3Fill size={22} /> },
+  { key: 'profile',  to: '/profile',   label: 'Profil',      icon: <RiUser3Fill size={22} /> },
 ];
+
+const ACTIVE_STATUSES = ['pending', 'confirming', 'confirmed'] as const;
 
 function isActive(pathname: string, to: string, exact?: boolean): boolean {
   if (exact) return pathname === to;
@@ -30,6 +37,14 @@ function isActive(pathname: string, to: string, exact?: boolean): boolean {
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const uid          = getTgUser()?.id ?? null;
+  const ordersQuery  = useBuyerOrders(uid);
+
+  const ordersBadge = useMemo(() => {
+    if (!ordersQuery.data) return 0;
+    return ordersQuery.data.filter((o) => (ACTIVE_STATUSES as readonly string[]).includes(o.status)).length;
+  }, [ordersQuery.data]);
+
   return (
     <nav
       aria-label="Asosiy navigatsiya"
@@ -42,6 +57,7 @@ export function BottomNav() {
     >
       {ITEMS.map((item) => {
         const active = isActive(pathname, item.to, item.exact);
+        const badge  = item.key === 'orders' ? ordersBadge : 0;
         return (
           <Link
             key={item.to}
@@ -50,21 +66,25 @@ export function BottomNav() {
             aria-current={active ? 'page' : undefined}
             onClick={() => { if (!active) hapticSelection(); }}
             className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 rounded-full px-2 py-2 min-h-12',
+              'flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-2 min-h-12',
               'motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out',
-              active
-                ? 'bg-brand text-white'
-                : 'text-fg-3 hover:text-fg-1',
             )}
           >
-            <span className="inline-flex items-center justify-center">
+            <span
+              className={cn(
+                'relative inline-flex items-center justify-center',
+                'motion-safe:transition-colors motion-safe:duration-200',
+                active ? 'text-brand' : 'text-fg-3',
+              )}
+            >
               {item.icon}
+              {badge > 0 && <NavBadge count={badge} />}
             </span>
             <span
               className={cn(
                 'text-[11px] leading-tight font-medium font-display whitespace-nowrap truncate max-w-full',
                 'motion-safe:transition-colors motion-safe:duration-200',
-                active ? 'text-white' : 'text-fg-3',
+                active ? 'text-brand' : 'text-fg-3',
               )}
               style={{ letterSpacing: '-0.1px' }}
             >
@@ -74,5 +94,22 @@ export function BottomNav() {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * Tab icon ustida qizil bildirishnoma badge — Telegram pattern.
+ * Bottom Nav oq fonida ko'rinish uchun 2px oq ring.
+ */
+function NavBadge({ count }: { count: number }) {
+  const label = count > 99 ? '99+' : String(count);
+  return (
+    <span
+      aria-hidden
+      className="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold font-mono leading-none"
+      style={{ boxShadow: '0 0 0 2px #FFFFFF' }}
+    >
+      {label}
+    </span>
   );
 }

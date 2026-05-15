@@ -178,25 +178,39 @@ const SECTION_TITLES: Record<Filter, string> = {
 // ═══════════════════════════════════════════════════════════════
 function HomeHeader({ search, onSearch }: { search: string; onSearch: (v: string) => void }) {
   const showHeader = useShouldShowHeader();
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!showHeader) return;
+    const handler = () => setScrolled(window.scrollY > 4);
+    handler();
+    window.addEventListener('scroll', handler, { passive: true });
+    return () => window.removeEventListener('scroll', handler);
+  }, [showHeader]);
+
   if (!showHeader) return null;
   return (
-    <header className="bg-brand text-white pt-safe-top pb-3 px-4 motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out">
+    <header
+      className="sticky top-0 z-30 bg-bg-2 pt-safe-top pb-3 px-4 motion-safe:transition-shadow motion-safe:duration-200"
+      style={{ boxShadow: scrolled ? '0 1px 4px rgba(0, 0, 0, 0.06)' : 'none' }}
+    >
       <div className="flex items-center justify-center pb-2">
-        <h1 className="font-display text-xl font-extrabold text-white tracking-tight">
+        <h1 className="font-display text-xl font-extrabold text-fg-1 tracking-tight">
           Joynshop
         </h1>
       </div>
       <label className="relative block">
         <RiSearchLine
           size={18}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-3 pointer-events-none"
         />
         <input
           type="search"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Mahsulot yoki do'kon qidirish"
-          className="w-full h-10 pl-10 pr-4 rounded-full bg-white/15 text-sm text-white placeholder:text-white/70 font-body outline-none focus:bg-white focus:text-fg-1 focus:placeholder:text-fg-4 transition-colors duration-base"
+          className="w-full h-10 pl-10 pr-4 rounded-full text-sm text-fg-1 placeholder:text-fg-4 font-body outline-none focus-within:ring-2 focus-within:ring-brand-subtle transition-colors duration-base"
+          style={{ background: 'var(--color-segmented-bg)' }}
         />
       </label>
     </header>
@@ -257,7 +271,7 @@ function CategoryBar({
           className="w-full rounded-full p-1 overflow-x-auto"
           style={{ background: 'var(--color-segmented-bg)' }}
         >
-          <div className="inline-flex gap-0.5">
+          <div className="inline-flex gap-0.5 w-max">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} width={80} height={26} rounded="full" />
             ))}
@@ -273,7 +287,7 @@ function CategoryBar({
         className="w-full rounded-full p-1 overflow-x-auto"
         style={{ background: 'var(--color-segmented-bg)' }}
       >
-        <div className="inline-flex gap-0.5">
+        <div className="inline-flex gap-0.5 w-max">
           <CatChip active={value === 'all'} onClick={() => onChange('all')}>
             Hammasi
           </CatChip>
