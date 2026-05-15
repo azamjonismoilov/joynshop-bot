@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   RiArrowRightSLine,
+  RiFileTextFill,
   RiHeart3Fill,
   RiInformationFill,
   RiQuestionFill,
   RiShareForwardFill,
+  RiShieldUserFill,
   RiShoppingBag3Fill,
   RiTelegramFill,
   RiTeamFill,
@@ -148,6 +150,24 @@ export function ProfileScreen() {
             label="Yordam markazi"
             hint="Tez orada"
             disabled
+          />
+          <Divider />
+          <MenuRow
+            icon={<RiFileTextFill size={18} className="text-fg-3" />}
+            label="Foydalanuvchi shartnomasi"
+            onClick={() => {
+              hapticImpact('light');
+              window.open('https://telegra.ph/Joynshop-Foydalanuvchi-Shartnomasi-05-15', '_blank', 'noopener,noreferrer');
+            }}
+          />
+          <Divider />
+          <MenuRow
+            icon={<RiShieldUserFill size={18} className="text-fg-3" />}
+            label="Maxfiylik siyosati"
+            onClick={() => {
+              hapticImpact('light');
+              window.open('https://telegra.ph/Joynshop-Maxfiylik-Siyosati-05-15', '_blank', 'noopener,noreferrer');
+            }}
           />
           <Divider />
           <MenuRow

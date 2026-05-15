@@ -116,13 +116,16 @@ export interface BuyerProfileResponse {
 
 /** /api/checkout payload */
 export interface CheckoutBody {
-  product_id: string;
-  user_id:    number;
-  user_name?: string;
-  type:       'group' | 'solo';
-  variant?:   string;
-  delivery:   'pickup' | 'deliver';
-  address?:   string;
+  product_id:     string;
+  user_id:        number;
+  user_name?:     string;
+  type:           'group' | 'solo';
+  variant?:       string;
+  delivery:       'pickup' | 'deliver';
+  address?:       string;
+  /** Foydalanuvchi shartnomasi va Maxfiylik siyosati qabul qilinganmi
+   *  (CheckoutSheet ConfirmStep inline matn — implicit consent). */
+  terms_accepted: boolean;
 }
 
 /** /api/checkout javobi — Paylov uchun strategik ochiq tuzilma */

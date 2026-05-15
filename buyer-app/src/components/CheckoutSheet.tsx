@@ -95,13 +95,14 @@ export function CheckoutSheet({ isOpen, pid, defaultType, onClose, onSuccess }: 
     }
     mutation.mutate(
       {
-        product_id: data.id,
-        user_id:    tgUser.id,
-        user_name:  userName,
-        type:       defaultType,
+        product_id:      data.id,
+        user_id:         tgUser.id,
+        user_name:       userName,
+        type:            defaultType,
         variant,
         delivery,
-        address:    finalAddress,
+        address:         finalAddress,
+        terms_accepted:  true,  // implicit consent — confirm step inline matn
       },
       {
         onSuccess: (res: CheckoutResponse) => {
@@ -433,6 +434,27 @@ function ConfirmStep({
           To'lov tizimi tez orada ulanadi — vaqtincha sotuvchi bilan
           to'g'ridan-to'g'ri kelishasiz.
         </span>
+      </p>
+      <p className="text-[11px] text-fg-3 font-body leading-relaxed">
+        Buyurtma berish bilan{' '}
+        <a
+          href="https://telegra.ph/Joynshop-Foydalanuvchi-Shartnomasi-05-15"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand underline"
+        >
+          Foydalanuvchi shartnomasi
+        </a>
+        {' '}va{' '}
+        <a
+          href="https://telegra.ph/Joynshop-Maxfiylik-Siyosati-05-15"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand underline"
+        >
+          Maxfiylik siyosati
+        </a>
+        ni qabul qilaman.
       </p>
       {msg && (
         <p className="text-sm text-danger font-body bg-danger-subtle rounded-md px-3 py-2">

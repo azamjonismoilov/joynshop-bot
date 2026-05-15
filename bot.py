@@ -166,11 +166,22 @@ lives           = {}  # {live_id: {...}} - Live Commerce streams
 _photo_url_cache = {}
 seller_shops    = {}
 seller_products = {}
-seller_profiles = {}  # {uid: {legal_status, stir, bank_account, bank_name, bank_mfo, director_name, legal_completed_at}}
+seller_profiles = {}  # {uid: {legal_status, stir, bank_account, ..., terms_accepted, terms_accepted_at, terms_version}}
 verified_channels       = {}
 pending_moderator_codes = {}
 referrals               = {}
 referral_map            = {}
+# Sprint 8 P18 — Audit log uchun (yurist tekshiruvi). Har element:
+# {user_id, role: 'seller'|'buyer', version, accepted_at}
+terms_acceptance_log    = []
+
+# ─── TERMS (Sprint 8 P18) ───────────────────────────────────────────
+TERMS_VERSION = '1.0'
+TERMS_URLS = {
+    'seller_rules':   'https://telegra.ph/Joynshop-Sotuvchi-Qoidalari-05-15',
+    'user_agreement': 'https://telegra.ph/Joynshop-Foydalanuvchi-Shartnomasi-05-15',
+    'privacy_policy': 'https://telegra.ph/Joynshop-Maxfiylik-Siyosati-05-15',
+}
 
 # ─── PERSISTENCE (PostgreSQL) ───────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -224,6 +235,7 @@ def save_data():
                 'referral_map':           {str(k): v for k, v in referral_map.items()},
                 'customers':              {str(k): v for k, v in customers.items()},
                 'lives':                  {str(k): v for k, v in lives.items()},
+                'terms_acceptance_log':   terms_acceptance_log,
             }
             payload = json.dumps(data, ensure_ascii=False, default=str)
             conn    = get_db()
@@ -246,7 +258,7 @@ def load_data():
     global products, groups, orders, wishlists, buyer_profiles
     global refund_requests, seller_products, verified_channels
     global pending_moderator_codes, referrals, referral_map, seller_shops, customers, lives
-    global seller_profiles
+    global seller_profiles, terms_acceptance_log
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
@@ -285,6 +297,10 @@ def load_data():
             _prof.setdefault('bank_mfo',           None)
             _prof.setdefault('director_name',      None)
             _prof.setdefault('legal_completed_at', None)
+            # Sprint 8 P18 — eski sotuvchilar terms_accepted=False (qaytadan accept kerak)
+            _prof.setdefault('terms_accepted',     False)
+            _prof.setdefault('terms_accepted_at',  None)
+            _prof.setdefault('terms_version',      None)
         # Migration: ensure onboarding_status default for shops saved before the field existed
         for _shops in seller_shops.values():
             for _shop in _shops:
@@ -306,6 +322,13 @@ def load_data():
         customers = {int(k) if str(k).isdigit() else k: v for k, v in raw_cu.items()}
         raw_lv = data.get('lives', {})
         lives = {k: v for k, v in raw_lv.items()}
+        terms_acceptance_log = data.get('terms_acceptance_log', [])
+        # Migration: buyer_profiles ham terms field'lariga ega bo'lsin (implicit consent)
+        for _bp in buyer_profiles.values():
+            if isinstance(_bp, dict):
+                _bp.setdefault('terms_accepted',    False)
+                _bp.setdefault('terms_accepted_at', None)
+                _bp.setdefault('terms_version',     None)
         logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
         print(f"[JOYNSHOP] Data loaded: {len(products)} products, {len(seller_shops)} shops, {len(orders)} orders")
     except Exception as e:
@@ -403,6 +426,14 @@ def send_seller(cid, text, kb=None):
 
 def send_buyer(cid, text, kb=None):
     return send(cid, text, kb, token=BUYER_TOKEN)
+
+def send_no_preview(cid, text, kb=None, token=None):
+    """sendMessage + disable_web_page_preview — terms message kabi
+    link'larga preview chiqishini oldini olish uchun."""
+    d = {'chat_id': cid, 'text': text, 'parse_mode': 'HTML',
+         'disable_web_page_preview': True}
+    if kb: d['reply_markup'] = json.dumps(kb)
+    return api('sendMessage', d, token)
 
 def edit_message(cid, mid, text, kb=None, token=None):
     token = token or SELLER_TOKEN
@@ -849,6 +880,51 @@ def get_prod_progress_text(uid):
         f"Davom etasizmi yoki yangi boshlamoqchimisiz?"
     )
 
+# ─── TERMS ACCEPTANCE (Sprint 8 P18) ────────────────────────────────
+def seller_terms_accepted(uid):
+    """Sotuvchi joriy versiyani qabul qilganmi?"""
+    prof = seller_profiles.get(uid, {})
+    if not prof.get('terms_accepted'):
+        return False
+    # Kelajakda versiya o'zgartirilsa, eski qabul qiluvchilar yangidan accept qilishi kerak.
+    return prof.get('terms_version') == TERMS_VERSION
+
+def send_seller_terms_request(cid):
+    """3 ta Telegraph link + 'Qabul qilaman' tugma. Link preview yashirin."""
+    text = (
+        "Salom! 👋\n\n"
+        "<b>Joynshop sotuvchi paneliga xush kelibsiz.</b>\n\n"
+        "Boshlash uchun avval qoidalarimiz bilan tanishing:\n\n"
+        f"📋 <b>Sotuvchi qoidalari</b>\n{TERMS_URLS['seller_rules']}\n\n"
+        f"📋 <b>Foydalanuvchi shartnomasi (Oferta)</b>\n{TERMS_URLS['user_agreement']}\n\n"
+        f"📋 <b>Maxfiylik siyosati</b>\n{TERMS_URLS['privacy_policy']}\n\n"
+        "Yuqoridagi 3 ta hujjatni diqqat bilan o'qib chiqing.\n"
+        "Tushunarli bo'lsa, quyidagi tugmani bosing."
+    )
+    send_no_preview(cid, text,
+        {'inline_keyboard': [[
+            {'text': "✅ Qoidalarni qabul qilaman", 'callback_data': 'accept_seller_terms'},
+        ]]},
+        token=SELLER_TOKEN,
+    )
+
+def record_terms_acceptance(uid, role):
+    """Profil yangilash + audit log. role: 'seller' | 'buyer'."""
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    if role == 'seller':
+        prof = seller_profiles.setdefault(uid, {})
+    else:
+        prof = buyer_profiles.setdefault(uid, {})
+    prof['terms_accepted']    = True
+    prof['terms_accepted_at'] = now
+    prof['terms_version']     = TERMS_VERSION
+    terms_acceptance_log.append({
+        'user_id':     uid,
+        'role':        role,
+        'version':     TERMS_VERSION,
+        'accepted_at': now,
+    })
+
 def seller_start_addproduct_flow(uid, cid):
     """Mahsulot qo'shish flow'ini boshlash. /addproduct text handler va
     /start addproduct deeplink ikkalasi ham shu yagona joydan chaqiriladi.
@@ -918,6 +994,51 @@ def seller_handle_cb(cb):
 
     if d == 'noop':
         answer_cb(cbid); return
+
+    # Sprint 8 P18 — Terms acceptance callback. Boshqa cb'lar bilan aralashmaslik
+    # uchun darhol oxiriga qaytadi.
+    if d == 'accept_seller_terms':
+        record_terms_acceptance(uid, role='seller')
+        save_data()
+        # Eski message'ni edit — accept tugma yashirilib, tasdiqlash matni
+        try:
+            edit_message(
+                uid, cb['message']['message_id'],
+                "✅ <b>Rahmat! Qoidalar qabul qilindi.</b>\n\n"
+                "Endi sotuvchi paneliga davom etish uchun pastdagi tugmani bosing yoki "
+                "/start yozing.",
+                {'inline_keyboard': [[{'text': "▶️ Davom etish", 'callback_data': 'terms_continue'}]]},
+                token=SELLER_TOKEN,
+            )
+        except Exception:
+            pass
+        answer_cb(cbid, "Rahmat!")
+        return
+
+    if d == 'terms_continue':
+        answer_cb(cbid)
+        # /start oqimini takrorlash: shops bor bo'lsa menu, yo'q bo'lsa onboarding
+        shops = seller_shops.get(uid) or seller_shops.get(str(uid), [])
+        if not shops:
+            seller_state[uid] = {'step': 'ob_shop_name'}
+            send_seller(uid,
+                "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+                "Bir marta profilingizni to'ldiring.\n\n"
+                "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
+            )
+        else:
+            shop_names = ', '.join(s['name'] for s in shops)
+            send_seller(uid,
+                f"🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+                f"{'🏬 ' + shop_names + chr(10) if shop_names else ''}"
+                f"Guruh savdosi orqali ko'proq soting!",
+                {'keyboard': [
+                    [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
+                    [{'text': '➕ Mahsulot qo\'shish'}, {'text': '👥 Mijozlar'}],
+                    [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
+                ], 'resize_keyboard': True, 'is_persistent': True}
+            )
+        return
 
     if is_prod_in_progress(uid) and d not in PROD_ALLOWED_CBS and not d.startswith('prod_') and not d.startswith('ob_') and not d.startswith('edit_shop_') and not d.startswith('cat_') and not d.startswith('sale_type_') and not d.startswith('crm_') and not d.startswith('live_'):
         answer_cb(cbid)
@@ -4227,6 +4348,14 @@ def seller_handle_msg(msg):
     uid  = msg['from']['id']
     text = msg.get('text', '')
 
+    # ─── TERMS ACCEPTANCE GATE (Sprint 8 P18) ─────────────────
+    # Qoidalar qabul qilinmaguncha hech qanday handler ishlamaydi.
+    # Foydalanuvchi har qanday matn yozsa, terms request takror yuboriladi.
+    # (Boshqacha: button bossa accept_seller_terms callback ishlaydi.)
+    if not seller_terms_accepted(uid):
+        send_seller_terms_request(cid)
+        return
+
     # ─── GLOBAL ESCAPE COMMANDS ────────────────────────────────
     # /cancel — har qanday step'dan chiqib menyuga qaytadi
     # /menu   — back_menu ekranini chiqaradi (state'ga tegmasdan)
@@ -4276,6 +4405,8 @@ def seller_handle_msg(msg):
 
     if text == '/start' or text.startswith('/start '):
         # Deeplink param: t.me/<bot>?start=<param> → "/start <param>"
+        # Terms gate global yuqorida tekshirilgan — bu yerga hech qachon
+        # terms_accepted=False holatida kelinmaydi.
         parts = text.split(maxsplit=1)
         start_param = parts[1].strip() if len(parts) > 1 else ''
         if start_param == 'addproduct':
@@ -7372,10 +7503,15 @@ def api_checkout():
     variant   = data.get('variant', '')
     delivery  = data.get('delivery', 'pickup')  # 'pickup' | 'deliver'
     address   = data.get('address', '')
+    terms_ok  = bool(data.get('terms_accepted'))
 
     # Validatsiya
     if not pid or not uid:
         return jsonify({'ok': False, 'error': 'product_id va user_id kerak'}), 400
+    if not terms_ok:
+        # Sprint 8 P18 — implicit consent. CheckoutSheet inline matnda
+        # "qabul qilaman" deyilgan, frontend always true yuboradi.
+        return jsonify({'ok': False, 'error': "Foydalanuvchi shartnomasi qabul qilinmagan"}), 400
 
     p = products.get(pid)
     if not p or not p.get('is_active', True):
@@ -7421,6 +7557,8 @@ def api_checkout():
         'payment_url':      payment_url,
         'paid_at':          None,
     }
+    # Sprint 8 P18 — buyer terms acceptance audit (implicit, har order'da yangilanadi)
+    record_terms_acceptance(uid, role='buyer')
     save_data()
 
     variant_line  = f"\n🎨 Variant: <b>{variant}</b>" if variant else ''
