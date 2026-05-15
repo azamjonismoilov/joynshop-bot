@@ -66,9 +66,12 @@ export function BottomNav() {
             aria-current={active ? 'page' : undefined}
             onClick={() => { if (!active) hapticSelection(); }}
             className={cn(
-              'flex-1 flex flex-col items-center justify-center gap-0.5 px-2 py-2 min-h-12',
+              'flex-1 flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-2xl min-h-12',
               'motion-safe:transition-colors motion-safe:duration-200 motion-safe:ease-out',
             )}
+            style={{
+              background: active ? 'var(--color-segmented-bg)' : 'transparent',
+            }}
           >
             <span
               className={cn(
@@ -99,15 +102,16 @@ export function BottomNav() {
 
 /**
  * Tab icon ustida qizil bildirishnoma badge — Telegram pattern.
- * Bottom Nav oq fonida ko'rinish uchun 2px oq ring.
+ * Pozitsiya icon ning yuqori-o'ng chetida (icon ni to'smaydi).
+ * Ring rangini sahifa bg'ga moslangan (bg-2) — visual ajratish.
  */
 function NavBadge({ count }: { count: number }) {
   const label = count > 99 ? '99+' : String(count);
   return (
     <span
       aria-hidden
-      className="absolute -top-1.5 -right-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold font-mono leading-none"
-      style={{ boxShadow: '0 0 0 2px #FFFFFF' }}
+      className="absolute -top-1 -right-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold font-mono leading-none"
+      style={{ boxShadow: '0 0 0 2px var(--color-bg-2)' }}
     >
       {label}
     </span>
