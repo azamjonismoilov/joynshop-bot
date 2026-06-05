@@ -1593,6 +1593,207 @@ def cb_live_end(uid, d, cb, cbid):
     )
     return
 
+# ─── CB HANDLERS: Mahsulot sehrgari (MXIK'siz) (seller_handle_cb'dan ekstraksiya) ───
+def cb_sel_shop(uid, d, cb, cbid):
+    idx = int(d.split('_')[2])
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops): answer_cb(cbid, '❌'); return
+    shop = shops[idx]; answer_cb(cbid)
+    seller_state[uid] = {
+        'step': 'prod_name', 'shop_idx': idx,
+        'shop_name':      shop['name'],
+        'contact':        shop['phone'],
+        'delivery_type':  shop.get('delivery','pickup'),
+        'seller_channel': shop.get('channel',''),
+    }
+    send_seller(uid,
+        f"📦 <b>{shop['name']}</b> uchun yangi mahsulot\n\n"
+        "<b>1/4</b> Mahsulot nomini yozing:")
+    return
+
+def cb_cat(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid)
+    if not s: return
+    cat = d[4:]
+    s['category'] = cat; s['step'] = 'prod_sale_type'
+    send_seller(uid,
+        f"✅ Kategoriya: <b>{cat}</b>\n\n"
+        "<b>3/7</b> Sotuv turini tanlang:",
+        {'inline_keyboard': [
+            [{'text': "👥 Faqat guruhli sotuv", 'callback_data': 'sale_type_group'}],
+            [{'text': "👤 Faqat yakka sotuv",   'callback_data': 'sale_type_solo'}],
+            [{'text': "👥+👤 Ikkalasi ham",      'callback_data': 'sale_type_both'}],
+        ]}
+    )
+    return
+
+def cb_sale_type(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid)
+    if not s: return
+    s['sale_type'] = d.replace('sale_type_', '')
+    s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
+    type_label = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
+    send_seller(uid,
+        f"✅ {type_label.get(s['sale_type'])} sotuv tanlandi\n\n"
+        "<b>4/7</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>"
+    )
+    return
+
+def cb_prod_photo_done(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s or not s.get('photo_ids'):
+        answer_cb(cbid, '❌ Rasm yo\'q'); return
+    s['step'] = 'prod_price'; answer_cb(cbid)
+    sale_type = s.get('sale_type', 'both')
+    if sale_type == 'solo':
+        price_hint = "<b>4/5</b> Yakka sotuv narxini kiriting (so'm):\n<code>850000</code>"
+    else:
+        price_hint = "<b>4/5</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>"
+    send_seller(uid, f"✅ {len(s['photo_ids'])} ta rasm.\n\n{price_hint}")
+    return
+
+def cb_prod_confirm_publish(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s: answer_cb(cbid); return
+    answer_cb(cbid)
+    publish_product(uid, uid, s); return
+
+def cb_prod_add_desc(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s: answer_cb(cbid); return
+    s['step'] = 'prod_edit_desc'; answer_cb(cbid)
+    _send_or_edit_prod(uid, s,
+        "📝 <b>Yangi tavsif yozing</b>\n\n"
+        "Maksimum 300 belgi.\n\n"
+        "<i>Bekor qilish: /cancel</i>", None)
+    return
+
+def cb_prod_add_solo(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s: answer_cb(cbid); return
+    s['step'] = 'prod_edit_solo'; answer_cb(cbid)
+    _send_or_edit_prod(uid, s,
+        "💰 <b>Yakka sotuv narxini yozing</b>\n\n"
+        "Faqat raqam (so'm).\n\n"
+        "<i>Bekor qilish: /cancel</i>", None)
+    return
+
+def cb_prod_deadline(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s: answer_cb(cbid); return
+    hours_map = {'prod_deadline_24': 24, 'prod_deadline_48': 48,
+                 'prod_deadline_72': 72, 'prod_deadline_168': 168}
+    h = hours_map.get(d, 48)
+    s['deadline_hours'] = h
+    answer_cb(cbid)
+    shop = seller_shops.get(uid, [{}])[s.get('shop_idx', 0)]
+    show_prod_confirm(uid, s, shop)
+    return
+
+def cb_prod_add_variants(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s: answer_cb(cbid); return
+    s['step'] = 'prod_edit_variants'; answer_cb(cbid)
+    _send_or_edit_prod(uid, s,
+        "🎨 <b>Variantlarni vergul bilan yozing</b>\n\n"
+        "<i>Masalan: 38, 39, 40 yoki Qizil, Ko'k, Yashil</i>\n\n"
+        "<i>Bekor qilish: /cancel</i>", None)
+    return
+
+def cb_start_addproduct(uid, d, cb, cbid):
+    answer_cb(cbid)
+    if is_prod_in_progress(uid):
+        send_seller(uid, get_prod_progress_text(uid),
+            {'inline_keyboard': [
+                [{'text': "▶️ Davom etish",              'callback_data': 'prod_continue'}],
+                [{'text': "🗑 Bekor qilib, yangi boshlash", 'callback_data': 'prod_restart'}],
+            ]}
+        )
+        return
+    # Sotuvchining do'konlarini tekshirish
+    shops = seller_shops.get(uid, [])
+    if not shops:
+        send_seller(uid, "❌ Avval do'kon yarating.\n\n/start yozing.")
+        return
+    if len(shops) == 1:
+        # Bitta do'kon — to'g'ridan-to'g'ri
+        seller_state[uid] = {'step': 'prod_name', 'shop_idx': 0}
+        send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
+    else:
+        # Bir nechta do'kon — tanlash
+        kb = []
+        for i, sh in enumerate(shops):
+            shop_name = sh.get('name', f"Do'kon #{i+1}")
+            ch        = sh.get('channel', '')
+            label     = f"🏪 {shop_name}" + (f" ({ch})" if ch else "")
+            kb.append([{'text': label, 'callback_data': f'prod_shop_{i}'}])
+        kb.append([{'text': "❌ Bekor", 'callback_data': 'back_menu'}])
+        send_seller(uid,
+            "🏪 <b>Qaysi do'konga mahsulot qo'shasiz?</b>\n\n"
+            f"Sizda {len(shops)} ta do'kon bor:",
+            {'inline_keyboard': kb}
+        )
+    return
+
+def cb_prod_shop(uid, d, cb, cbid):
+    answer_cb(cbid)
+    try:
+        idx = int(d.split('_')[2])
+    except:
+        return
+    shops = seller_shops.get(uid, [])
+    if idx < 0 or idx >= len(shops):
+        send_seller(uid, "❌ Noto'g'ri do'kon.")
+        return
+    seller_state[uid] = {'step': 'prod_name', 'shop_idx': idx}
+    shop_name = shops[idx].get('name', '')
+    send_seller(uid,
+        f"📦 <b>Yangi mahsulot — {shop_name}</b>\n\n"
+        f"1️⃣ Mahsulot nomini yozing:"
+    )
+    return
+
+def cb_prod_continue(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid, {})
+    step = s.get('step','')
+    step_msgs = {
+        'prod_name':      "Mahsulot nomini yozing:",
+        'prod_photo':     "Rasmlarni yuboring (1-5 ta):",
+        'prod_price':     "Narxni yozing (asl/guruh):",
+        'prod_min_group': "Minimal guruh sonini yozing (2-100):",
+    }
+    msg = step_msgs.get(step, "Davom eting:")
+    send_seller(uid, f"✅ Davom etmoqdasiz\n\n{msg}")
+    return
+
+def cb_prod_skip_desc(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid)
+    if not s: return
+    s['description'] = ''
+    s['step'] = 'prod_mxik_search'
+    send_seller(uid,
+        "🔍 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
+        "Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
+        "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
+        "Bekor qilish: /cancel",
+        {'inline_keyboard': [
+            [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+            [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+        ]})
+    return
+
+def cb_prod_restart(uid, d, cb, cbid):
+    answer_cb(cbid)
+    seller_state.pop(uid, None)
+    send_seller(uid, "🗑 Bekor qilindi. Yangi mahsulot boshlang:",
+        {'inline_keyboard': [[{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
+    )
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -1689,196 +1890,43 @@ def seller_handle_cb(cb):
         return cb_edit_shop(uid, d, cb, cbid)
 
     if d.startswith('sel_shop_'):
-        idx = int(d.split('_')[2])
-        shops = seller_shops.get(uid, [])
-        if idx >= len(shops): answer_cb(cbid, '❌'); return
-        shop = shops[idx]; answer_cb(cbid)
-        seller_state[uid] = {
-            'step': 'prod_name', 'shop_idx': idx,
-            'shop_name':      shop['name'],
-            'contact':        shop['phone'],
-            'delivery_type':  shop.get('delivery','pickup'),
-            'seller_channel': shop.get('channel',''),
-        }
-        send_seller(uid,
-            f"📦 <b>{shop['name']}</b> uchun yangi mahsulot\n\n"
-            "<b>1/4</b> Mahsulot nomini yozing:")
-        return
+        return cb_sel_shop(uid, d, cb, cbid)
 
     if d.startswith('cat_'):
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s: return
-        cat = d[4:]
-        s['category'] = cat; s['step'] = 'prod_sale_type'
-        send_seller(uid,
-            f"✅ Kategoriya: <b>{cat}</b>\n\n"
-            "<b>3/7</b> Sotuv turini tanlang:",
-            {'inline_keyboard': [
-                [{'text': "👥 Faqat guruhli sotuv", 'callback_data': 'sale_type_group'}],
-                [{'text': "👤 Faqat yakka sotuv",   'callback_data': 'sale_type_solo'}],
-                [{'text': "👥+👤 Ikkalasi ham",      'callback_data': 'sale_type_both'}],
-            ]}
-        )
-        return
+        return cb_cat(uid, d, cb, cbid)
 
     if d in ('sale_type_group', 'sale_type_solo', 'sale_type_both'):
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s: return
-        s['sale_type'] = d.replace('sale_type_', '')
-        s['step'] = 'prod_photo'; s['photo_ids'] = []; s['photo_urls'] = []
-        type_label = {'group': '👥 Guruhli', 'solo': '👤 Yakka', 'both': '👥+👤 Ikkalasi'}
-        send_seller(uid,
-            f"✅ {type_label.get(s['sale_type'])} sotuv tanlandi\n\n"
-            "<b>4/7</b> Mahsulot rasmini yuboring 📸\n<i>1-5 ta rasm yuborishingiz mumkin</i>"
-        )
-        return
+        return cb_sale_type(uid, d, cb, cbid)
 
     if d == 'prod_photo_done':
-        s = seller_state.get(uid)
-        if not s or not s.get('photo_ids'):
-            answer_cb(cbid, '❌ Rasm yo\'q'); return
-        s['step'] = 'prod_price'; answer_cb(cbid)
-        sale_type = s.get('sale_type', 'both')
-        if sale_type == 'solo':
-            price_hint = "<b>4/5</b> Yakka sotuv narxini kiriting (so'm):\n<code>850000</code>"
-        else:
-            price_hint = "<b>4/5</b> Narxlarni kiriting:\n<code>850000 / 550000</code>\n<i>asl narx / guruh narxi</i>"
-        send_seller(uid, f"✅ {len(s['photo_ids'])} ta rasm.\n\n{price_hint}")
-        return
+        return cb_prod_photo_done(uid, d, cb, cbid)
 
     if d == 'prod_confirm_publish':
-        s = seller_state.get(uid)
-        if not s: answer_cb(cbid); return
-        answer_cb(cbid)
-        publish_product(uid, uid, s); return
+        return cb_prod_confirm_publish(uid, d, cb, cbid)
 
     if d == 'prod_add_desc':
-        s = seller_state.get(uid)
-        if not s: answer_cb(cbid); return
-        s['step'] = 'prod_edit_desc'; answer_cb(cbid)
-        _send_or_edit_prod(uid, s,
-            "📝 <b>Yangi tavsif yozing</b>\n\n"
-            "Maksimum 300 belgi.\n\n"
-            "<i>Bekor qilish: /cancel</i>", None)
-        return
+        return cb_prod_add_desc(uid, d, cb, cbid)
 
     if d == 'prod_add_solo':
-        s = seller_state.get(uid)
-        if not s: answer_cb(cbid); return
-        s['step'] = 'prod_edit_solo'; answer_cb(cbid)
-        _send_or_edit_prod(uid, s,
-            "💰 <b>Yakka sotuv narxini yozing</b>\n\n"
-            "Faqat raqam (so'm).\n\n"
-            "<i>Bekor qilish: /cancel</i>", None)
-        return
+        return cb_prod_add_solo(uid, d, cb, cbid)
 
     if d.startswith('prod_deadline_'):
-        s = seller_state.get(uid)
-        if not s: answer_cb(cbid); return
-        hours_map = {'prod_deadline_24': 24, 'prod_deadline_48': 48,
-                     'prod_deadline_72': 72, 'prod_deadline_168': 168}
-        h = hours_map.get(d, 48)
-        s['deadline_hours'] = h
-        answer_cb(cbid)
-        shop = seller_shops.get(uid, [{}])[s.get('shop_idx', 0)]
-        show_prod_confirm(uid, s, shop)
-        return
+        return cb_prod_deadline(uid, d, cb, cbid)
 
     if d == 'prod_add_variants':
-        s = seller_state.get(uid)
-        if not s: answer_cb(cbid); return
-        s['step'] = 'prod_edit_variants'; answer_cb(cbid)
-        _send_or_edit_prod(uid, s,
-            "🎨 <b>Variantlarni vergul bilan yozing</b>\n\n"
-            "<i>Masalan: 38, 39, 40 yoki Qizil, Ko'k, Yashil</i>\n\n"
-            "<i>Bekor qilish: /cancel</i>", None)
-        return
+        return cb_prod_add_variants(uid, d, cb, cbid)
 
     if d in ('start_addproduct', 'menu_addproduct'):
-        answer_cb(cbid)
-        if is_prod_in_progress(uid):
-            send_seller(uid, get_prod_progress_text(uid),
-                {'inline_keyboard': [
-                    [{'text': "▶️ Davom etish",              'callback_data': 'prod_continue'}],
-                    [{'text': "🗑 Bekor qilib, yangi boshlash", 'callback_data': 'prod_restart'}],
-                ]}
-            )
-            return
-        # Sotuvchining do'konlarini tekshirish
-        shops = seller_shops.get(uid, [])
-        if not shops:
-            send_seller(uid, "❌ Avval do'kon yarating.\n\n/start yozing.")
-            return
-        if len(shops) == 1:
-            # Bitta do'kon — to'g'ridan-to'g'ri
-            seller_state[uid] = {'step': 'prod_name', 'shop_idx': 0}
-            send_seller(uid, "📦 <b>Yangi mahsulot</b>\n\n1️⃣ Mahsulot nomini yozing:")
-        else:
-            # Bir nechta do'kon — tanlash
-            kb = []
-            for i, sh in enumerate(shops):
-                shop_name = sh.get('name', f"Do'kon #{i+1}")
-                ch        = sh.get('channel', '')
-                label     = f"🏪 {shop_name}" + (f" ({ch})" if ch else "")
-                kb.append([{'text': label, 'callback_data': f'prod_shop_{i}'}])
-            kb.append([{'text': "❌ Bekor", 'callback_data': 'back_menu'}])
-            send_seller(uid,
-                "🏪 <b>Qaysi do'konga mahsulot qo'shasiz?</b>\n\n"
-                f"Sizda {len(shops)} ta do'kon bor:",
-                {'inline_keyboard': kb}
-            )
-        return
+        return cb_start_addproduct(uid, d, cb, cbid)
 
     if d.startswith('prod_shop_'):
-        answer_cb(cbid)
-        try:
-            idx = int(d.split('_')[2])
-        except:
-            return
-        shops = seller_shops.get(uid, [])
-        if idx < 0 or idx >= len(shops):
-            send_seller(uid, "❌ Noto'g'ri do'kon.")
-            return
-        seller_state[uid] = {'step': 'prod_name', 'shop_idx': idx}
-        shop_name = shops[idx].get('name', '')
-        send_seller(uid,
-            f"📦 <b>Yangi mahsulot — {shop_name}</b>\n\n"
-            f"1️⃣ Mahsulot nomini yozing:"
-        )
-        return
+        return cb_prod_shop(uid, d, cb, cbid)
 
     if d == 'prod_continue':
-        answer_cb(cbid)
-        s = seller_state.get(uid, {})
-        step = s.get('step','')
-        step_msgs = {
-            'prod_name':      "Mahsulot nomini yozing:",
-            'prod_photo':     "Rasmlarni yuboring (1-5 ta):",
-            'prod_price':     "Narxni yozing (asl/guruh):",
-            'prod_min_group': "Minimal guruh sonini yozing (2-100):",
-        }
-        msg = step_msgs.get(step, "Davom eting:")
-        send_seller(uid, f"✅ Davom etmoqdasiz\n\n{msg}")
-        return
+        return cb_prod_continue(uid, d, cb, cbid)
 
     if d == 'prod_skip_desc':
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s: return
-        s['description'] = ''
-        s['step'] = 'prod_mxik_search'
-        send_seller(uid,
-            "🔍 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
-            "Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
-            "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
-            "Bekor qilish: /cancel",
-            {'inline_keyboard': [
-                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-            ]})
-        return
+        return cb_prod_skip_desc(uid, d, cb, cbid)
 
     # ─── MXIK CALLBACKS ───
     if d == 'prod_mxik_again':
@@ -2044,12 +2092,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'prod_restart':
-        answer_cb(cbid)
-        seller_state.pop(uid, None)
-        send_seller(uid, "🗑 Bekor qilindi. Yangi mahsulot boshlang:",
-            {'inline_keyboard': [[{'text': "➕ Mahsulot qo'shish", 'callback_data': 'menu_addproduct'}]]}
-        )
-        return
+        return cb_prod_restart(uid, d, cb, cbid)
 
     if d == 'menu_mystats':
         return cb_menu_mystats(uid, d, cb, cbid)
