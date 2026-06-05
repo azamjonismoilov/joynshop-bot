@@ -785,6 +785,127 @@ def cb_menu_mystats(uid, d, cb, cbid):
     )
     return
 
+# ─── CB HANDLERS: Export (seller_handle_cb'dan ekstraksiya) ───
+def cb_menu_export(uid, d, cb, cbid):
+    answer_cb(cbid)
+
+    # Tanlash menyusi
+    if d == 'menu_export':
+        send_seller(uid,
+            "📑 <b>Eksport — Excel</b>\n\n"
+            "Nimani yuklab olasiz?",
+            {'inline_keyboard': [
+                [{'text': "🛒 Buyurtmalar",     'callback_data': 'export_orders'}],
+                [{'text': "👥 Mijozlar",        'callback_data': 'export_customers'}],
+                [{'text': "📦 Mahsulotlar",     'callback_data': 'export_products'}],
+                [{'text': "💰 Moliyaviy",       'callback_data': 'export_finance'}],
+                [{'text': "⬅️ Menyu",           'callback_data': 'back_menu'}],
+            ]}
+        )
+        return
+
+    # Excel yaratish
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        import io
+        wb = Workbook()
+        ws = wb.active
+        header_fill = PatternFill(start_color="FF6A1A", end_color="FF6A1A", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        center      = Alignment(horizontal="center", vertical="center")
+
+        export_type = d[7:]  # orders / customers / products / finance
+        my_pids = set(seller_products.get(uid, []))
+        sid = str(uid)
+        filename = f"joynshop_{export_type}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+
+        if export_type == 'orders':
+            ws.title = "Buyurtmalar"
+            headers = ["№", "Kod", "Sana", "Mahsulot", "Mijoz", "Telefon", "Summa", "Tur", "Status", "Manzil"]
+            ws.append(headers)
+            for i, (code, o) in enumerate([(c,o) for c,o in orders.items() if o.get('product_id') in my_pids], 1):
+                p = products.get(o.get('product_id',''), {})
+                ws.append([
+                    i, code, o.get('created',''), p.get('name',''),
+                    o.get('user_name',''), o.get('user_phone',''),
+                    o.get('amount',0),
+                    'Yakka' if o.get('type')=='solo' else 'Guruh',
+                    o.get('status',''),
+                    o.get('address','')
+                ])
+
+        elif export_type == 'customers':
+            ws.title = "Mijozlar"
+            headers = ["№", "Ism", "Telegram ID", "Buyurtmalar", "Jami", "O'rtacha", "Birinchi", "Oxirgi", "Teglar", "Izoh"]
+            ws.append(headers)
+            my_custs = customers.get(sid, {})
+            sorted_c = sorted(my_custs.items(), key=lambda x: x[1].get('total_spent',0), reverse=True)
+            for i, (cuid, c) in enumerate(sorted_c, 1):
+                avg = c['total_spent']//c['total_orders'] if c.get('total_orders') else 0
+                ws.append([
+                    i, c.get('name',''), c.get('user_id',''),
+                    c.get('total_orders',0), c.get('total_spent',0), avg,
+                    c.get('first_order',''), c.get('last_order',''),
+                    ', '.join(c.get('tags',[])), c.get('note','')
+                ])
+
+        elif export_type == 'products':
+            ws.title = "Mahsulotlar"
+            headers = ["№", "ID", "Nom", "Kategoriya", "Asl narx", "Guruh narx", "Yakka narx", "Min guruh", "Qoldiq", "Sotildi", "Status"]
+            ws.append(headers)
+            my_prods = [(pid, p) for pid, p in products.items() if pid in my_pids]
+            for i, (pid, p) in enumerate(my_prods, 1):
+                sold = p.get('stock_initial', 0) - p.get('stock', 0) if p.get('stock', 9999) < 9999 else len(groups.get(pid, []))
+                ws.append([
+                    i, pid, p.get('name',''), p.get('category',''),
+                    p.get('original_price',0), p.get('group_price',0), p.get('solo_price',0),
+                    p.get('min_group',0),
+                    p.get('stock','♾') if p.get('stock', 9999) < 9999 else '♾',
+                    sold,
+                    p.get('status','active')
+                ])
+
+        elif export_type == 'finance':
+            ws.title = "Moliya"
+            headers = ["Sana", "Buyurtmalar soni", "Jami summa", f"Komissiya ({int(COMMISSION_RATE*100)}%)", "Toza daromad"]
+            ws.append(headers)
+            # Kunlar bo'yicha
+            from collections import defaultdict
+            by_day = defaultdict(lambda: {'count': 0, 'sum': 0})
+            for code, o in orders.items():
+                if o.get('product_id') in my_pids and o.get('status') == 'confirmed':
+                    date = o.get('created', '').split(' ')[0]
+                    by_day[date]['count'] += 1
+                    by_day[date]['sum']   += o.get('amount', 0)
+            for date in sorted(by_day.keys(), reverse=True):
+                s = by_day[date]['sum']
+                comm = int(s * COMMISSION_RATE)
+                ws.append([date, by_day[date]['count'], s, comm, s - comm])
+
+        # Header style
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center
+        # Auto-width
+        for col_cells in ws.columns:
+            max_len = max((len(str(c.value)) for c in col_cells if c.value), default=10)
+            ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
+
+        # Faylni saqlash va yuborish
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        files = {'document': (filename, buf.getvalue(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
+        data  = {'chat_id': uid, 'caption': f"📑 {export_type.capitalize()} eksporti tayyor"}
+        requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendDocument', data=data, files=files, timeout=30)
+    except Exception as e:
+        logging.error(f"Export error: {e}")
+        send_seller(uid, f"❌ Eksport xatosi: {e}")
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -1841,124 +1962,7 @@ def seller_handle_cb(cb):
     # ─── /LIVE COMMERCE ──────────────────────────────────────────
 
     if d == 'menu_export' or d.startswith('export_'):
-        answer_cb(cbid)
-
-        # Tanlash menyusi
-        if d == 'menu_export':
-            send_seller(uid,
-                "📑 <b>Eksport — Excel</b>\n\n"
-                "Nimani yuklab olasiz?",
-                {'inline_keyboard': [
-                    [{'text': "🛒 Buyurtmalar",     'callback_data': 'export_orders'}],
-                    [{'text': "👥 Mijozlar",        'callback_data': 'export_customers'}],
-                    [{'text': "📦 Mahsulotlar",     'callback_data': 'export_products'}],
-                    [{'text': "💰 Moliyaviy",       'callback_data': 'export_finance'}],
-                    [{'text': "⬅️ Menyu",           'callback_data': 'back_menu'}],
-                ]}
-            )
-            return
-
-        # Excel yaratish
-        try:
-            from openpyxl import Workbook
-            from openpyxl.styles import Font, PatternFill, Alignment
-            import io
-            wb = Workbook()
-            ws = wb.active
-            header_fill = PatternFill(start_color="FF6A1A", end_color="FF6A1A", fill_type="solid")
-            header_font = Font(bold=True, color="FFFFFF", size=11)
-            center      = Alignment(horizontal="center", vertical="center")
-
-            export_type = d[7:]  # orders / customers / products / finance
-            my_pids = set(seller_products.get(uid, []))
-            sid = str(uid)
-            filename = f"joynshop_{export_type}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
-
-            if export_type == 'orders':
-                ws.title = "Buyurtmalar"
-                headers = ["№", "Kod", "Sana", "Mahsulot", "Mijoz", "Telefon", "Summa", "Tur", "Status", "Manzil"]
-                ws.append(headers)
-                for i, (code, o) in enumerate([(c,o) for c,o in orders.items() if o.get('product_id') in my_pids], 1):
-                    p = products.get(o.get('product_id',''), {})
-                    ws.append([
-                        i, code, o.get('created',''), p.get('name',''),
-                        o.get('user_name',''), o.get('user_phone',''),
-                        o.get('amount',0),
-                        'Yakka' if o.get('type')=='solo' else 'Guruh',
-                        o.get('status',''),
-                        o.get('address','')
-                    ])
-
-            elif export_type == 'customers':
-                ws.title = "Mijozlar"
-                headers = ["№", "Ism", "Telegram ID", "Buyurtmalar", "Jami", "O'rtacha", "Birinchi", "Oxirgi", "Teglar", "Izoh"]
-                ws.append(headers)
-                my_custs = customers.get(sid, {})
-                sorted_c = sorted(my_custs.items(), key=lambda x: x[1].get('total_spent',0), reverse=True)
-                for i, (cuid, c) in enumerate(sorted_c, 1):
-                    avg = c['total_spent']//c['total_orders'] if c.get('total_orders') else 0
-                    ws.append([
-                        i, c.get('name',''), c.get('user_id',''),
-                        c.get('total_orders',0), c.get('total_spent',0), avg,
-                        c.get('first_order',''), c.get('last_order',''),
-                        ', '.join(c.get('tags',[])), c.get('note','')
-                    ])
-
-            elif export_type == 'products':
-                ws.title = "Mahsulotlar"
-                headers = ["№", "ID", "Nom", "Kategoriya", "Asl narx", "Guruh narx", "Yakka narx", "Min guruh", "Qoldiq", "Sotildi", "Status"]
-                ws.append(headers)
-                my_prods = [(pid, p) for pid, p in products.items() if pid in my_pids]
-                for i, (pid, p) in enumerate(my_prods, 1):
-                    sold = p.get('stock_initial', 0) - p.get('stock', 0) if p.get('stock', 9999) < 9999 else len(groups.get(pid, []))
-                    ws.append([
-                        i, pid, p.get('name',''), p.get('category',''),
-                        p.get('original_price',0), p.get('group_price',0), p.get('solo_price',0),
-                        p.get('min_group',0),
-                        p.get('stock','♾') if p.get('stock', 9999) < 9999 else '♾',
-                        sold,
-                        p.get('status','active')
-                    ])
-
-            elif export_type == 'finance':
-                ws.title = "Moliya"
-                headers = ["Sana", "Buyurtmalar soni", "Jami summa", f"Komissiya ({int(COMMISSION_RATE*100)}%)", "Toza daromad"]
-                ws.append(headers)
-                # Kunlar bo'yicha
-                from collections import defaultdict
-                by_day = defaultdict(lambda: {'count': 0, 'sum': 0})
-                for code, o in orders.items():
-                    if o.get('product_id') in my_pids and o.get('status') == 'confirmed':
-                        date = o.get('created', '').split(' ')[0]
-                        by_day[date]['count'] += 1
-                        by_day[date]['sum']   += o.get('amount', 0)
-                for date in sorted(by_day.keys(), reverse=True):
-                    s = by_day[date]['sum']
-                    comm = int(s * COMMISSION_RATE)
-                    ws.append([date, by_day[date]['count'], s, comm, s - comm])
-
-            # Header style
-            for col in range(1, len(headers) + 1):
-                cell = ws.cell(row=1, column=col)
-                cell.fill = header_fill
-                cell.font = header_font
-                cell.alignment = center
-            # Auto-width
-            for col_cells in ws.columns:
-                max_len = max((len(str(c.value)) for c in col_cells if c.value), default=10)
-                ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
-
-            # Faylni saqlash va yuborish
-            buf = io.BytesIO()
-            wb.save(buf)
-            buf.seek(0)
-            files = {'document': (filename, buf.getvalue(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')}
-            data  = {'chat_id': uid, 'caption': f"📑 {export_type.capitalize()} eksporti tayyor"}
-            requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendDocument', data=data, files=files, timeout=30)
-        except Exception as e:
-            logging.error(f"Export error: {e}")
-            send_seller(uid, f"❌ Eksport xatosi: {e}")
-        return
+        return cb_menu_export(uid, d, cb, cbid)
 
     if d == 'menu_myorders':
         answer_cb(cbid)
