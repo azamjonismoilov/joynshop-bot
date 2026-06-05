@@ -30,6 +30,8 @@ referral_map            = {}
 terms_acceptance_log    = []
 
 def get_db():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL not set")
     import urllib.parse, ssl
     r = urllib.parse.urlparse(DATABASE_URL)
     ssl_ctx = ssl.create_default_context()
@@ -43,6 +45,7 @@ def get_db():
     )
 
 def init_db():
+    conn = None
     try:
         conn = get_db()
         cur  = conn.cursor()
@@ -51,10 +54,14 @@ def init_db():
             "(key TEXT PRIMARY KEY, value TEXT)"
         )
         conn.commit()
-        cur.close(); conn.close()
+        cur.close()
         logging.info("DB initialized")
     except Exception as e:
         logging.error(f"init_db error: {e}", exc_info=True)
+    finally:
+        if conn:
+            try: conn.close()
+            except Exception: pass
 
 def save_data():
     with save_lock:
@@ -62,6 +69,7 @@ def save_data():
             logging.warning("No DATABASE_URL")
             return
         for attempt in range(3):
+            conn = None
             try:
                 data = {
                     'products':               products,
@@ -90,13 +98,17 @@ def save_data():
                     (payload,)
                 )
                 conn.commit()
-                cur.close(); conn.close()
+                cur.close()
                 logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
                 return
             except Exception as e:
                 logging.error(f"save_data error (attempt {attempt+1}): {e}")
                 if attempt == 2:
                     logging.error("save_data failed 3 times!", exc_info=True)
+            finally:
+                if conn:
+                    try: conn.close()
+                    except Exception: pass
 
 def load_data():
     # KRITIK: rebind QILMAYMIZ — har dict in-place (clear()+update()) yangilanadi,
@@ -104,12 +116,13 @@ def load_data():
     if not DATABASE_URL:
         logging.warning("No DATABASE_URL — starting fresh")
         return
+    conn = None
     try:
         conn = get_db()
         cur  = conn.cursor()
         cur.execute("SELECT value FROM joynshop_data WHERE key = 'main'")
         row  = cur.fetchone()
-        cur.close(); conn.close()
+        cur.close(); conn.close(); conn = None
         if not row:
             logging.info("No data in DB — starting fresh")
             return
@@ -183,3 +196,7 @@ def load_data():
     except Exception as e:
         logging.error(f"load_data error: {e}", exc_info=True)
         print(f"[JOYNSHOP] load_data ERROR: {e}")
+    finally:
+        if conn:
+            try: conn.close()
+            except Exception: pass
