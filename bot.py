@@ -19,26 +19,12 @@ def add_cors(response):
 from config import *
 
 # ─── SHARED STORAGE ─────────────────────────────────────────────────
-products        = {}
-groups          = {}
-orders          = {}
-wishlists       = {}
-buyer_profiles  = {}
-refund_requests = {}
-seller_state    = {}
-customers       = {}  # {seller_id: {user_id: {...}}}
-lives           = {}  # {live_id: {...}} - Live Commerce streams
+# Saqlanadigan holat (products, orders, groups, ... + save_data/load_data)
+# persistence.py da — bu yerda 'from persistence import *' orqali olinadi.
+from persistence import *
+# Runtime-only (saqlanmaydi — persistence.py ga ko'chmagan):
+seller_state     = {}
 _photo_url_cache = {}
-seller_shops    = {}
-seller_products = {}
-seller_profiles = {}  # {uid: {legal_status, stir, bank_account, ..., terms_accepted, terms_accepted_at, terms_version}}
-verified_channels       = {}
-pending_moderator_codes = {}
-referrals               = {}
-referral_map            = {}
-# Sprint 8 P18 — Audit log uchun (yurist tekshiruvi). Har element:
-# {user_id, role: 'seller'|'buyer', version, accepted_at}
-terms_acceptance_log    = []
 
 # ─── TERMS (Sprint 8 P18) ───────────────────────────────────────────
 TERMS_VERSION = '1.0'
@@ -47,131 +33,6 @@ TERMS_URLS = {
     'user_agreement': 'https://telegra.ph/Joynshop-Foydalanuvchi-Shartnomasi-05-15',
     'privacy_policy': 'https://telegra.ph/Joynshop-Maxfiylik-Siyosati-05-15',
 }
-
-# ─── PERSISTENCE (PostgreSQL) ───────────────────────────────────────
-from persistence import *   # DATABASE_URL, get_db, init_db
-
-def save_data():
-    if not DATABASE_URL:
-        logging.warning("No DATABASE_URL")
-        return
-    for attempt in range(3):
-        try:
-            data = {
-                'products':               products,
-                'groups':                 groups,
-                'orders':                 orders,
-                'wishlists':              wishlists,
-                'buyer_profiles':         buyer_profiles,
-                'refund_requests':        refund_requests,
-                'seller_products':        {str(k): v for k, v in seller_products.items()},
-                'seller_shops':           {str(k): v for k, v in seller_shops.items()},
-                'seller_profiles':        {str(k): v for k, v in seller_profiles.items()},
-                'verified_channels':      verified_channels,
-                'pending_moderator_codes':pending_moderator_codes,
-                'referrals':              referrals,
-                'referral_map':           {str(k): v for k, v in referral_map.items()},
-                'customers':              {str(k): v for k, v in customers.items()},
-                'lives':                  {str(k): v for k, v in lives.items()},
-                'terms_acceptance_log':   terms_acceptance_log,
-            }
-            payload = json.dumps(data, ensure_ascii=False, default=str)
-            conn    = get_db()
-            cur     = conn.cursor()
-            cur.execute(
-                "INSERT INTO joynshop_data (key, value) VALUES ('main', %s) "
-                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-                (payload,)
-            )
-            conn.commit()
-            cur.close(); conn.close()
-            logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
-            return
-        except Exception as e:
-            logging.error(f"save_data error (attempt {attempt+1}): {e}")
-            if attempt == 2:
-                logging.error("save_data failed 3 times!", exc_info=True)
-
-def load_data():
-    global products, groups, orders, wishlists, buyer_profiles
-    global refund_requests, seller_products, verified_channels
-    global pending_moderator_codes, referrals, referral_map, seller_shops, customers, lives
-    global seller_profiles, terms_acceptance_log
-    if not DATABASE_URL:
-        logging.warning("No DATABASE_URL — starting fresh")
-        return
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute("SELECT value FROM joynshop_data WHERE key = 'main'")
-        row  = cur.fetchone()
-        cur.close(); conn.close()
-        if not row:
-            logging.info("No data in DB — starting fresh")
-            return
-        data = json.loads(row[0]) if isinstance(row[0], str) else row[0]
-        products               = data.get('products', {})
-        # Migration: ensure is_active default for products saved before the field existed
-        for _p in products.values():
-            _p.setdefault('is_active', True)
-            _p.setdefault('mxik_code', None)
-            _p.setdefault('mxik_name', None)
-        groups                 = data.get('groups', {})
-        orders                 = data.get('orders', {})
-        wishlists              = data.get('wishlists', {})
-        buyer_profiles         = data.get('buyer_profiles', {})
-        refund_requests        = data.get('refund_requests', {})
-        verified_channels      = data.get('verified_channels', {})
-        raw_ss = data.get('seller_shops', {})
-        seller_shops = {int(k) if str(k).isdigit() else k: v for k, v in raw_ss.items()}
-        # Seller profiles (legal info)
-        raw_sp = data.get('seller_profiles', {})
-        seller_profiles = {int(k) if str(k).isdigit() else k: v for k, v in raw_sp.items()}
-        for _prof in seller_profiles.values():
-            _prof.setdefault('legal_status',       None)
-            _prof.setdefault('stir',               None)
-            _prof.setdefault('bank_account',       None)
-            _prof.setdefault('bank_name',          None)
-            _prof.setdefault('bank_mfo',           None)
-            _prof.setdefault('director_name',      None)
-            _prof.setdefault('legal_completed_at', None)
-            # Sprint 8 P18 — eski sotuvchilar terms_accepted=False (qaytadan accept kerak)
-            _prof.setdefault('terms_accepted',     False)
-            _prof.setdefault('terms_accepted_at',  None)
-            _prof.setdefault('terms_version',      None)
-        # Migration: ensure onboarding_status default for shops saved before the field existed
-        for _shops in seller_shops.values():
-            for _shop in _shops:
-                _shop.setdefault('onboarding_status', 'active')
-                # Billz fields (Phase 1 onboarding)
-                _shop.setdefault('billz_secret_token', None)
-                _shop.setdefault('billz_shop_id', '')
-                _shop.setdefault('billz_shop_name', '')
-                _shop.setdefault('billz_connected_at', None)
-                _shop.setdefault('billz_global_solo_discount', 10)
-                _shop.setdefault('billz_global_group_discount', 20)
-        pending_moderator_codes= data.get('pending_moderator_codes', {})
-        referrals              = data.get('referrals', {})
-        raw_rm                 = data.get('referral_map', {})
-        referral_map           = {int(k) if str(k).isdigit() else k: v for k, v in raw_rm.items()}
-        raw_sp                 = data.get('seller_products', {})
-        seller_products        = {int(k) if k.isdigit() else k: v for k, v in raw_sp.items()}
-        raw_cu = data.get('customers', {})
-        customers = {int(k) if str(k).isdigit() else k: v for k, v in raw_cu.items()}
-        raw_lv = data.get('lives', {})
-        lives = {k: v for k, v in raw_lv.items()}
-        terms_acceptance_log = data.get('terms_acceptance_log', [])
-        # Migration: buyer_profiles ham terms field'lariga ega bo'lsin (implicit consent)
-        for _bp in buyer_profiles.values():
-            if isinstance(_bp, dict):
-                _bp.setdefault('terms_accepted',    False)
-                _bp.setdefault('terms_accepted_at', None)
-                _bp.setdefault('terms_version',     None)
-        logging.info(f"Data loaded: {len(products)} products, {len(orders)} orders")
-        print(f"[JOYNSHOP] Data loaded: {len(products)} products, {len(seller_shops)} shops, {len(orders)} orders")
-    except Exception as e:
-        logging.error(f"load_data error: {e}", exc_info=True)
-        print(f"[JOYNSHOP] load_data ERROR: {e}")
 
 # ─── CLICK PAYMENT HELPERS ──────────────────────────────────────────
 def send_invoice(cid, title, description, payload, amount, photo_url=None):
