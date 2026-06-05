@@ -5697,6 +5697,7 @@ def api_stats():
             'gmv_week':         gmv_week,
             'commission_total': int(gmv_total * COMMISSION_RATE),
             'commission_week':  int(gmv_week  * COMMISSION_RATE),
+            'commission_pct':   int(COMMISSION_RATE * 100),
             'avg_order':        int(gmv_total / len(all_confirmed)) if all_confirmed else 0,
         },
         'chart': daily_data,
