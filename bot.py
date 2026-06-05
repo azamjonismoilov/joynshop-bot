@@ -49,34 +49,7 @@ TERMS_URLS = {
 }
 
 # ─── PERSISTENCE (PostgreSQL) ───────────────────────────────────────
-DATABASE_URL = os.environ.get('DATABASE_URL')
-
-def get_db():
-    import urllib.parse, ssl
-    r = urllib.parse.urlparse(DATABASE_URL)
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
-    return pg8000.connect(
-        host=r.hostname, port=r.port or 5432,
-        database=r.path.lstrip('/'),
-        user=r.username, password=r.password,
-        ssl_context=ssl_ctx
-    )
-
-def init_db():
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS joynshop_data "
-            "(key TEXT PRIMARY KEY, value TEXT)"
-        )
-        conn.commit()
-        cur.close(); conn.close()
-        logging.info("DB initialized")
-    except Exception as e:
-        logging.error(f"init_db error: {e}", exc_info=True)
+from persistence import *   # DATABASE_URL, get_db, init_db
 
 def save_data():
     if not DATABASE_URL:
