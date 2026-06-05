@@ -2301,6 +2301,258 @@ def cb_edit_map(uid, d, cb, cbid):
         send_seller(uid, prompt)
         return
 
+# ─── CB HANDLERS: CRM (menu_mycustomers/crm_*) (seller_handle_cb'dan ekstraksiya, Yo'l 1) ───
+def cb_crm(uid, d, cb, cbid):
+    answer_cb(cbid)
+    sid = str(uid)
+    my_customers = customers.get(sid, {})
+
+    # Filter va sahifa
+    per_page    = 7
+    page        = 1
+    cur_filter  = 'all'
+    if d.startswith('crm_page_'):
+        try: page = int(d.split('_')[2])
+        except: page = 1
+    elif d.startswith('crm_filter_'):
+        cur_filter = d[11:]
+
+    # ─── MIJOZ KARTASINI KO'RISH ───
+    if d.startswith('crm_view_'):
+        cuid = d[9:]
+        cust = my_customers.get(cuid, {})
+        if not cust:
+            send_seller(uid, "❌ Mijoz topilmadi."); return
+        avg  = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
+        tags = ', '.join(cust.get('tags', [])) or '\u2014'
+        note = cust.get('note', '')
+        phone    = cust.get('phone', '') or '\u2014'
+        username = cust.get('username', '')
+        username_line = f"@{username}" if username else '\u2014'
+        # Faollik holati
+        from datetime import datetime as _dt, timedelta
+        try:
+            last_dt = _dt.strptime(cust.get('last_order','01.01.2020'), '%d.%m.%Y')
+            days_ago = (_dt.now() - last_dt).days
+            if days_ago < 7:    activity = "🟢 Faol"
+            elif days_ago < 30: activity = "🟡 O'rtacha"
+            else:               activity = "🔴 Yo'qotilgan"
+        except:
+            activity = "—"
+
+        send_seller(uid,
+            f"👤 <b>{cust['name']}</b>\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📊 <b>Statistika:</b>\n"
+            f"🛒 Jami xaridlar: {cust['total_orders']} ta\n"
+            f"💰 Jami sarflagan: {fmt(cust['total_spent'])} so'm\n"
+            f"📈 O'rtacha check: {fmt(avg)} so'm\n"
+            f"📅 Birinchi xarid: {cust.get('first_order','—')}\n"
+            f"📅 Oxirgi xarid: {cust.get('last_order','—')}\n"
+            f"⚡ Holati: {activity}\n"
+            f"🏷 Teglar: {tags}\n"
+            f"📞 Telefon: {phone}\n"
+            f"👤 Username: {username_line}"
+            + (f"\n\n📝 <b>Izoh:</b> {note}" if note else ""),
+            {'inline_keyboard': [
+                [{'text': "⭐ VIP",       'callback_data': 'crm_tag_'+cuid+'_vip'},
+                 {'text': "🔴 Muammoli", 'callback_data': 'crm_tag_'+cuid+'_problem'},
+                 {'text': "💎 Doimiy",   'callback_data': 'crm_tag_'+cuid+'_loyal'}],
+                [{'text': "💬 Xabar yuborish",   'callback_data': 'crm_msg_'+cuid}],
+                [{'text': "📝 Izoh qo'shish",     'callback_data': 'crm_note_'+cuid}],
+                [{'text': "📊 Xaridlar tarixi",   'callback_data': 'crm_history_'+cuid}],
+                [{'text': "⬅️ Orqaga",           'callback_data': 'menu_mycustomers'}],
+            ]}
+        )
+        return
+
+    # ─── XARIDLAR TARIXI ───
+    if d.startswith('crm_history_'):
+        cuid = d[len('crm_history_'):]
+        cust = my_customers.get(cuid, {})
+        if not cust:
+            send_seller(uid, "❌ Mijoz topilmadi."); return
+        orders_list = list(reversed(cust.get('orders', [])))  # eng yangi tepada
+        if not orders_list:
+            txt = (f"📊 <b>Xaridlar tarixi — {cust['name']}</b>\n"
+                   f"━━━━━━━━━━━━━━━\n\nHali xarid yo'q.")
+        else:
+            lines = [f"📊 <b>Xaridlar tarixi — {cust['name']}</b>",
+                     "━━━━━━━━━━━━━━━"]
+            for i, o in enumerate(orders_list, 1):
+                lines.append(f"{i}. {o.get('product','—')}")
+                lines.append(f"   💰 {fmt(o.get('amount',0))} so'm · {o.get('date','—')}")
+            lines.append("━━━━━━━━━━━━━━━")
+            lines.append(f"💰 Jami: {fmt(cust['total_spent'])} so'm")
+            lines.append("<i>(oxirgi 20 ta xarid ko'rsatilgan)</i>")
+            txt = "\n".join(lines)
+        send_seller(uid, txt, {'inline_keyboard': [
+            [{'text': "⬅️ Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}],
+        ]})
+        return
+
+    # ─── TEG QO'YISH ───
+    if d.startswith('crm_tag_'):
+        parts = d.split('_')
+        cuid, tag = parts[2], parts[3]
+        if cuid in my_customers:
+            current = my_customers[cuid].get('tags', [])
+            if tag in current:
+                new_tags = [t for t in current if t != tag]
+                msg = f"🏷 Teg olib tashlandi: {tag}"
+            else:
+                new_tags = current + [tag]
+                msg = f"✅ Teg qo'shildi: {tag}"
+            ok, _ = do_update_customer(sid, cuid, {'tags': new_tags})
+            if ok:
+                send_seller(uid, msg)
+            else:
+                send_seller(uid, "❌ Tegni yangilab bo'lmadi")
+        return
+
+    # ─── XABAR YUBORISH ───
+    if d.startswith('crm_msg_'):
+        cuid = d[8:]
+        cust = my_customers.get(cuid, {})
+        if not cust:
+            send_seller(uid, "❌ Mijoz topilmadi."); return
+        seller_state[uid] = {'step': 'crm_send_msg', 'target_uid': cust.get('user_id'), 'target_name': cust['name']}
+        send_seller(uid,
+            f"💬 <b>{cust['name']}</b> ga xabar yuborish\n\n"
+            f"Xabar matnini yozing (yoki /cancel):"
+        )
+        return
+
+    # ─── IZOH QO'SHISH ───
+    if d.startswith('crm_note_'):
+        cuid = d[9:]
+        cust = my_customers.get(cuid, {})
+        if not cust:
+            send_seller(uid, "❌ Mijoz topilmadi."); return
+        seller_state[uid] = {'step': 'crm_add_note', 'target_cuid': cuid, 'target_name': cust['name']}
+        current_note = cust.get('note', '')
+        send_seller(uid,
+            f"📝 <b>{cust['name']}</b> uchun izoh\n\n"
+            + (f"Joriy izoh: <i>{current_note}</i>\n\n" if current_note else "") +
+            f"Yangi izoh yozing (yoki /cancel):"
+        )
+        return
+
+    # ─── QIDIRUV ───
+    if d == 'crm_search':
+        seller_state[uid] = {'step': 'crm_search_query'}
+        send_seller(uid,
+            "🔍 <b>Mijoz qidirish</b>\n\n"
+            "Ism yoki telefon raqamini yozing:"
+        )
+        return
+
+    # ─── RO'YXAT (filter bilan) ───
+    if not my_customers:
+        send_seller(uid,
+            "👥 <b>Mijozlar bazasi</b>\n\nHali mijoz yo'q.\n"
+            "Buyurtmalar tasdiqlanganidan keyin mijozlar bu yerda ko'rinadi.",
+            {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]}
+        )
+        return
+
+    # Filter qo'llash
+    from datetime import datetime as _dt
+    def days_since_last(c):
+        try:
+            last_dt = _dt.strptime(c.get('last_order','01.01.2020'), '%d.%m.%Y')
+            return (_dt.now() - last_dt).days
+        except: return 999
+
+    all_items = list(my_customers.items())
+    if cur_filter == 'vip':
+        filtered = [(k,v) for k,v in all_items if 'vip' in v.get('tags', [])]
+    elif cur_filter == 'active':
+        filtered = [(k,v) for k,v in all_items if days_since_last(v) < 7]
+    elif cur_filter == 'lost':
+        filtered = [(k,v) for k,v in all_items if days_since_last(v) >= 30]
+    elif cur_filter == 'new':
+        filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) == 1]
+    elif cur_filter == 'repeat':
+        filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) > 1]
+    else:
+        filtered = all_items
+
+    # Saralash
+    filtered.sort(key=lambda x: x[1]['total_spent'], reverse=True)
+    total = len(filtered)
+    start = (page - 1) * per_page
+    page_custs = filtered[start:start + per_page]
+
+    # Umumiy stat
+    total_revenue = sum(v['total_spent'] for v in my_customers.values())
+    repeat = sum(1 for v in my_customers.values() if v['total_orders'] > 1)
+    vip    = sum(1 for v in my_customers.values() if 'vip' in v.get('tags', []))
+
+    filter_labels = {
+        'all':    'Hammasi', 'vip': 'VIP', 'active': 'Faol',
+        'lost':   "Yo'qotilgan", 'new': 'Yangi', 'repeat': 'Qaytib kelgan'
+    }
+    text = (
+        "👥 <b>Mijozlar bazasi</b>\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"📊 Jami: {len(my_customers)} ta • VIP: {vip} • Qaytib kelgan: {repeat}\n"
+        f"💰 Jami daromad: {fmt(total_revenue)} so'm\n"
+        f"🔍 Filter: <b>{filter_labels.get(cur_filter, 'Hammasi')}</b> ({total} ta)\n\n"
+    )
+
+    if not page_custs:
+        text += "Bu filterda mijoz topilmadi.\n"
+    else:
+        for i, (cuid, cust) in enumerate(page_custs, start=start+1):
+            medal = ['🥇','🥈','🥉'][i-1] if i <= 3 else str(i) + "."
+            badges = ""
+            if 'vip' in cust.get('tags', []):     badges += " ⭐"
+            if 'problem' in cust.get('tags', []): badges += " 🔴"
+            if 'loyal' in cust.get('tags', []):   badges += " 💎"
+            d_ago = days_since_last(cust)
+            act_icon = "🟢" if d_ago < 7 else "🟡" if d_ago < 30 else "🔴"
+            text += (
+                f"{medal} <b>{cust['name']}{badges}</b>\n"
+                f"   🛒 {cust['total_orders']} ta • 💰 {fmt(cust['total_spent'])} so'm\n"
+                f"   {act_icon} Oxirgi: {cust.get('last_order','—')}\n\n"
+            )
+
+    # Klaviatura
+    kb_rows = []
+    # Filter qatori
+    kb_rows.append([
+        {'text': ('✅ ' if cur_filter=='all' else '') + 'Hammasi',  'callback_data': 'crm_filter_all'},
+        {'text': ('✅ ' if cur_filter=='vip' else '⭐ ') + 'VIP',    'callback_data': 'crm_filter_vip'},
+        {'text': ('✅ ' if cur_filter=='active' else '🟢 ') + 'Faol','callback_data': 'crm_filter_active'},
+    ])
+    kb_rows.append([
+        {'text': ('✅ ' if cur_filter=='lost' else '🔴 ') + "Yo'qotilgan", 'callback_data': 'crm_filter_lost'},
+        {'text': ('✅ ' if cur_filter=='new' else '🆕 ') + 'Yangi',         'callback_data': 'crm_filter_new'},
+        {'text': ('✅ ' if cur_filter=='repeat' else '🔄 ') + 'Qaytma',     'callback_data': 'crm_filter_repeat'},
+    ])
+    # Qidiruv
+    kb_rows.append([{'text': "🔍 Qidirish", 'callback_data': 'crm_search'}])
+    # Mijozlar — yangi format: "👤 {ism} · {N} ta · {summa_qisqa}"
+    for cuid, cust in page_custs:
+        cust_name = cust.get('name', '—')
+        if len(cust_name) > 22:
+            cust_name = cust_name[:21].rstrip() + '…'
+        label = (f"👤 {cust_name} · {cust['total_orders']} ta · "
+                 f"{format_price_short(cust['total_spent'])}")
+        kb_rows.append([{'text': label, 'callback_data': 'crm_view_' + cuid}])
+    # Pagination
+    nav = []
+    if page > 1:
+        nav.append({'text': "◀️", 'callback_data': f'crm_page_{page-1}'})
+    if start + per_page < total:
+        nav.append({'text': "▶️", 'callback_data': f'crm_page_{page+1}'})
+    if nav: kb_rows.append(nav)
+    kb_rows.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
+
+    send_seller(uid, text, {'inline_keyboard': kb_rows})
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2461,255 +2713,7 @@ def seller_handle_cb(cb):
         return cb_menu_mystats(uid, d, cb, cbid)
 
     if d == 'menu_mycustomers' or d.startswith('crm_'):
-        answer_cb(cbid)
-        sid = str(uid)
-        my_customers = customers.get(sid, {})
-
-        # Filter va sahifa
-        per_page    = 7
-        page        = 1
-        cur_filter  = 'all'
-        if d.startswith('crm_page_'):
-            try: page = int(d.split('_')[2])
-            except: page = 1
-        elif d.startswith('crm_filter_'):
-            cur_filter = d[11:]
-
-        # ─── MIJOZ KARTASINI KO'RISH ───
-        if d.startswith('crm_view_'):
-            cuid = d[9:]
-            cust = my_customers.get(cuid, {})
-            if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi."); return
-            avg  = cust['total_spent'] // cust['total_orders'] if cust['total_orders'] > 0 else 0
-            tags = ', '.join(cust.get('tags', [])) or '\u2014'
-            note = cust.get('note', '')
-            phone    = cust.get('phone', '') or '\u2014'
-            username = cust.get('username', '')
-            username_line = f"@{username}" if username else '\u2014'
-            # Faollik holati
-            from datetime import datetime as _dt, timedelta
-            try:
-                last_dt = _dt.strptime(cust.get('last_order','01.01.2020'), '%d.%m.%Y')
-                days_ago = (_dt.now() - last_dt).days
-                if days_ago < 7:    activity = "🟢 Faol"
-                elif days_ago < 30: activity = "🟡 O'rtacha"
-                else:               activity = "🔴 Yo'qotilgan"
-            except:
-                activity = "—"
-
-            send_seller(uid,
-                f"👤 <b>{cust['name']}</b>\n"
-                "━━━━━━━━━━━━━━━\n"
-                "📊 <b>Statistika:</b>\n"
-                f"🛒 Jami xaridlar: {cust['total_orders']} ta\n"
-                f"💰 Jami sarflagan: {fmt(cust['total_spent'])} so'm\n"
-                f"📈 O'rtacha check: {fmt(avg)} so'm\n"
-                f"📅 Birinchi xarid: {cust.get('first_order','—')}\n"
-                f"📅 Oxirgi xarid: {cust.get('last_order','—')}\n"
-                f"⚡ Holati: {activity}\n"
-                f"🏷 Teglar: {tags}\n"
-                f"📞 Telefon: {phone}\n"
-                f"👤 Username: {username_line}"
-                + (f"\n\n📝 <b>Izoh:</b> {note}" if note else ""),
-                {'inline_keyboard': [
-                    [{'text': "⭐ VIP",       'callback_data': 'crm_tag_'+cuid+'_vip'},
-                     {'text': "🔴 Muammoli", 'callback_data': 'crm_tag_'+cuid+'_problem'},
-                     {'text': "💎 Doimiy",   'callback_data': 'crm_tag_'+cuid+'_loyal'}],
-                    [{'text': "💬 Xabar yuborish",   'callback_data': 'crm_msg_'+cuid}],
-                    [{'text': "📝 Izoh qo'shish",     'callback_data': 'crm_note_'+cuid}],
-                    [{'text': "📊 Xaridlar tarixi",   'callback_data': 'crm_history_'+cuid}],
-                    [{'text': "⬅️ Orqaga",           'callback_data': 'menu_mycustomers'}],
-                ]}
-            )
-            return
-
-        # ─── XARIDLAR TARIXI ───
-        if d.startswith('crm_history_'):
-            cuid = d[len('crm_history_'):]
-            cust = my_customers.get(cuid, {})
-            if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi."); return
-            orders_list = list(reversed(cust.get('orders', [])))  # eng yangi tepada
-            if not orders_list:
-                txt = (f"📊 <b>Xaridlar tarixi — {cust['name']}</b>\n"
-                       f"━━━━━━━━━━━━━━━\n\nHali xarid yo'q.")
-            else:
-                lines = [f"📊 <b>Xaridlar tarixi — {cust['name']}</b>",
-                         "━━━━━━━━━━━━━━━"]
-                for i, o in enumerate(orders_list, 1):
-                    lines.append(f"{i}. {o.get('product','—')}")
-                    lines.append(f"   💰 {fmt(o.get('amount',0))} so'm · {o.get('date','—')}")
-                lines.append("━━━━━━━━━━━━━━━")
-                lines.append(f"💰 Jami: {fmt(cust['total_spent'])} so'm")
-                lines.append("<i>(oxirgi 20 ta xarid ko'rsatilgan)</i>")
-                txt = "\n".join(lines)
-            send_seller(uid, txt, {'inline_keyboard': [
-                [{'text': "⬅️ Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}],
-            ]})
-            return
-
-        # ─── TEG QO'YISH ───
-        if d.startswith('crm_tag_'):
-            parts = d.split('_')
-            cuid, tag = parts[2], parts[3]
-            if cuid in my_customers:
-                current = my_customers[cuid].get('tags', [])
-                if tag in current:
-                    new_tags = [t for t in current if t != tag]
-                    msg = f"🏷 Teg olib tashlandi: {tag}"
-                else:
-                    new_tags = current + [tag]
-                    msg = f"✅ Teg qo'shildi: {tag}"
-                ok, _ = do_update_customer(sid, cuid, {'tags': new_tags})
-                if ok:
-                    send_seller(uid, msg)
-                else:
-                    send_seller(uid, "❌ Tegni yangilab bo'lmadi")
-            return
-
-        # ─── XABAR YUBORISH ───
-        if d.startswith('crm_msg_'):
-            cuid = d[8:]
-            cust = my_customers.get(cuid, {})
-            if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi."); return
-            seller_state[uid] = {'step': 'crm_send_msg', 'target_uid': cust.get('user_id'), 'target_name': cust['name']}
-            send_seller(uid,
-                f"💬 <b>{cust['name']}</b> ga xabar yuborish\n\n"
-                f"Xabar matnini yozing (yoki /cancel):"
-            )
-            return
-
-        # ─── IZOH QO'SHISH ───
-        if d.startswith('crm_note_'):
-            cuid = d[9:]
-            cust = my_customers.get(cuid, {})
-            if not cust:
-                send_seller(uid, "❌ Mijoz topilmadi."); return
-            seller_state[uid] = {'step': 'crm_add_note', 'target_cuid': cuid, 'target_name': cust['name']}
-            current_note = cust.get('note', '')
-            send_seller(uid,
-                f"📝 <b>{cust['name']}</b> uchun izoh\n\n"
-                + (f"Joriy izoh: <i>{current_note}</i>\n\n" if current_note else "") +
-                f"Yangi izoh yozing (yoki /cancel):"
-            )
-            return
-
-        # ─── QIDIRUV ───
-        if d == 'crm_search':
-            seller_state[uid] = {'step': 'crm_search_query'}
-            send_seller(uid,
-                "🔍 <b>Mijoz qidirish</b>\n\n"
-                "Ism yoki telefon raqamini yozing:"
-            )
-            return
-
-        # ─── RO'YXAT (filter bilan) ───
-        if not my_customers:
-            send_seller(uid,
-                "👥 <b>Mijozlar bazasi</b>\n\nHali mijoz yo'q.\n"
-                "Buyurtmalar tasdiqlanganidan keyin mijozlar bu yerda ko'rinadi.",
-                {'inline_keyboard': [[{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}]]}
-            )
-            return
-
-        # Filter qo'llash
-        from datetime import datetime as _dt
-        def days_since_last(c):
-            try:
-                last_dt = _dt.strptime(c.get('last_order','01.01.2020'), '%d.%m.%Y')
-                return (_dt.now() - last_dt).days
-            except: return 999
-
-        all_items = list(my_customers.items())
-        if cur_filter == 'vip':
-            filtered = [(k,v) for k,v in all_items if 'vip' in v.get('tags', [])]
-        elif cur_filter == 'active':
-            filtered = [(k,v) for k,v in all_items if days_since_last(v) < 7]
-        elif cur_filter == 'lost':
-            filtered = [(k,v) for k,v in all_items if days_since_last(v) >= 30]
-        elif cur_filter == 'new':
-            filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) == 1]
-        elif cur_filter == 'repeat':
-            filtered = [(k,v) for k,v in all_items if v.get('total_orders', 0) > 1]
-        else:
-            filtered = all_items
-
-        # Saralash
-        filtered.sort(key=lambda x: x[1]['total_spent'], reverse=True)
-        total = len(filtered)
-        start = (page - 1) * per_page
-        page_custs = filtered[start:start + per_page]
-
-        # Umumiy stat
-        total_revenue = sum(v['total_spent'] for v in my_customers.values())
-        repeat = sum(1 for v in my_customers.values() if v['total_orders'] > 1)
-        vip    = sum(1 for v in my_customers.values() if 'vip' in v.get('tags', []))
-
-        filter_labels = {
-            'all':    'Hammasi', 'vip': 'VIP', 'active': 'Faol',
-            'lost':   "Yo'qotilgan", 'new': 'Yangi', 'repeat': 'Qaytib kelgan'
-        }
-        text = (
-            "👥 <b>Mijozlar bazasi</b>\n"
-            "━━━━━━━━━━━━━━━\n"
-            f"📊 Jami: {len(my_customers)} ta • VIP: {vip} • Qaytib kelgan: {repeat}\n"
-            f"💰 Jami daromad: {fmt(total_revenue)} so'm\n"
-            f"🔍 Filter: <b>{filter_labels.get(cur_filter, 'Hammasi')}</b> ({total} ta)\n\n"
-        )
-
-        if not page_custs:
-            text += "Bu filterda mijoz topilmadi.\n"
-        else:
-            for i, (cuid, cust) in enumerate(page_custs, start=start+1):
-                medal = ['🥇','🥈','🥉'][i-1] if i <= 3 else str(i) + "."
-                badges = ""
-                if 'vip' in cust.get('tags', []):     badges += " ⭐"
-                if 'problem' in cust.get('tags', []): badges += " 🔴"
-                if 'loyal' in cust.get('tags', []):   badges += " 💎"
-                d_ago = days_since_last(cust)
-                act_icon = "🟢" if d_ago < 7 else "🟡" if d_ago < 30 else "🔴"
-                text += (
-                    f"{medal} <b>{cust['name']}{badges}</b>\n"
-                    f"   🛒 {cust['total_orders']} ta • 💰 {fmt(cust['total_spent'])} so'm\n"
-                    f"   {act_icon} Oxirgi: {cust.get('last_order','—')}\n\n"
-                )
-
-        # Klaviatura
-        kb_rows = []
-        # Filter qatori
-        kb_rows.append([
-            {'text': ('✅ ' if cur_filter=='all' else '') + 'Hammasi',  'callback_data': 'crm_filter_all'},
-            {'text': ('✅ ' if cur_filter=='vip' else '⭐ ') + 'VIP',    'callback_data': 'crm_filter_vip'},
-            {'text': ('✅ ' if cur_filter=='active' else '🟢 ') + 'Faol','callback_data': 'crm_filter_active'},
-        ])
-        kb_rows.append([
-            {'text': ('✅ ' if cur_filter=='lost' else '🔴 ') + "Yo'qotilgan", 'callback_data': 'crm_filter_lost'},
-            {'text': ('✅ ' if cur_filter=='new' else '🆕 ') + 'Yangi',         'callback_data': 'crm_filter_new'},
-            {'text': ('✅ ' if cur_filter=='repeat' else '🔄 ') + 'Qaytma',     'callback_data': 'crm_filter_repeat'},
-        ])
-        # Qidiruv
-        kb_rows.append([{'text': "🔍 Qidirish", 'callback_data': 'crm_search'}])
-        # Mijozlar — yangi format: "👤 {ism} · {N} ta · {summa_qisqa}"
-        for cuid, cust in page_custs:
-            cust_name = cust.get('name', '—')
-            if len(cust_name) > 22:
-                cust_name = cust_name[:21].rstrip() + '…'
-            label = (f"👤 {cust_name} · {cust['total_orders']} ta · "
-                     f"{format_price_short(cust['total_spent'])}")
-            kb_rows.append([{'text': label, 'callback_data': 'crm_view_' + cuid}])
-        # Pagination
-        nav = []
-        if page > 1:
-            nav.append({'text': "◀️", 'callback_data': f'crm_page_{page-1}'})
-        if start + per_page < total:
-            nav.append({'text': "▶️", 'callback_data': f'crm_page_{page+1}'})
-        if nav: kb_rows.append(nav)
-        kb_rows.append([{'text': "⬅️ Menyu", 'callback_data': 'back_menu'}])
-
-        send_seller(uid, text, {'inline_keyboard': kb_rows})
-        return
+        return cb_crm(uid, d, cb, cbid)
 
     # ─── LIVE COMMERCE ───────────────────────────────────────────
     if d == 'live_cancel':
