@@ -629,6 +629,94 @@ def seller_webhook():
             seller_handle_msg(msg)
     return 'ok'
 
+# ─── CB HANDLERS: Help / Navigatsiya (seller_handle_cb'dan ekstraksiya) ───
+def cb_menu_help(uid, d, cb, cbid):
+    answer_cb(cbid)
+    send_seller(uid,
+"📘 <b>Sotuvchi yordam</b>\n\n"
+        "/start       — 🏠 Bosh sahifa\n"
+        "/addproduct  — ➕ Mahsulot qo'shish\n"
+        "/myproducts  — 📦 Mahsulotlarim\n"
+        "/myorders    — 📋 Buyurtmalar\n"
+        "/mystats     — 📊 Statistika\n"
+        "/billz       — 🔌 Billz integratsiyasi\n"
+        "/legal       — 📋 Yuridik ma'lumotlar\n"
+        "/menu        — 📱 Bosh menyu\n"
+        "/cancel      — ❌ Bekor qilish\n"
+        "/help        — ℹ️ Yordam\n\n"
+        "💬 Yordam: @joynshop_support",
+        {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
+    )
+    return
+
+def cb_back_menu(uid, d, cb, cbid):
+    answer_cb(cbid)
+    send_seller(uid,
+        "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\nGuruh savdosi orqali ko'proq soting!",
+        {'inline_keyboard': [
+            [
+                {'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
+                {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'},
+            ],
+            [
+                {'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
+                {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'},
+            ],
+            [
+                {'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
+                {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'},
+            ],
+        ]}
+    )
+    return
+
+def cb_menu_integrations(uid, d, cb, cbid):
+    answer_cb(cbid)
+    render_integrations_menu(uid, uid)
+    return
+
+def cb_integ(uid, d, cb, cbid):
+    integ_id = d[6:]
+    entry = next((e for e in INTEGRATIONS if e['id'] == integ_id), None)
+    if not entry:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    if entry['status'] != 'active':
+        answer_cb(cbid, f"🔒 {entry['name']} tez orada qo'shiladi", alert=True)
+        return
+    answer_cb(cbid)
+    # Billz uchun maxsus mantiq — ulangan bo'lsa boshqaruv, aks holda onboarding
+    if integ_id == 'billz':
+        connected = seller_billz_connected_shops(uid)
+        if len(connected) == 1:
+            # Bitta do'kon ulangan — to'g'ridan boshqaruv menyusiga
+            _open_billz_management(uid, uid, connected[0])
+        elif len(connected) > 1:
+            # Ko'p do'kon ulangan — qaysi birini boshqarishni tanlash
+            kb = []
+            for idx in connected:
+                sh = seller_shops[uid][idx]
+                kb.append([{
+                    'text': f"✅ {sh.get('name','—')[:20]} → {sh.get('billz_shop_name','—')[:15]}",
+                    'callback_data': f'billz_view_{idx}',
+                }])
+            kb.append([{'text': "🔙 Integratsiyalar", 'callback_data': 'menu_integrations'}])
+            send_seller(uid,
+                "✅ <b>Billz POS — boshqaruv</b>\n\n"
+                "Sizda bir nechta do'kon Billz'ga ulangan. Qaysi birini boshqarmoqchisiz?",
+                {'inline_keyboard': kb})
+        else:
+            # Hech qaysi ulanmagan — onboarding boshlash
+            _start_billz_onboarding(uid, uid)
+        return
+    # Boshqa active integratsiyalar uchun standart handler
+    handler_name = entry.get('handler')
+    handler = globals().get(handler_name) if handler_name else None
+    if handler:
+        handler(uid, uid)
+    else:
+        send_seller(uid, f"⚠️ {entry['name']} handler topilmadi")
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2040,92 +2128,17 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_help':
-        answer_cb(cbid)
-        send_seller(uid,
-"📘 <b>Sotuvchi yordam</b>\n\n"
-            "/start       — 🏠 Bosh sahifa\n"
-            "/addproduct  — ➕ Mahsulot qo'shish\n"
-            "/myproducts  — 📦 Mahsulotlarim\n"
-            "/myorders    — 📋 Buyurtmalar\n"
-            "/mystats     — 📊 Statistika\n"
-            "/billz       — 🔌 Billz integratsiyasi\n"
-            "/legal       — 📋 Yuridik ma'lumotlar\n"
-            "/menu        — 📱 Bosh menyu\n"
-            "/cancel      — ❌ Bekor qilish\n"
-            "/help        — ℹ️ Yordam\n\n"
-            "💬 Yordam: @joynshop_support",
-            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]}
-        )
-        return
+        return cb_menu_help(uid, d, cb, cbid)
 
     if d == 'back_menu':
-        answer_cb(cbid)
-        send_seller(uid,
-            "🏪 <b>Joynshop Sotuvchi Paneli</b>\n\nGuruh savdosi orqali ko'proq soting!",
-            {'inline_keyboard': [
-                [
-                    {'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
-                    {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'},
-                ],
-                [
-                    {'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
-                    {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'},
-                ],
-                [
-                    {'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
-                    {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'},
-                ],
-            ]}
-        )
-        return
+        return cb_back_menu(uid, d, cb, cbid)
 
     # ─── INTEGRATIONS DISPATCH ───
     if d == 'menu_integrations':
-        answer_cb(cbid)
-        render_integrations_menu(uid, uid)
-        return
+        return cb_menu_integrations(uid, d, cb, cbid)
 
     if d.startswith('integ_'):
-        integ_id = d[6:]
-        entry = next((e for e in INTEGRATIONS if e['id'] == integ_id), None)
-        if not entry:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        if entry['status'] != 'active':
-            answer_cb(cbid, f"🔒 {entry['name']} tez orada qo'shiladi", alert=True)
-            return
-        answer_cb(cbid)
-        # Billz uchun maxsus mantiq — ulangan bo'lsa boshqaruv, aks holda onboarding
-        if integ_id == 'billz':
-            connected = seller_billz_connected_shops(uid)
-            if len(connected) == 1:
-                # Bitta do'kon ulangan — to'g'ridan boshqaruv menyusiga
-                _open_billz_management(uid, uid, connected[0])
-            elif len(connected) > 1:
-                # Ko'p do'kon ulangan — qaysi birini boshqarishni tanlash
-                kb = []
-                for idx in connected:
-                    sh = seller_shops[uid][idx]
-                    kb.append([{
-                        'text': f"✅ {sh.get('name','—')[:20]} → {sh.get('billz_shop_name','—')[:15]}",
-                        'callback_data': f'billz_view_{idx}',
-                    }])
-                kb.append([{'text': "🔙 Integratsiyalar", 'callback_data': 'menu_integrations'}])
-                send_seller(uid,
-                    "✅ <b>Billz POS — boshqaruv</b>\n\n"
-                    "Sizda bir nechta do'kon Billz'ga ulangan. Qaysi birini boshqarmoqchisiz?",
-                    {'inline_keyboard': kb})
-            else:
-                # Hech qaysi ulanmagan — onboarding boshlash
-                _start_billz_onboarding(uid, uid)
-            return
-        # Boshqa active integratsiyalar uchun standart handler
-        handler_name = entry.get('handler')
-        handler = globals().get(handler_name) if handler_name else None
-        if handler:
-            handler(uid, uid)
-        else:
-            send_seller(uid, f"⚠️ {entry['name']} handler topilmadi")
-        return
+        return cb_integ(uid, d, cb, cbid)
 
     # ─── BILLZ INTEGRATION CALLBACKS ───
     if d.startswith('billz_view_'):
