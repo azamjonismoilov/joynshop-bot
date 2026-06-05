@@ -17,6 +17,7 @@ ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
 PAYME_NUMBER    = os.environ.get('PAYME_NUMBER', '+998913968946')
 COMMISSION_RATE = 0.05  # 5%
 CLICK_TOKEN    = os.environ.get('CLICK_TOKEN', '')  # Click Terminal payment token
+BILLZ_ENCRYPTION_KEY = os.environ.get('BILLZ_ENCRYPTION_KEY', '')  # billz.py ishlatadi
 
 # Kategoriyalar — bot va sayt uchun bir xil
 CATEGORIES = [
