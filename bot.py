@@ -1174,6 +1174,199 @@ def cb_edit_shop_social(uid, d, cb, cbid):
         "<i>Faqat mavjudlarini yozing</i>")
     return
 
+# ─── CB HANDLERS: Products (mp_*) (seller_handle_cb'dan ekstraksiya) ───
+def cb_menu_myproducts(uid, d, cb, cbid):
+    answer_cb(cbid)
+    render_myproducts(uid, uid, page=0)
+    return
+
+def cb_mp_page(uid, d, cb, cbid):
+    try:
+        page = int(d[8:])
+    except ValueError:
+        answer_cb(cbid); return
+    answer_cb(cbid)
+    render_myproducts(uid, uid, page=page)
+    return
+
+def cb_mp_edit(uid, d, cb, cbid):
+    pid = d[8:] if d.startswith('mp_edit_') else d[10:]
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid)
+    kb = {'inline_keyboard': [
+        [{'text': "📝 Nom",            'callback_data': f'mp_edit_field_name_{pid}'}],
+        [{'text': "💰 Asl narx",       'callback_data': f'mp_edit_field_orig_{pid}'},
+         {'text': "👥 Guruh narxi",    'callback_data': f'mp_edit_field_grp_{pid}'}],
+        [{'text': "👤 Yakka narx",     'callback_data': f'mp_edit_field_solo_{pid}'},
+         {'text': "👥 Min guruh",      'callback_data': f'mp_edit_field_min_{pid}'}],
+        [{'text': "⏰ Deadline",       'callback_data': f'mp_edit_field_deadline_{pid}'},
+         {'text': "📝 Tavsif",         'callback_data': f'mp_edit_field_desc_{pid}'}],
+        [{'text': "🎨 Variantlar",     'callback_data': f'mp_edit_field_variants_{pid}'},
+         {'text': "📸 Rasm",           'callback_data': f'mp_edit_field_photo_{pid}'}],
+        [{'text': "🏷 MXIK",           'callback_data': f'mp_edit_field_mxik_{pid}'}],
+        [{'text': "⬅️ Orqaga",         'callback_data': f'mp_view_{pid}'}],
+    ]}
+    send_seller(uid,
+        f"✏️ <b>{p.get('name','')}</b> ni tahrirlash\n\n"
+        f"Qaysi maydonni o'zgartirasiz?", kb)
+    return
+
+def cb_mp_edit_field(uid, d, cb, cbid):
+    rest = d[len('mp_edit_field_'):]
+    # field_<pid> formati
+    try:
+        field, pid = rest.split('_', 1)
+    except ValueError:
+        answer_cb(cbid); return
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid)
+    # MXIK — alohida search flow (prod_mxik_* step'larini qayta ishlatadi, lekin edit rejimida)
+    if field == 'mxik':
+        seller_state[uid] = {
+            'step': 'prod_mxik_search',
+            'pp_pid': pid,
+            'mxik_after': 'edit_pp',
+        }
+        send_seller(uid,
+            f"🏷 <b>MXIK qayta tanlash (ixtiyoriy)</b>\n\n"
+            f"📦 {p.get('name','')[:50]}\n\n"
+            f"Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+            ]})
+        return
+    prompts = {
+        'name':      ("📝 Yangi nom yozing:", 'pp_edit_name'),
+        'orig':      ("💰 Yangi asl narxni yozing (so'm):", 'pp_edit_orig'),
+        'grp':       ("👥 Yangi guruh narxini yozing (so'm):", 'pp_edit_grp'),
+        'solo':      ("👤 Yangi yakka narxni yozing (so'm):", 'pp_edit_solo'),
+        'min':       ("👥 Yangi minimal guruh sonini yozing (2-100):", 'pp_edit_min'),
+        'deadline':  ("⏰ Yangi muddat (soat, masalan: 24, 48, 72, 168):", 'pp_edit_deadline'),
+        'desc':      ("📝 Yangi tavsifni yozing:", 'pp_edit_desc'),
+        'variants':  ("🎨 Yangi variantlar (vergul bilan ajrating):", 'pp_edit_variants'),
+        'photo':     ("📸 Yangi rasm(lar)ni yuboring (bitta yoki bir nechta):", 'pp_edit_photo'),
+    }
+    if field not in prompts:
+        send_seller(uid, "❌ Noma'lum maydon"); return
+    prompt, step = prompts[field]
+    seller_state[uid] = {'step': step, 'pp_pid': pid, 'pp_photo_ids': []}
+    send_seller(uid, prompt + "\n\n<i>Bekor qilish: /cancel</i>")
+    return
+
+def cb_mp_view(uid, d, cb, cbid):
+    pid = d[8:]
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid)
+    cls   = _classify_product_status(p)
+    count = len(groups.get(pid, []))
+    is_billz_draft = (p.get('source') == 'billz' and not p.get('is_active', True))
+    # Narx liniyasi — draft uchun asl narx, aks holda guruh narxi
+    if is_billz_draft:
+        price_line = f"💰 {fmt(p.get('original_price',0))} so'm  <i>(asl narx)</i>"
+    else:
+        grp = p.get('group_price', 0) or p.get('original_price', 0)
+        price_line = f"💰 {fmt(grp)} so'm"
+    source_label = "Billz" if p.get('source') == 'billz' else "Manual"
+    mxik_code = p.get('mxik_code')
+    mxik_line = f"\n🏷 MXIK: <code>{mxik_code}</code>" if mxik_code else "\n🏷 MXIK: ⚠️ Yo'q (kiritish kerak)"
+    txt = (
+        f"{cls['emoji']} <b>{p.get('name','')}</b>\n\n"
+        f"{price_line}\n"
+        f"👥 Guruh: {count}/{p.get('min_group',0)}\n"
+        f"🛍 {source_label}\n"
+        f"📅 Tugash: {p.get('deadline','—') or '—'}\n"
+        f"📊 Status: {cls['label']}"
+        f"{mxik_line}"
+    )
+    # Tugma layouti — holatga qarab
+    kb_rows = []
+    is_closed  = (p.get('status') == 'closed')
+    is_expired = (cls['label'] == 'Muddati tugagan')
+    if is_billz_draft:
+        kb_rows.append([
+            {'text': "▶️ Yoqish",   'callback_data': f'bz_activate_{pid}'},
+            {'text': "🗑 O'chirish", 'callback_data': f'mp_del_{pid}'},
+        ])
+    elif is_expired:
+        kb_rows.append([
+            {'text': "♻️ Qayta yoqish", 'callback_data': f'mp_renew_{pid}'},
+            {'text': "🗑 O'chirish",    'callback_data': f'mp_del_{pid}'},
+        ])
+    elif not is_closed:
+        kb_rows.append([
+            {'text': "✏️ Tahrirlash", 'callback_data': f'mp_edit_{pid}'},
+            {'text': "🗑 O'chirish",  'callback_data': f'mp_del_{pid}'},
+        ])
+    # Closed (faqat o'qish) — yuqori qator umuman yo'q
+    kb_rows.append([
+        {'text': "📊 Statistika", 'callback_data': f'mp_stats_{pid}'},
+        {'text': "🔙 Orqaga",     'callback_data': 'menu_myproducts'},
+    ])
+    send_seller(uid, txt, {'inline_keyboard': kb_rows})
+    return
+
+def cb_mp_stats(uid, d, cb, cbid):
+    pid = d[9:]
+    if pid not in products:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid, "📊 Tez orada qo'shiladi", alert=True)
+    return
+
+def cb_mp_renew(uid, d, cb, cbid):
+    pid = d[9:]
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid)
+    send_seller(uid,
+        f"♻️ <b>Qayta yoqish — {p.get('name','')}</b>\n\n"
+        f"Yangi muddat tanlang. Boshqa maydonlar saqlanadi (narx, min guruh va h.k.).",
+        {'inline_keyboard': [
+            [{'text': "24 soat",  'callback_data': f'mp_renewh_{pid}_24'},
+             {'text': "2 kun",    'callback_data': f'mp_renewh_{pid}_48'}],
+            [{'text': "3 kun",    'callback_data': f'mp_renewh_{pid}_72'},
+             {'text': "1 hafta",  'callback_data': f'mp_renewh_{pid}_168'}],
+            [{'text': "🔙 Bekor", 'callback_data': f'mp_view_{pid}'}],
+        ]})
+    return
+
+def cb_mp_renewh(uid, d, cb, cbid):
+    # mp_renewh_<pid>_<hours>
+    rest = d[len('mp_renewh_'):]
+    try:
+        pid, hours_str = rest.rsplit('_', 1)
+        hours = int(hours_str)
+    except (ValueError, IndexError):
+        answer_cb(cbid); return
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    if hours < 1 or hours > 720:
+        answer_cb(cbid, "❌ Noto'g'ri muddat"); return
+    new_dt = datetime.now() + timedelta(hours=hours)
+    p['deadline']    = new_dt.strftime('%d.%m.%Y %H:%M')
+    p['deadline_dt'] = new_dt.strftime('%Y-%m-%d %H:%M')
+    p['status']      = 'active'
+    p['is_active']   = True
+    save_data()
+    answer_cb(cbid, "✅ Qayta yoqildi")
+    send_seller(uid,
+        f"✅ <b>{p.get('name','')}</b> qayta yoqildi.\n\n"
+        f"📅 Yangi muddat: {p['deadline']}\n\n"
+        f"<i>Kanal posti caption'i 30 soniya ichida avtomatik yangilanadi.</i>",
+        {'inline_keyboard': [
+            [{'text': "👁 Mahsulotni ko'rish", 'callback_data': f'mp_view_{pid}'}],
+            [{'text': "📦 Mahsulotlarim",     'callback_data': 'menu_myproducts'}],
+        ]})
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2139,196 +2332,28 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_myproducts':
-        answer_cb(cbid)
-        render_myproducts(uid, uid, page=0)
-        return
+        return cb_menu_myproducts(uid, d, cb, cbid)
 
     if d.startswith('mp_page_'):
-        try:
-            page = int(d[8:])
-        except ValueError:
-            answer_cb(cbid); return
-        answer_cb(cbid)
-        render_myproducts(uid, uid, page=page)
-        return
+        return cb_mp_page(uid, d, cb, cbid)
 
     if (d.startswith('mp_edit_') and not d.startswith('mp_edit_field_')) or d.startswith('edit_prod_'):
-        pid = d[8:] if d.startswith('mp_edit_') else d[10:]
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid)
-        kb = {'inline_keyboard': [
-            [{'text': "📝 Nom",            'callback_data': f'mp_edit_field_name_{pid}'}],
-            [{'text': "💰 Asl narx",       'callback_data': f'mp_edit_field_orig_{pid}'},
-             {'text': "👥 Guruh narxi",    'callback_data': f'mp_edit_field_grp_{pid}'}],
-            [{'text': "👤 Yakka narx",     'callback_data': f'mp_edit_field_solo_{pid}'},
-             {'text': "👥 Min guruh",      'callback_data': f'mp_edit_field_min_{pid}'}],
-            [{'text': "⏰ Deadline",       'callback_data': f'mp_edit_field_deadline_{pid}'},
-             {'text': "📝 Tavsif",         'callback_data': f'mp_edit_field_desc_{pid}'}],
-            [{'text': "🎨 Variantlar",     'callback_data': f'mp_edit_field_variants_{pid}'},
-             {'text': "📸 Rasm",           'callback_data': f'mp_edit_field_photo_{pid}'}],
-            [{'text': "🏷 MXIK",           'callback_data': f'mp_edit_field_mxik_{pid}'}],
-            [{'text': "⬅️ Orqaga",         'callback_data': f'mp_view_{pid}'}],
-        ]}
-        send_seller(uid,
-            f"✏️ <b>{p.get('name','')}</b> ni tahrirlash\n\n"
-            f"Qaysi maydonni o'zgartirasiz?", kb)
-        return
+        return cb_mp_edit(uid, d, cb, cbid)
 
     if d.startswith('mp_edit_field_'):
-        rest = d[len('mp_edit_field_'):]
-        # field_<pid> formati
-        try:
-            field, pid = rest.split('_', 1)
-        except ValueError:
-            answer_cb(cbid); return
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid)
-        # MXIK — alohida search flow (prod_mxik_* step'larini qayta ishlatadi, lekin edit rejimida)
-        if field == 'mxik':
-            seller_state[uid] = {
-                'step': 'prod_mxik_search',
-                'pp_pid': pid,
-                'mxik_after': 'edit_pp',
-            }
-            send_seller(uid,
-                f"🏷 <b>MXIK qayta tanlash (ixtiyoriy)</b>\n\n"
-                f"📦 {p.get('name','')[:50]}\n\n"
-                f"Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:",
-                {'inline_keyboard': [
-                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                    [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-                ]})
-            return
-        prompts = {
-            'name':      ("📝 Yangi nom yozing:", 'pp_edit_name'),
-            'orig':      ("💰 Yangi asl narxni yozing (so'm):", 'pp_edit_orig'),
-            'grp':       ("👥 Yangi guruh narxini yozing (so'm):", 'pp_edit_grp'),
-            'solo':      ("👤 Yangi yakka narxni yozing (so'm):", 'pp_edit_solo'),
-            'min':       ("👥 Yangi minimal guruh sonini yozing (2-100):", 'pp_edit_min'),
-            'deadline':  ("⏰ Yangi muddat (soat, masalan: 24, 48, 72, 168):", 'pp_edit_deadline'),
-            'desc':      ("📝 Yangi tavsifni yozing:", 'pp_edit_desc'),
-            'variants':  ("🎨 Yangi variantlar (vergul bilan ajrating):", 'pp_edit_variants'),
-            'photo':     ("📸 Yangi rasm(lar)ni yuboring (bitta yoki bir nechta):", 'pp_edit_photo'),
-        }
-        if field not in prompts:
-            send_seller(uid, "❌ Noma'lum maydon"); return
-        prompt, step = prompts[field]
-        seller_state[uid] = {'step': step, 'pp_pid': pid, 'pp_photo_ids': []}
-        send_seller(uid, prompt + "\n\n<i>Bekor qilish: /cancel</i>")
-        return
+        return cb_mp_edit_field(uid, d, cb, cbid)
 
     if d.startswith('mp_view_'):
-        pid = d[8:]
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid)
-        cls   = _classify_product_status(p)
-        count = len(groups.get(pid, []))
-        is_billz_draft = (p.get('source') == 'billz' and not p.get('is_active', True))
-        # Narx liniyasi — draft uchun asl narx, aks holda guruh narxi
-        if is_billz_draft:
-            price_line = f"💰 {fmt(p.get('original_price',0))} so'm  <i>(asl narx)</i>"
-        else:
-            grp = p.get('group_price', 0) or p.get('original_price', 0)
-            price_line = f"💰 {fmt(grp)} so'm"
-        source_label = "Billz" if p.get('source') == 'billz' else "Manual"
-        mxik_code = p.get('mxik_code')
-        mxik_line = f"\n🏷 MXIK: <code>{mxik_code}</code>" if mxik_code else "\n🏷 MXIK: ⚠️ Yo'q (kiritish kerak)"
-        txt = (
-            f"{cls['emoji']} <b>{p.get('name','')}</b>\n\n"
-            f"{price_line}\n"
-            f"👥 Guruh: {count}/{p.get('min_group',0)}\n"
-            f"🛍 {source_label}\n"
-            f"📅 Tugash: {p.get('deadline','—') or '—'}\n"
-            f"📊 Status: {cls['label']}"
-            f"{mxik_line}"
-        )
-        # Tugma layouti — holatga qarab
-        kb_rows = []
-        is_closed  = (p.get('status') == 'closed')
-        is_expired = (cls['label'] == 'Muddati tugagan')
-        if is_billz_draft:
-            kb_rows.append([
-                {'text': "▶️ Yoqish",   'callback_data': f'bz_activate_{pid}'},
-                {'text': "🗑 O'chirish", 'callback_data': f'mp_del_{pid}'},
-            ])
-        elif is_expired:
-            kb_rows.append([
-                {'text': "♻️ Qayta yoqish", 'callback_data': f'mp_renew_{pid}'},
-                {'text': "🗑 O'chirish",    'callback_data': f'mp_del_{pid}'},
-            ])
-        elif not is_closed:
-            kb_rows.append([
-                {'text': "✏️ Tahrirlash", 'callback_data': f'mp_edit_{pid}'},
-                {'text': "🗑 O'chirish",  'callback_data': f'mp_del_{pid}'},
-            ])
-        # Closed (faqat o'qish) — yuqori qator umuman yo'q
-        kb_rows.append([
-            {'text': "📊 Statistika", 'callback_data': f'mp_stats_{pid}'},
-            {'text': "🔙 Orqaga",     'callback_data': 'menu_myproducts'},
-        ])
-        send_seller(uid, txt, {'inline_keyboard': kb_rows})
-        return
+        return cb_mp_view(uid, d, cb, cbid)
 
     if d.startswith('mp_stats_'):
-        pid = d[9:]
-        if pid not in products:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid, "📊 Tez orada qo'shiladi", alert=True)
-        return
+        return cb_mp_stats(uid, d, cb, cbid)
 
     if d.startswith('mp_renew_') and not d.startswith('mp_renewh_'):
-        pid = d[9:]
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid)
-        send_seller(uid,
-            f"♻️ <b>Qayta yoqish — {p.get('name','')}</b>\n\n"
-            f"Yangi muddat tanlang. Boshqa maydonlar saqlanadi (narx, min guruh va h.k.).",
-            {'inline_keyboard': [
-                [{'text': "24 soat",  'callback_data': f'mp_renewh_{pid}_24'},
-                 {'text': "2 kun",    'callback_data': f'mp_renewh_{pid}_48'}],
-                [{'text': "3 kun",    'callback_data': f'mp_renewh_{pid}_72'},
-                 {'text': "1 hafta",  'callback_data': f'mp_renewh_{pid}_168'}],
-                [{'text': "🔙 Bekor", 'callback_data': f'mp_view_{pid}'}],
-            ]})
-        return
+        return cb_mp_renew(uid, d, cb, cbid)
 
     if d.startswith('mp_renewh_'):
-        # mp_renewh_<pid>_<hours>
-        rest = d[len('mp_renewh_'):]
-        try:
-            pid, hours_str = rest.rsplit('_', 1)
-            hours = int(hours_str)
-        except (ValueError, IndexError):
-            answer_cb(cbid); return
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        if hours < 1 or hours > 720:
-            answer_cb(cbid, "❌ Noto'g'ri muddat"); return
-        new_dt = datetime.now() + timedelta(hours=hours)
-        p['deadline']    = new_dt.strftime('%d.%m.%Y %H:%M')
-        p['deadline_dt'] = new_dt.strftime('%Y-%m-%d %H:%M')
-        p['status']      = 'active'
-        p['is_active']   = True
-        save_data()
-        answer_cb(cbid, "✅ Qayta yoqildi")
-        send_seller(uid,
-            f"✅ <b>{p.get('name','')}</b> qayta yoqildi.\n\n"
-            f"📅 Yangi muddat: {p['deadline']}\n\n"
-            f"<i>Kanal posti caption'i 30 soniya ichida avtomatik yangilanadi.</i>",
-            {'inline_keyboard': [
-                [{'text': "👁 Mahsulotni ko'rish", 'callback_data': f'mp_view_{pid}'}],
-                [{'text': "📦 Mahsulotlarim",     'callback_data': 'menu_myproducts'}],
-            ]})
-        return
+        return cb_mp_renewh(uid, d, cb, cbid)
 
     if d == 'menu_help':
         return cb_menu_help(uid, d, cb, cbid)
