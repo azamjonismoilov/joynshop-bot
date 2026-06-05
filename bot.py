@@ -760,6 +760,31 @@ def cb_seller_deny_refund(uid, d, cb, cbid):
         )
     answer_cb(cbid, '❌ Rad'); return
 
+# ─── CB HANDLERS: Stats (seller_handle_cb'dan ekstraksiya) ───
+def cb_menu_mystats(uid, d, cb, cbid):
+    answer_cb(cbid)
+    my = seller_products.get(uid, [])
+    if not my:
+        send_seller(uid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
+    revenue    = sum(o['amount'] for o in orders.values() if o.get('product_id') in my and o['status'] == 'confirmed')
+    commission = int(revenue * COMMISSION_RATE)
+    send_seller(uid,
+        f"📊 <b>Sizning statistikangiz:</b>\n\n"
+        f"📦 Jami mahsulot: {len(my)}\n"
+        f"🔥 Aktiv: {sum(1 for pid in my if products.get(pid,{}).get('status')!='closed')}\n"
+        f"✅ Muvaffaqiyatli guruh: {sum(1 for pid in my if len(groups.get(pid,[]))>=products.get(pid,{}).get('min_group',99))}\n"
+        f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
+        f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
+        f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
+        {'inline_keyboard': [
+            [{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}],
+            [{'text': "🔙 Menyu",         'callback_data': 'back_menu'}],
+        ]}
+    )
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -1335,28 +1360,7 @@ def seller_handle_cb(cb):
         return
 
     if d == 'menu_mystats':
-        answer_cb(cbid)
-        my = seller_products.get(uid, [])
-        if not my:
-            send_seller(uid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
-        revenue    = sum(o['amount'] for o in orders.values() if o.get('product_id') in my and o['status'] == 'confirmed')
-        commission = int(revenue * COMMISSION_RATE)
-        send_seller(uid,
-            f"📊 <b>Sizning statistikangiz:</b>\n\n"
-            f"📦 Jami mahsulot: {len(my)}\n"
-            f"🔥 Aktiv: {sum(1 for pid in my if products.get(pid,{}).get('status')!='closed')}\n"
-            f"✅ Muvaffaqiyatli guruh: {sum(1 for pid in my if len(groups.get(pid,[]))>=products.get(pid,{}).get('min_group',99))}\n"
-            f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
-            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
-            f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
-            {'inline_keyboard': [
-                [{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}],
-                [{'text': "🔙 Menyu",         'callback_data': 'back_menu'}],
-            ]}
-        )
-        return
+        return cb_menu_mystats(uid, d, cb, cbid)
 
     if d == 'menu_mycustomers' or d.startswith('crm_'):
         answer_cb(cbid)
