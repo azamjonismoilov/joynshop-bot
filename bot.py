@@ -1367,6 +1367,232 @@ def cb_mp_renewh(uid, d, cb, cbid):
         ]})
     return
 
+# ─── CB HANDLERS: Live (live_*) (seller_handle_cb'dan ekstraksiya) ───
+def cb_live_cancel(uid, d, cb, cbid):
+    answer_cb(cbid, "Bekor qilindi")
+    if uid in seller_state and seller_state[uid].get('step','').startswith('live_'):
+        del seller_state[uid]
+    return
+
+def cb_live_pick(uid, d, cb, cbid):
+    answer_cb(cbid)
+    pid = d[10:]
+    if pid not in products:
+        send_seller(uid, "❌ Mahsulot topilmadi.")
+        return
+    seller_state[uid] = {
+        'step': 'live_video',
+        'product_id': pid,
+    }
+    p = products[pid]
+    send_seller(uid,
+        f"📦 <b>{p.get('name','')}</b>\n\n"
+        f"🎥 <b>Live videoni yuboring</b>\n\n"
+        f"⏱ Davomiyligi: 15 soniyadan 5 daqiqagacha\n"
+        f"📐 Vertikal video tavsiya etiladi (9:16)\n\n"
+        f"<i>Videoni shu chatga yuboring...</i>",
+        {'inline_keyboard': [[{'text': "❌ Bekor", 'callback_data': 'live_cancel'}]]}
+    )
+    return
+
+def cb_live_dur(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'live_duration':
+        return
+    try:
+        hours = int(d.split('_')[2])
+    except:
+        return
+    s['duration_hours'] = hours
+    s['step'] = 'live_discount'
+    labels = {1: '1 soat', 3: '3 soat', 24: '24 soat'}
+    send_seller(uid,
+        f"⏰ Davomiyligi: {labels.get(hours, str(hours)+' soat')}\n\n"
+        f"💸 <b>Qo'shimcha chegirma %?</b>\n\n"
+        f"<i>Oddiy guruh narxi ustiga qo'shimcha chegirma.\n"
+        f"Misol: oddiy 30%, live qo'shimcha 10% = jami 40% tejash</i>",
+        {'inline_keyboard': [
+            [{'text': "5%",  'callback_data': 'live_disc_5'},
+             {'text': "10%", 'callback_data': 'live_disc_10'},
+             {'text': "15%", 'callback_data': 'live_disc_15'},
+             {'text': "20%", 'callback_data': 'live_disc_20'}],
+            [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
+        ]}
+    )
+    return
+
+def cb_live_disc(uid, d, cb, cbid):
+    answer_cb(cbid)
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'live_discount':
+        return
+    try:
+        pct = int(d.split('_')[2])
+    except:
+        return
+    s['discount_pct'] = pct
+    s['step'] = 'live_confirm'
+    # Tasdiq xabari
+    p = products.get(s['product_id'], {})
+    group_price = p.get('group_price', 0)
+    live_price  = int(group_price * (100 - pct) / 100)
+    s['live_price'] = live_price
+    send_seller(uid,
+        f"📋 <b>LIVE tasdiqlash</b>\n\n"
+        f"📦 {p.get('name','')}\n"
+        f"💰 Oddiy guruh: {fmt(group_price)} so'm\n"
+        f"🔴 Live narx: <b>{fmt(live_price)} so'm</b> (-{pct}% qo'shimcha)\n"
+        f"⏰ Davomiyligi: {s['duration_hours']} soat\n\n"
+        f"Live boshlangach kanaliga avtomatik post yuboramiz.",
+        {'inline_keyboard': [
+            [{'text': "🚀 LIVE BOSHLASH", 'callback_data': 'live_start'}],
+            [{'text': "❌ Bekor",         'callback_data': 'live_cancel'}],
+        ]}
+    )
+    return
+
+def cb_live_start(uid, d, cb, cbid):
+    answer_cb(cbid, "🔴 Live boshlanmoqda...", token=SELLER_TOKEN)
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'live_confirm':
+        return
+    # Live yaratish
+    from datetime import datetime as _dt, timedelta
+    live_id = 'live_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    now = _dt.now()
+    ends = now + timedelta(hours=s['duration_hours'])
+    live_data = {
+        'id':             live_id,
+        'product_id':     s['product_id'],
+        'seller_id':      uid,
+        'video_file_id':  s.get('video_file_id', ''),
+        'video_duration': s.get('video_duration', 0),
+        'duration_hours': s['duration_hours'],
+        'discount_pct':   s['discount_pct'],
+        'live_price':     s['live_price'],
+        'status':         'live',
+        'started_at':     now.strftime('%Y-%m-%d %H:%M'),
+        'ends_at':        ends.strftime('%Y-%m-%d %H:%M'),
+        'viewers':        [],
+        'joiners':        [],
+        'viewer_count':   0,
+        'questions':      [],
+        'channel_msg_id': None,
+    }
+    lives[live_id] = live_data
+    del seller_state[uid]
+    save_data()
+
+    # Sotuvchi kanaliga post yuborish
+    p = products.get(s['product_id'], {})
+    channel = p.get('seller_channel', '')
+    if channel:
+        try:
+            video_id = live_data['video_file_id']
+            caption = (
+                f"🔴 <b>LIVE — {p.get('name','')}</b>\n\n"
+                f"💰 Oddiy: {fmt(p.get('group_price',0))} so'm\n"
+                f"🔥 LIVE narx: <b>{fmt(s['live_price'])} so'm</b>\n"
+                f"⏰ {s['duration_hours']} soat ichida tugaydi!\n\n"
+                f"🎬 Tomosha qiling va guruhga qo'shiling 👇"
+            )
+            live_url = f"{(BACKEND_URL or '').rstrip('/')}/live/{live_id}"
+            kb_live = {'inline_keyboard': [[
+                {'text': "▶️ LIVE TOMOSHA QILISH", 'url': live_url}
+            ]]}
+            if video_id:
+                r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendVideo', json={
+                    'chat_id':    channel,
+                    'video':      video_id,
+                    'caption':    caption,
+                    'parse_mode': 'HTML',
+                    'reply_markup': kb_live,
+                }).json()
+            else:
+                r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
+                    'chat_id':    channel,
+                    'text':       caption,
+                    'parse_mode': 'HTML',
+                    'reply_markup': kb_live,
+                }).json()
+            if r.get('ok'):
+                lives[live_id]['channel_msg_id'] = r['result'].get('message_id')
+                save_data()
+        except Exception as e:
+            logging.error(f"Live channel post error: {e}")
+
+    send_seller(uid,
+        f"🔴 <b>LIVE BOSHLANDI!</b>\n\n"
+        f"📦 {p.get('name','')}\n"
+        f"⏰ Tugaydi: {ends.strftime('%H:%M')}\n\n"
+        f"Real-time dashboard:",
+        {'inline_keyboard': [[
+            {'text': "📊 Dashboard", 'callback_data': f'live_dash_{live_id}'},
+        ]]}
+    )
+    return
+
+def cb_live_dash(uid, d, cb, cbid):
+    answer_cb(cbid)
+    live_id = d[10:]
+    lv = lives.get(live_id)
+    if not lv:
+        send_seller(uid, "❌ Live topilmadi.")
+        return
+    p = products.get(lv.get('product_id',''), {})
+    from datetime import datetime as _dt
+    try:
+        ends = _dt.strptime(lv['ends_at'], '%Y-%m-%d %H:%M')
+        remaining = ends - _dt.now()
+        if remaining.total_seconds() > 0:
+            h = int(remaining.total_seconds() // 3600)
+            m = int((remaining.total_seconds() % 3600) // 60)
+            time_str = f"{h} soat {m} daqiqa qoldi"
+        else:
+            time_str = "TUGADI"
+            lv['status'] = 'ended'
+            save_data()
+    except:
+        time_str = "—"
+
+    joiners = lv.get('joiners', [])
+    joined_amount = sum(orders.get(j.get('order_code',''), {}).get('amount', 0)
+                        for j in joiners if isinstance(j, dict))
+    send_seller(uid,
+        f"📊 <b>LIVE Dashboard</b>\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📦 {p.get('name','')}\n"
+        f"⏰ {time_str}\n\n"
+        f"👀 Ko'rdi: <b>{lv.get('viewer_count', 0)}</b>\n"
+        f"👥 Qo'shildi: <b>{len(joiners)}</b>\n"
+        f"💰 Sotuv: {fmt(joined_amount)} so'm\n"
+        f"🔴 Status: {lv.get('status','—').upper()}",
+        {'inline_keyboard': [
+            [{'text': "🔄 Yangilash",  'callback_data': f'live_dash_{live_id}'}],
+            [{'text': "🛑 Tugatish",   'callback_data': f'live_end_{live_id}'}],
+            [{'text': "⬅️ Menyu",      'callback_data': 'back_menu'}],
+        ]}
+    )
+    return
+
+def cb_live_end(uid, d, cb, cbid):
+    answer_cb(cbid, "Live tugatildi")
+    live_id = d[9:]
+    lv = lives.get(live_id)
+    if not lv or lv.get('seller_id') != uid:
+        return
+    lv['status'] = 'ended'
+    save_data()
+    p = products.get(lv.get('product_id',''), {})
+    send_seller(uid,
+        f"🛑 <b>Live tugatildi</b>\n\n"
+        f"📦 {p.get('name','')}\n"
+        f"👀 Ko'rdi: {lv.get('viewer_count', 0)}\n"
+        f"👥 Qo'shildi: {len(lv.get('joiners', []))}"
+    )
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2081,229 +2307,25 @@ def seller_handle_cb(cb):
 
     # ─── LIVE COMMERCE ───────────────────────────────────────────
     if d == 'live_cancel':
-        answer_cb(cbid, "Bekor qilindi")
-        if uid in seller_state and seller_state[uid].get('step','').startswith('live_'):
-            del seller_state[uid]
-        return
+        return cb_live_cancel(uid, d, cb, cbid)
 
     if d.startswith('live_pick_'):
-        answer_cb(cbid)
-        pid = d[10:]
-        if pid not in products:
-            send_seller(uid, "❌ Mahsulot topilmadi.")
-            return
-        seller_state[uid] = {
-            'step': 'live_video',
-            'product_id': pid,
-        }
-        p = products[pid]
-        send_seller(uid,
-            f"📦 <b>{p.get('name','')}</b>\n\n"
-            f"🎥 <b>Live videoni yuboring</b>\n\n"
-            f"⏱ Davomiyligi: 15 soniyadan 5 daqiqagacha\n"
-            f"📐 Vertikal video tavsiya etiladi (9:16)\n\n"
-            f"<i>Videoni shu chatga yuboring...</i>",
-            {'inline_keyboard': [[{'text': "❌ Bekor", 'callback_data': 'live_cancel'}]]}
-        )
-        return
+        return cb_live_pick(uid, d, cb, cbid)
 
     if d.startswith('live_dur_'):
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'live_duration':
-            return
-        try:
-            hours = int(d.split('_')[2])
-        except:
-            return
-        s['duration_hours'] = hours
-        s['step'] = 'live_discount'
-        labels = {1: '1 soat', 3: '3 soat', 24: '24 soat'}
-        send_seller(uid,
-            f"⏰ Davomiyligi: {labels.get(hours, str(hours)+' soat')}\n\n"
-            f"💸 <b>Qo'shimcha chegirma %?</b>\n\n"
-            f"<i>Oddiy guruh narxi ustiga qo'shimcha chegirma.\n"
-            f"Misol: oddiy 30%, live qo'shimcha 10% = jami 40% tejash</i>",
-            {'inline_keyboard': [
-                [{'text': "5%",  'callback_data': 'live_disc_5'},
-                 {'text': "10%", 'callback_data': 'live_disc_10'},
-                 {'text': "15%", 'callback_data': 'live_disc_15'},
-                 {'text': "20%", 'callback_data': 'live_disc_20'}],
-                [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
-            ]}
-        )
-        return
+        return cb_live_dur(uid, d, cb, cbid)
 
     if d.startswith('live_disc_'):
-        answer_cb(cbid)
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'live_discount':
-            return
-        try:
-            pct = int(d.split('_')[2])
-        except:
-            return
-        s['discount_pct'] = pct
-        s['step'] = 'live_confirm'
-        # Tasdiq xabari
-        p = products.get(s['product_id'], {})
-        group_price = p.get('group_price', 0)
-        live_price  = int(group_price * (100 - pct) / 100)
-        s['live_price'] = live_price
-        send_seller(uid,
-            f"📋 <b>LIVE tasdiqlash</b>\n\n"
-            f"📦 {p.get('name','')}\n"
-            f"💰 Oddiy guruh: {fmt(group_price)} so'm\n"
-            f"🔴 Live narx: <b>{fmt(live_price)} so'm</b> (-{pct}% qo'shimcha)\n"
-            f"⏰ Davomiyligi: {s['duration_hours']} soat\n\n"
-            f"Live boshlangach kanaliga avtomatik post yuboramiz.",
-            {'inline_keyboard': [
-                [{'text': "🚀 LIVE BOSHLASH", 'callback_data': 'live_start'}],
-                [{'text': "❌ Bekor",         'callback_data': 'live_cancel'}],
-            ]}
-        )
-        return
+        return cb_live_disc(uid, d, cb, cbid)
 
     if d == 'live_start':
-        answer_cb(cbid, "🔴 Live boshlanmoqda...", token=SELLER_TOKEN)
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'live_confirm':
-            return
-        # Live yaratish
-        from datetime import datetime as _dt, timedelta
-        live_id = 'live_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        now = _dt.now()
-        ends = now + timedelta(hours=s['duration_hours'])
-        live_data = {
-            'id':             live_id,
-            'product_id':     s['product_id'],
-            'seller_id':      uid,
-            'video_file_id':  s.get('video_file_id', ''),
-            'video_duration': s.get('video_duration', 0),
-            'duration_hours': s['duration_hours'],
-            'discount_pct':   s['discount_pct'],
-            'live_price':     s['live_price'],
-            'status':         'live',
-            'started_at':     now.strftime('%Y-%m-%d %H:%M'),
-            'ends_at':        ends.strftime('%Y-%m-%d %H:%M'),
-            'viewers':        [],
-            'joiners':        [],
-            'viewer_count':   0,
-            'questions':      [],
-            'channel_msg_id': None,
-        }
-        lives[live_id] = live_data
-        del seller_state[uid]
-        save_data()
-
-        # Sotuvchi kanaliga post yuborish
-        p = products.get(s['product_id'], {})
-        channel = p.get('seller_channel', '')
-        if channel:
-            try:
-                video_id = live_data['video_file_id']
-                caption = (
-                    f"🔴 <b>LIVE — {p.get('name','')}</b>\n\n"
-                    f"💰 Oddiy: {fmt(p.get('group_price',0))} so'm\n"
-                    f"🔥 LIVE narx: <b>{fmt(s['live_price'])} so'm</b>\n"
-                    f"⏰ {s['duration_hours']} soat ichida tugaydi!\n\n"
-                    f"🎬 Tomosha qiling va guruhga qo'shiling 👇"
-                )
-                live_url = f"{(BACKEND_URL or '').rstrip('/')}/live/{live_id}"
-                kb_live = {'inline_keyboard': [[
-                    {'text': "▶️ LIVE TOMOSHA QILISH", 'url': live_url}
-                ]]}
-                if video_id:
-                    r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendVideo', json={
-                        'chat_id':    channel,
-                        'video':      video_id,
-                        'caption':    caption,
-                        'parse_mode': 'HTML',
-                        'reply_markup': kb_live,
-                    }).json()
-                else:
-                    r = requests.post(f'https://api.telegram.org/bot{SELLER_TOKEN}/sendMessage', json={
-                        'chat_id':    channel,
-                        'text':       caption,
-                        'parse_mode': 'HTML',
-                        'reply_markup': kb_live,
-                    }).json()
-                if r.get('ok'):
-                    lives[live_id]['channel_msg_id'] = r['result'].get('message_id')
-                    save_data()
-            except Exception as e:
-                logging.error(f"Live channel post error: {e}")
-
-        send_seller(uid,
-            f"🔴 <b>LIVE BOSHLANDI!</b>\n\n"
-            f"📦 {p.get('name','')}\n"
-            f"⏰ Tugaydi: {ends.strftime('%H:%M')}\n\n"
-            f"Real-time dashboard:",
-            {'inline_keyboard': [[
-                {'text': "📊 Dashboard", 'callback_data': f'live_dash_{live_id}'},
-            ]]}
-        )
-        return
+        return cb_live_start(uid, d, cb, cbid)
 
     if d.startswith('live_dash_'):
-        answer_cb(cbid)
-        live_id = d[10:]
-        lv = lives.get(live_id)
-        if not lv:
-            send_seller(uid, "❌ Live topilmadi.")
-            return
-        p = products.get(lv.get('product_id',''), {})
-        from datetime import datetime as _dt
-        try:
-            ends = _dt.strptime(lv['ends_at'], '%Y-%m-%d %H:%M')
-            remaining = ends - _dt.now()
-            if remaining.total_seconds() > 0:
-                h = int(remaining.total_seconds() // 3600)
-                m = int((remaining.total_seconds() % 3600) // 60)
-                time_str = f"{h} soat {m} daqiqa qoldi"
-            else:
-                time_str = "TUGADI"
-                lv['status'] = 'ended'
-                save_data()
-        except:
-            time_str = "—"
-
-        joiners = lv.get('joiners', [])
-        joined_amount = sum(orders.get(j.get('order_code',''), {}).get('amount', 0)
-                            for j in joiners if isinstance(j, dict))
-        send_seller(uid,
-            f"📊 <b>LIVE Dashboard</b>\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📦 {p.get('name','')}\n"
-            f"⏰ {time_str}\n\n"
-            f"👀 Ko'rdi: <b>{lv.get('viewer_count', 0)}</b>\n"
-            f"👥 Qo'shildi: <b>{len(joiners)}</b>\n"
-            f"💰 Sotuv: {fmt(joined_amount)} so'm\n"
-            f"🔴 Status: {lv.get('status','—').upper()}",
-            {'inline_keyboard': [
-                [{'text': "🔄 Yangilash",  'callback_data': f'live_dash_{live_id}'}],
-                [{'text': "🛑 Tugatish",   'callback_data': f'live_end_{live_id}'}],
-                [{'text': "⬅️ Menyu",      'callback_data': 'back_menu'}],
-            ]}
-        )
-        return
+        return cb_live_dash(uid, d, cb, cbid)
 
     if d.startswith('live_end_'):
-        answer_cb(cbid, "Live tugatildi")
-        live_id = d[9:]
-        lv = lives.get(live_id)
-        if not lv or lv.get('seller_id') != uid:
-            return
-        lv['status'] = 'ended'
-        save_data()
-        p = products.get(lv.get('product_id',''), {})
-        send_seller(uid,
-            f"🛑 <b>Live tugatildi</b>\n\n"
-            f"📦 {p.get('name','')}\n"
-            f"👀 Ko'rdi: {lv.get('viewer_count', 0)}\n"
-            f"👥 Qo'shildi: {len(lv.get('joiners', []))}"
-        )
-        return
+        return cb_live_end(uid, d, cb, cbid)
     # ─── /LIVE COMMERCE ──────────────────────────────────────────
 
     if d == 'menu_export' or d.startswith('export_'):
