@@ -327,7 +327,7 @@ def notify_group_filled(pid):
             f"\U0001f465 {count}/{min_g} kishi qo'shildi.\n\n"
             f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
             f"Jami sotuv: <b>{fmt(total)} so'm</b>\n"
-            f"Komissiya (5%): <b>{fmt(commission)} so'm</b>\n"
+            f"Komissiya ({int(COMMISSION_RATE*100)}%): <b>{fmt(commission)} so'm</b>\n"
             f"Sizga to'lanadi: <b>{fmt(payout)} so'm</b>\n"
             f"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n"
             f"Karta raqamingizni yuboring,\n"
@@ -1218,7 +1218,7 @@ def seller_handle_cb(cb):
             f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
             f"━━━━━━━━━━━━━━━\n"
             f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
-            f"📊 Komissiya (5%): {fmt(commission)} so'm\n"
+            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
             f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
             {'inline_keyboard': [
                 [{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}],
@@ -1787,7 +1787,7 @@ def seller_handle_cb(cb):
 
             elif export_type == 'finance':
                 ws.title = "Moliya"
-                headers = ["Sana", "Buyurtmalar soni", "Jami summa", "Komissiya (5%)", "Toza daromad"]
+                headers = ["Sana", "Buyurtmalar soni", "Jami summa", f"Komissiya ({int(COMMISSION_RATE*100)}%)", "Toza daromad"]
                 ws.append(headers)
                 # Kunlar bo'yicha
                 from collections import defaultdict
@@ -3512,7 +3512,7 @@ def seller_handle_msg(msg):
             f"📦 Aktiv mahsulotlar: {active}\n"
             f"✅ Tasdiqlangan buyurtmalar: {conf}\n"
             f"💰 Jami aylanma: {fmt(rev)} so'm\n"
-            f"📊 Komissiya (5%): {fmt(int(rev*COMMISSION_RATE))} so'm"
+            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(int(rev*COMMISSION_RATE))} so'm"
         )
         return
 
@@ -3570,7 +3570,7 @@ def seller_handle_msg(msg):
             f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
             f"━━━━━━━━━━━━━━━\n"
             f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
-            f"📊 Komissiya (5%): {fmt(commission)} so'm\n"
+            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
             f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
             {'inline_keyboard': [[{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}]]}
         )
