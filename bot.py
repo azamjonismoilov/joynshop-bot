@@ -717,6 +717,49 @@ def cb_integ(uid, d, cb, cbid):
         send_seller(uid, f"⚠️ {entry['name']} handler topilmadi")
     return
 
+# ─── CB HANDLERS: Orders / Refund (seller_handle_cb'dan ekstraksiya) ───
+def cb_seller_ac(uid, d, cb, cbid):
+    code = d[10:]
+    if code not in orders:
+        answer_cb(cbid, '❌'); return
+    if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
+        answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
+    result = do_confirm_order(code)
+    answer_cb(cbid, result['cb_message'])
+    return
+
+def cb_seller_ar(uid, d, cb, cbid):
+    code = d[10:]
+    if code not in orders:
+        answer_cb(cbid, '❌'); return
+    if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
+        answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
+    result = do_reject_order(code, '')
+    answer_cb(cbid, result['cb_message'])
+    return
+
+def cb_seller_approve_refund(uid, d, cb, cbid):
+    code = d[21:]
+    if code in refund_requests:
+        refund_requests[code]['status'] = 'approved'
+        save_data()
+        o = orders.get(code, {})
+        send_buyer(refund_requests[code]['user_id'],
+            f"✅ <b>Qaytarish tasdiqlandi!</b>\n\n#{code}\n"
+            f"💰 {fmt(o.get('amount',0))} so'm 24 soat ichida qaytariladi.\nPayme: {PAYME_NUMBER}"
+        )
+    answer_cb(cbid, '✅ Tasdiqlandi'); return
+
+def cb_seller_deny_refund(uid, d, cb, cbid):
+    code = d[19:]
+    if code in refund_requests:
+        refund_requests[code]['status'] = 'denied'
+        save_data()
+        send_buyer(refund_requests[code]['user_id'],
+            f"❌ <b>Qaytarish rad etildi</b>\n\n#{code}\nSotuvchi bilan bog'laning."
+        )
+    answer_cb(cbid, '❌ Rad'); return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2616,46 +2659,16 @@ def seller_handle_cb(cb):
         return
 
     if d.startswith('seller_ac_'):
-        code = d[10:]
-        if code not in orders:
-            answer_cb(cbid, '❌'); return
-        if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
-            answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
-        result = do_confirm_order(code)
-        answer_cb(cbid, result['cb_message'])
-        return
+        return cb_seller_ac(uid, d, cb, cbid)
 
     if d.startswith('seller_ar_'):
-        code = d[10:]
-        if code not in orders:
-            answer_cb(cbid, '❌'); return
-        if orders[code].get('status') in ORDER_TERMINAL_STATUSES:
-            answer_cb(cbid, '⚠️ Allaqachon bajarilgan'); return
-        result = do_reject_order(code, '')
-        answer_cb(cbid, result['cb_message'])
-        return
+        return cb_seller_ar(uid, d, cb, cbid)
 
     if d.startswith('seller_approve_refund_'):
-        code = d[21:]
-        if code in refund_requests:
-            refund_requests[code]['status'] = 'approved'
-            save_data()
-            o = orders.get(code, {})
-            send_buyer(refund_requests[code]['user_id'],
-                f"✅ <b>Qaytarish tasdiqlandi!</b>\n\n#{code}\n"
-                f"💰 {fmt(o.get('amount',0))} so'm 24 soat ichida qaytariladi.\nPayme: {PAYME_NUMBER}"
-            )
-        answer_cb(cbid, '✅ Tasdiqlandi'); return
+        return cb_seller_approve_refund(uid, d, cb, cbid)
 
     if d.startswith('seller_deny_refund_'):
-        code = d[19:]
-        if code in refund_requests:
-            refund_requests[code]['status'] = 'denied'
-            save_data()
-            send_buyer(refund_requests[code]['user_id'],
-                f"❌ <b>Qaytarish rad etildi</b>\n\n#{code}\nSotuvchi bilan bog'laning."
-            )
-        answer_cb(cbid, '❌ Rad'); return
+        return cb_seller_deny_refund(uid, d, cb, cbid)
 
     if d in ('variants_yes', 'variants_no'):
         s = seller_state.get(uid)
