@@ -906,6 +906,125 @@ def cb_menu_export(uid, d, cb, cbid):
         send_seller(uid, f"❌ Eksport xatosi: {e}")
     return
 
+# ─── CB HANDLERS: Legal (seller_handle_cb'dan ekstraksiya) ───
+def cb_leg_start(uid, d, cb, cbid):
+    answer_cb(cbid)
+    start_legal_flow(uid, uid, after='menu')
+    return
+
+def cb_leg_pick(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'leg_status':
+        answer_cb(cbid); return
+    answer_cb(cbid, "✅")
+    status = 'yatt' if d == 'leg_pick_yatt' else 'mchj'
+    prof = seller_profiles.setdefault(uid, {})
+    prof['legal_status'] = status
+    # Edit rejimi bo'lsa — leg_confirm'ga qaytamiz
+    if s.get('leg_editing'):
+        s.pop('leg_editing', None)
+        s['step'] = 'leg_confirm'
+        render_legal_confirm(uid, uid)
+        return
+    s['step'] = 'leg_stir'
+    send_seller(uid,
+        "📋 <b>Qadam 2/6 — STIR</b>\n\n"
+        "Soliq raqami (STIR / INN) ni kiriting (9 raqam):\n\n"
+        "<i>Bekor qilish: /cancel</i>")
+    return
+
+def cb_leg_confirm(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'leg_confirm':
+        answer_cb(cbid); return
+    prof = seller_profiles.get(uid, {})
+    # Yakuniy tekshiruv — barcha kerakli field'lar borligini
+    required = ['legal_status', 'stir', 'bank_account', 'bank_name', 'bank_mfo']
+    if prof.get('legal_status') == 'mchj':
+        required.append('director_name')
+    missing = [f for f in required if not prof.get(f)]
+    if missing:
+        answer_cb(cbid, f"❌ Yetishmayapti: {', '.join(missing)}", alert=True)
+        return
+    answer_cb(cbid, "✅ Saqlandi")
+    prof['legal_completed_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    save_data()
+    after = s.get('leg_after', 'menu')
+    seller_state.pop(uid, None)
+    if after == 'channel':
+        # Onboarding davom etadi — kanal kiritishga o'tamiz
+        seller_state[uid] = {**s, 'step': 'ob_channel'}
+        seller_state[uid].pop('leg_after', None)
+        seller_state[uid].pop('leg_editing', None)
+        send_seller(uid,
+            "✅ Yuridik ma'lumotlar saqlandi.\n\n"
+            "📢 Endi Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
+            "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!")
+    else:
+        send_seller(uid,
+            "✅ <b>Yuridik ma'lumotlar saqlandi!</b>\n\n"
+            "Payme split to'lov va fiskal chek ulansa, avtomatik faollashtiriladi.",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
+    return
+
+def cb_leg_edit_menu(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s:
+        # Summary ekranidan kelgan — yangi state ochamiz, leg_confirm'ga qaytaramiz
+        seller_state[uid] = {'step': 'leg_confirm', 'leg_after': 'menu'}
+    else:
+        s['step'] = 'leg_confirm'
+    answer_cb(cbid)
+    is_mchj = seller_profiles.get(uid, {}).get('legal_status') == 'mchj'
+    kb = [
+        [{'text': "📌 Status", 'callback_data': 'leg_edit_field_status'},
+         {'text': "🏛 STIR",   'callback_data': 'leg_edit_field_stir'}],
+        [{'text': "🏦 Bank",   'callback_data': 'leg_edit_field_bank_name'},
+         {'text': "💳 Hisob",  'callback_data': 'leg_edit_field_bank_account'}],
+        [{'text': "🔢 MFO",    'callback_data': 'leg_edit_field_bank_mfo'}],
+    ]
+    if is_mchj:
+        kb.append([{'text': "👔 Direktor", 'callback_data': 'leg_edit_field_director_name'}])
+    kb.append([{'text': "⬅️ Bekor", 'callback_data': 'leg_edit_cancel'}])
+    send_seller(uid, "✏️ Qaysi ma'lumotni o'zgartirasiz?", {'inline_keyboard': kb})
+    return
+
+def cb_leg_edit_cancel(uid, d, cb, cbid):
+    answer_cb(cbid)
+    # Edit menyu'dan bekor — confirm ekraniga qaytamiz (agar kontekst bo'lsa)
+    if seller_has_legal(uid):
+        render_legal_confirm(uid, uid)
+    else:
+        send_seller(uid, "❌ Bekor qilindi.",
+            {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
+    return
+
+def cb_leg_edit_field(uid, d, cb, cbid):
+    field = d[len('leg_edit_field_'):]
+    s = seller_state.setdefault(uid, {'step': 'leg_confirm', 'leg_after': 'menu'})
+    s['leg_editing'] = True
+    answer_cb(cbid)
+    prompts = {
+        'status': ("📌 Status — qaytadan tanlang:", 'leg_status'),
+        'stir':   ("🏛 STIR — 9 raqam:", 'leg_stir'),
+        'bank_name':    ("🏦 Bank nomini kiriting:", 'leg_bank_name'),
+        'bank_account': ("💳 Hisob raqami — 20 raqam:", 'leg_account'),
+        'bank_mfo':     ("🔢 MFO — 5 raqam:", 'leg_mfo'),
+        'director_name':("👔 Direktor F.I.O. (3 ta so'z):", 'leg_director'),
+    }
+    if field not in prompts:
+        send_seller(uid, "❌ Noma'lum maydon"); return
+    prompt, step = prompts[field]
+    s['step'] = step
+    if field == 'status':
+        send_seller(uid, prompt, {'inline_keyboard': [
+            [{'text': "👤 YaTT", 'callback_data': 'leg_pick_yatt'}],
+            [{'text': "🏢 MChJ", 'callback_data': 'leg_pick_mchj'}],
+        ]})
+    else:
+        send_seller(uid, prompt + "\n\n<i>Bekor qilish: /cancel</i>")
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2455,122 +2574,22 @@ def seller_handle_cb(cb):
 
     # ─── LEGAL INFO CALLBACKS ───
     if d == 'leg_start':
-        answer_cb(cbid)
-        start_legal_flow(uid, uid, after='menu')
-        return
+        return cb_leg_start(uid, d, cb, cbid)
 
     if d in ('leg_pick_yatt', 'leg_pick_mchj'):
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'leg_status':
-            answer_cb(cbid); return
-        answer_cb(cbid, "✅")
-        status = 'yatt' if d == 'leg_pick_yatt' else 'mchj'
-        prof = seller_profiles.setdefault(uid, {})
-        prof['legal_status'] = status
-        # Edit rejimi bo'lsa — leg_confirm'ga qaytamiz
-        if s.get('leg_editing'):
-            s.pop('leg_editing', None)
-            s['step'] = 'leg_confirm'
-            render_legal_confirm(uid, uid)
-            return
-        s['step'] = 'leg_stir'
-        send_seller(uid,
-            "📋 <b>Qadam 2/6 — STIR</b>\n\n"
-            "Soliq raqami (STIR / INN) ni kiriting (9 raqam):\n\n"
-            "<i>Bekor qilish: /cancel</i>")
-        return
+        return cb_leg_pick(uid, d, cb, cbid)
 
     if d == 'leg_confirm':
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'leg_confirm':
-            answer_cb(cbid); return
-        prof = seller_profiles.get(uid, {})
-        # Yakuniy tekshiruv — barcha kerakli field'lar borligini
-        required = ['legal_status', 'stir', 'bank_account', 'bank_name', 'bank_mfo']
-        if prof.get('legal_status') == 'mchj':
-            required.append('director_name')
-        missing = [f for f in required if not prof.get(f)]
-        if missing:
-            answer_cb(cbid, f"❌ Yetishmayapti: {', '.join(missing)}", alert=True)
-            return
-        answer_cb(cbid, "✅ Saqlandi")
-        prof['legal_completed_at'] = datetime.now().strftime('%Y-%m-%d %H:%M')
-        save_data()
-        after = s.get('leg_after', 'menu')
-        seller_state.pop(uid, None)
-        if after == 'channel':
-            # Onboarding davom etadi — kanal kiritishga o'tamiz
-            seller_state[uid] = {**s, 'step': 'ob_channel'}
-            seller_state[uid].pop('leg_after', None)
-            seller_state[uid].pop('leg_editing', None)
-            send_seller(uid,
-                "✅ Yuridik ma'lumotlar saqlandi.\n\n"
-                "📢 Endi Telegram kanal username:\n<i>@mening_kanalim</i>\n\n"
-                "⚠️ Seller bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!")
-        else:
-            send_seller(uid,
-                "✅ <b>Yuridik ma'lumotlar saqlandi!</b>\n\n"
-                "Payme split to'lov va fiskal chek ulansa, avtomatik faollashtiriladi.",
-                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
-        return
+        return cb_leg_confirm(uid, d, cb, cbid)
 
     if d == 'leg_edit_menu':
-        s = seller_state.get(uid)
-        if not s:
-            # Summary ekranidan kelgan — yangi state ochamiz, leg_confirm'ga qaytaramiz
-            seller_state[uid] = {'step': 'leg_confirm', 'leg_after': 'menu'}
-        else:
-            s['step'] = 'leg_confirm'
-        answer_cb(cbid)
-        is_mchj = seller_profiles.get(uid, {}).get('legal_status') == 'mchj'
-        kb = [
-            [{'text': "📌 Status", 'callback_data': 'leg_edit_field_status'},
-             {'text': "🏛 STIR",   'callback_data': 'leg_edit_field_stir'}],
-            [{'text': "🏦 Bank",   'callback_data': 'leg_edit_field_bank_name'},
-             {'text': "💳 Hisob",  'callback_data': 'leg_edit_field_bank_account'}],
-            [{'text': "🔢 MFO",    'callback_data': 'leg_edit_field_bank_mfo'}],
-        ]
-        if is_mchj:
-            kb.append([{'text': "👔 Direktor", 'callback_data': 'leg_edit_field_director_name'}])
-        kb.append([{'text': "⬅️ Bekor", 'callback_data': 'leg_edit_cancel'}])
-        send_seller(uid, "✏️ Qaysi ma'lumotni o'zgartirasiz?", {'inline_keyboard': kb})
-        return
+        return cb_leg_edit_menu(uid, d, cb, cbid)
 
     if d == 'leg_edit_cancel':
-        answer_cb(cbid)
-        # Edit menyu'dan bekor — confirm ekraniga qaytamiz (agar kontekst bo'lsa)
-        if seller_has_legal(uid):
-            render_legal_confirm(uid, uid)
-        else:
-            send_seller(uid, "❌ Bekor qilindi.",
-                {'inline_keyboard': [[{'text': "🔙 Menyu", 'callback_data': 'back_menu'}]]})
-        return
+        return cb_leg_edit_cancel(uid, d, cb, cbid)
 
     if d.startswith('leg_edit_field_'):
-        field = d[len('leg_edit_field_'):]
-        s = seller_state.setdefault(uid, {'step': 'leg_confirm', 'leg_after': 'menu'})
-        s['leg_editing'] = True
-        answer_cb(cbid)
-        prompts = {
-            'status': ("📌 Status — qaytadan tanlang:", 'leg_status'),
-            'stir':   ("🏛 STIR — 9 raqam:", 'leg_stir'),
-            'bank_name':    ("🏦 Bank nomini kiriting:", 'leg_bank_name'),
-            'bank_account': ("💳 Hisob raqami — 20 raqam:", 'leg_account'),
-            'bank_mfo':     ("🔢 MFO — 5 raqam:", 'leg_mfo'),
-            'director_name':("👔 Direktor F.I.O. (3 ta so'z):", 'leg_director'),
-        }
-        if field not in prompts:
-            send_seller(uid, "❌ Noma'lum maydon"); return
-        prompt, step = prompts[field]
-        s['step'] = step
-        if field == 'status':
-            send_seller(uid, prompt, {'inline_keyboard': [
-                [{'text': "👤 YaTT", 'callback_data': 'leg_pick_yatt'}],
-                [{'text': "🏢 MChJ", 'callback_data': 'leg_pick_mchj'}],
-            ]})
-        else:
-            send_seller(uid, prompt + "\n\n<i>Bekor qilish: /cancel</i>")
-        return
+        return cb_leg_edit_field(uid, d, cb, cbid)
 
     if d.startswith('boost_') and not d.startswith('boost_confirm_'):
         pid = d[6:]
