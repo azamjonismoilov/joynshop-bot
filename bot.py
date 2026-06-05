@@ -1252,9 +1252,8 @@ def seller_handle_cb(cb):
     if d == 'ob_skip_social':
         return cb_ob_skip_social(uid, d, cb, cbid)
 
-    if d.startswith('edit_shop_'):
-        return cb_edit_shop(uid, d, cb, cbid)
-
+    # Maxsus edit_shop_* prefikslar umumiy edit_shop_ dan OLDIN tekshiriladi —
+    # aks holda umumiy blok ularni ushlab int(d.split('_')[2]) da crash beradi.
     if d.startswith('edit_shop_full_'):
         return cb_edit_shop_full(uid, d, cb, cbid)
 
@@ -1266,6 +1265,9 @@ def seller_handle_cb(cb):
 
     if d.startswith('edit_shop_social_'):
         return cb_edit_shop_social(uid, d, cb, cbid)
+
+    if d.startswith('edit_shop_'):
+        return cb_edit_shop(uid, d, cb, cbid)
 
     if d.startswith('sel_shop_'):
         idx = int(d.split('_')[2])
