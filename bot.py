@@ -3487,16 +3487,23 @@ def show_prod_confirm(cid, s, shop):
 
 def show_confirm(cid, s):
     channel = s.get('seller_channel', '')
+    # shop_name/contact ni publish_product bilan bir xil manbadan (seller_shops) olamiz.
+    # Asosiy oqim (start_addproduct/prod_shop) ularni state'ga yozmaydi — shop'dan olinadi.
+    shop_idx  = s.get('shop_idx')
+    shops     = seller_shops.get(cid, [])
+    shop      = shops[shop_idx] if (shop_idx is not None and shop_idx < len(shops)) else {}
+    shop_name = shop.get('name',  s.get('shop_name', ''))
+    contact   = shop.get('phone', s.get('contact', ''))
     send_seller(cid,
         f"📋 <b>Ma'lumotlarni tekshiring:</b>\n\n"
         f"📦 Mahsulot: <b>{s['name']}</b>\n"
-        f"🏪 Do'kon: <b>{s['shop_name']}</b>\n"
+        f"🏪 Do'kon: <b>{shop_name}</b>\n"
         f"📝 Tavsif: {s['description']}\n\n"
         f"💰 Asl narx: <b>{fmt(s['original_price'])} so'm</b>\n"
         f"👤 Yakka narx: <b>{fmt(s.get('solo_price',0)) if s.get('solo_price') else 'Yoq'} so'm</b>\n"
         f"🏷 Guruh narxi: <b>{fmt(s['group_price'])} so'm</b>\n\n"
         f"👥 Minimal guruh: <b>{s['min_group']} kishi</b>\n"
-        f"📞 Aloqa: <b>{s['contact']}</b>\n"
+        f"📞 Aloqa: <b>{contact}</b>\n"
         f"📢 Kanal: <b>{channel}</b>",
         {'inline_keyboard': [
             [{'text': "✅ To'g'ri, e'lon qil!", 'callback_data': 'confirm_product'}],
