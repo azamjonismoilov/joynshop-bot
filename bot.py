@@ -739,7 +739,7 @@ def cb_seller_ar(uid, d, cb, cbid):
     return
 
 def cb_seller_approve_refund(uid, d, cb, cbid):
-    code = d[21:]
+    code = d[22:]  # 'seller_approve_refund_' = 22 belgi
     if code in refund_requests:
         refund_requests[code]['status'] = 'approved'
         save_data()
