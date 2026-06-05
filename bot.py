@@ -1957,6 +1957,268 @@ def cb_prod_mxik_confirm(uid, d, cb, cbid):
     show_prod_confirm(uid, s, shop)
     return
 
+# ─── CB HANDLERS: Billz (billz_*/bz_*) (seller_handle_cb'dan ekstraksiya) ───
+def cb_billz_view(uid, d, cb, cbid):
+    try:
+        idx = int(d[11:])
+    except ValueError:
+        answer_cb(cbid); return
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops):
+        answer_cb(cbid, "❌ Do'kon topilmadi"); return
+    shop = shops[idx]
+    answer_cb(cbid)
+    connected = bool(shop.get('billz_secret_token'))
+    if connected:
+        billz_count = sum(1 for p in products.values()
+                          if p.get('seller_id') == uid and p.get('source') == 'billz')
+        txt = (
+            f"✅ <b>{shop.get('name','')}</b>\n\n"
+            f"Billz: ulangan\n"
+            f"🏬 Billz do'koni: <b>{shop.get('billz_shop_name','—')}</b>\n"
+            f"📅 Ulangan: {shop.get('billz_connected_at','—')}\n"
+            f"📦 Import qilingan: {billz_count} ta\n"
+        )
+        kb = [
+            [{'text': "📥 Mahsulotlarni import/yangilash", 'callback_data': f'billz_import_{idx}'}],
+            [{'text': "⚙️ Global chegirma sozlamalari",   'callback_data': f'billz_disc_{idx}'}],
+            [{'text': "🔌 Uzish (Phase 4)",                'callback_data': f'billz_disconnect_{idx}'}],
+            [{'text': "⬅️ Orqaga",                         'callback_data': 'billz_menu'}],
+        ]
+    else:
+        txt = (
+            f"⚪️ <b>{shop.get('name','')}</b>\n\n"
+            f"Billz hali ulanmagan.\n\n"
+            f"<b>Ulash uchun:</b>\n"
+            f"1. Billz UI → Sozlamalar → API → <b>Создать ключ</b>\n"
+            f"2. Yaratilgan secret token'ni nusxalang\n"
+            f"3. Quyidagi tugmani bosing va token'ni shu chatga yuboring"
+        )
+        kb = [
+            [{'text': "🔌 Billz ni ulash", 'callback_data': f'billz_connect_{idx}'}],
+            [{'text': "⬅️ Orqaga",        'callback_data': 'billz_menu'}],
+        ]
+    send_seller(uid, txt, {'inline_keyboard': kb})
+    return
+
+def cb_billz_menu(uid, d, cb, cbid):
+    answer_cb(cbid)
+    render_billz_menu(uid, uid)
+    return
+
+def cb_bz_activate(uid, d, cb, cbid):
+    pid = d[12:]
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        answer_cb(cbid, "❌ Topilmadi"); return
+    if p.get('source') != 'billz':
+        answer_cb(cbid, "❌ Faqat Billz mahsulotlari"); return
+    answer_cb(cbid)
+    # Sotuvchi shop'idan global discount
+    shop = next((sh for sh in seller_shops.get(uid, [])
+                 if sh.get('billz_secret_token')), None)
+    solo_disc  = (shop or {}).get('billz_global_solo_discount', 10)
+    group_disc = (shop or {}).get('billz_global_group_discount', 20)
+    orig = int(p.get('original_price', 0) or 0)
+    suggested_solo  = max(1, int(orig * (100 - solo_disc) / 100))
+    suggested_group = max(1, int(orig * (100 - group_disc) / 100))
+
+    # Agar mahsulotda MXIK yo'q bo'lsa — avval MXIK qadami
+    if not p.get('mxik_code'):
+        seller_state[uid] = {
+            'step': 'prod_mxik_search',
+            'bz_pid': pid,
+            'mxik_after': 'bz_act',
+            'bz_suggested_solo':  suggested_solo,
+            'bz_suggested_group': suggested_group,
+        }
+        # Mahsulot nomi bilan boshlovchi taklif — sotuvchi xohlasa darhol qidiradi
+        send_seller(uid,
+            f"▶️ <b>Yoqish — {p.get('name','')[:40]}</b>\n\n"
+            f"🏷 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
+            f"Mahsulot nomi yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
+            f"<i>Taklif: {p.get('name','')[:30]}</i>\n\n"
+            f"Bekor qilish: /cancel",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+            ]})
+        return
+
+    # MXIK bor — to'g'ridan narx qadamiga
+    seller_state[uid] = {
+        'step': 'bz_act_solo', 'bz_pid': pid,
+        'bz_suggested_solo':  suggested_solo,
+        'bz_suggested_group': suggested_group,
+    }
+    send_seller(uid,
+        f"▶️ <b>Yoqish — {p.get('name','')}</b>\n\n"
+        f"💰 Asl narx: <b>{fmt(orig)} so'm</b>\n\n"
+        f"<b>1/4</b> Yakka narxni yozing (so'm).\n"
+        f"💡 Tavsiya: <b>{fmt(suggested_solo)}</b> so'm  ({solo_disc}% chegirma)\n\n"
+        f"Bekor qilish: /cancel")
+    return
+
+def cb_bz_deadline(uid, d, cb, cbid):
+    # bz_deadline_24, _48, _72, _168
+    try:
+        hours = int(d[12:])
+    except ValueError:
+        answer_cb(cbid); return
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'bz_act_deadline':
+        answer_cb(cbid); return
+    pid = s.get('bz_pid')
+    p = products.get(pid)
+    if not p:
+        seller_state.pop(uid, None)
+        answer_cb(cbid, "❌ Topilmadi"); return
+    answer_cb(cbid, f"✅ {hours} soat")
+    deadline_dt = datetime.now() + timedelta(hours=hours)
+    p['deadline']    = deadline_dt.strftime('%d.%m.%Y %H:%M')
+    p['deadline_dt'] = deadline_dt.strftime('%Y-%m-%d %H:%M')
+    p['solo_price']  = s.get('bz_solo', 0)
+    p['group_price'] = s.get('bz_group', 0)
+    p['min_group']   = s.get('bz_min', 3)
+    p['solo_available'] = bool(p['solo_price'])
+    p['is_active']   = True
+    p['status']      = 'active'
+    save_data()
+    seller_state.pop(uid, None)
+    send_seller(uid, "📤 Kanalga e'lon qilinmoqda...")
+    ok, err = post_to_channel(uid, pid)
+    save_data()
+    if ok:
+        send_seller(uid,
+            f"✅ <b>Yoqildi va e'lon qilindi!</b>\n\n"
+            f"📦 {p.get('name','')}\n"
+            f"💰 {fmt(p.get('group_price',0))} so'm\n"
+            f"⏰ {p.get('deadline','')}",
+            {'inline_keyboard': [
+                [{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}],
+            ]})
+    else:
+        # Kanal post fail — is_active'ni qaytaramiz
+        p['is_active'] = False
+        p['status']    = 'draft'
+        save_data()
+        send_seller(uid,
+            f"⚠️ Yoqildi, lekin kanalga post qo'yib bo'lmadi:\n{err}\n\n"
+            f"Bot kanalga admin sifatida qo'shilganmi? "
+            f"Tekshiring va /myproducts → Yoqish bosib qaytadan urining.")
+    return
+
+def cb_billz_disc(uid, d, cb, cbid):
+    try:
+        idx = int(d[11:])
+    except ValueError:
+        answer_cb(cbid); return
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops):
+        answer_cb(cbid, "❌ Topilmadi"); return
+    shop = shops[idx]
+    answer_cb(cbid)
+    send_seller(uid,
+        f"⚙️ <b>Global chegirma sozlamalari</b>\n\n"
+        f"Bu qiymatlar yangi Billz mahsulotini yoqishda <b>tavsiya narx</b> sifatida ishlatiladi.\n\n"
+        f"👤 Solo chegirma:  <b>{shop.get('billz_global_solo_discount', 10)}%</b>\n"
+        f"👥 Guruh chegirma: <b>{shop.get('billz_global_group_discount', 20)}%</b>",
+        {'inline_keyboard': [
+            [{'text': "👤 Solo chegirma o'zgartirish", 'callback_data': f'billz_disc_set_solo_{idx}'}],
+            [{'text': "👥 Guruh chegirma o'zgartirish", 'callback_data': f'billz_disc_set_grp_{idx}'}],
+            [{'text': "⬅️ Orqaga",                     'callback_data': f'billz_view_{idx}'}],
+        ]})
+    return
+
+def cb_billz_disc_set(uid, d, cb, cbid):
+    # billz_disc_set_solo_<idx> | billz_disc_set_grp_<idx>
+    rest = d[len('billz_disc_set_'):]
+    try:
+        kind, idx_str = rest.rsplit('_', 1)
+        idx = int(idx_str)
+    except (ValueError, IndexError):
+        answer_cb(cbid); return
+    if kind not in ('solo', 'grp'):
+        answer_cb(cbid); return
+    answer_cb(cbid)
+    seller_state[uid] = {'step': 'bz_set_disc', 'bz_disc_kind': kind, 'bz_disc_idx': idx}
+    label = "Solo" if kind == 'solo' else "Guruh"
+    send_seller(uid,
+        f"⚙️ Yangi <b>{label}</b> chegirma foizini yozing (0-90):\n\n"
+        f"Masalan: <code>15</code> — 15%\n\n"
+        f"Bekor qilish: /cancel")
+    return
+
+def cb_billz_import(uid, d, cb, cbid):
+    try:
+        idx = int(d[13:])
+    except ValueError:
+        answer_cb(cbid); return
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops) or not shops[idx].get('billz_secret_token'):
+        answer_cb(cbid, "❌ Billz ulanmagan"); return
+    answer_cb(cbid, "📥 Boshlanmoqda...")
+    import_billz_products(uid, uid, idx)
+    return
+
+def cb_billz_connect(uid, d, cb, cbid):
+    try:
+        idx = int(d[14:])
+    except ValueError:
+        answer_cb(cbid); return
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops):
+        answer_cb(cbid, "❌ Do'kon topilmadi"); return
+    if not get_fernet():
+        answer_cb(cbid, "❌ Encryption sozlanmagan", alert=True); return
+    answer_cb(cbid)
+    seller_state[uid] = {'step': 'billz_secret_token', 'billz_shop_idx': idx}
+    send_seller(uid,
+        f"🔌 <b>Billz ulash</b>\n\n"
+        f"Billz secret token'ingizni shu chatga yuboring.\n\n"
+        f"⚠️ Token shifrlanib saqlanadi. Bekor qilish: /cancel")
+    return
+
+def cb_billz_pickshop(uid, d, cb, cbid):
+    # billz_pickshop_<seller_shop_idx>_<billz_shop_id>
+    rest = d[len('billz_pickshop_'):]
+    try:
+        seller_idx_str, billz_shop_id = rest.split('_', 1)
+        seller_idx = int(seller_idx_str)
+    except (ValueError, IndexError):
+        answer_cb(cbid); return
+    s = seller_state.get(uid)
+    if not s or s.get('step') != 'billz_shop_select':
+        answer_cb(cbid, "❌ Holat topilmadi"); return
+    candidates = s.get('billz_candidates', [])
+    chosen = next((c for c in candidates if c['shop_id'] == billz_shop_id), None)
+    if not chosen:
+        answer_cb(cbid, "❌ Do'kon topilmadi"); return
+    plain_token = s.get('billz_pending_token')
+    if not plain_token:
+        seller_state.pop(uid, None)
+        answer_cb(cbid, "❌ Token yo'qoldi"); return
+    encrypted = encrypt_token(plain_token)
+    if not encrypted:
+        answer_cb(cbid, "❌ Shifrlash xatosi", alert=True); return
+    shops = seller_shops.get(uid, [])
+    if seller_idx >= len(shops):
+        answer_cb(cbid, "❌ Do'kon topilmadi"); return
+    shops[seller_idx]['billz_secret_token']  = encrypted
+    shops[seller_idx]['billz_shop_id']       = chosen['shop_id']
+    shops[seller_idx]['billz_shop_name']     = chosen['shop_name']
+    shops[seller_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
+    save_data()
+    seller_state.pop(uid, None)
+    answer_cb(cbid, "✅ Ulandi!")
+    send_seller(uid,
+        f"✅ <b>Billz ulandi!</b>\n\n"
+        f"🏪 {shops[seller_idx].get('name','')}\n"
+        f"🏬 Billz do'koni: <b>{chosen['shop_name']}</b>\n\n"
+        f"Keyingi qadam: mahsulotlarni import qilish (Faza 2 — keyingi deploy).",
+        {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+    return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2454,265 +2716,31 @@ def seller_handle_cb(cb):
 
     # ─── BILLZ INTEGRATION CALLBACKS ───
     if d.startswith('billz_view_'):
-        try:
-            idx = int(d[11:])
-        except ValueError:
-            answer_cb(cbid); return
-        shops = seller_shops.get(uid, [])
-        if idx >= len(shops):
-            answer_cb(cbid, "❌ Do'kon topilmadi"); return
-        shop = shops[idx]
-        answer_cb(cbid)
-        connected = bool(shop.get('billz_secret_token'))
-        if connected:
-            billz_count = sum(1 for p in products.values()
-                              if p.get('seller_id') == uid and p.get('source') == 'billz')
-            txt = (
-                f"✅ <b>{shop.get('name','')}</b>\n\n"
-                f"Billz: ulangan\n"
-                f"🏬 Billz do'koni: <b>{shop.get('billz_shop_name','—')}</b>\n"
-                f"📅 Ulangan: {shop.get('billz_connected_at','—')}\n"
-                f"📦 Import qilingan: {billz_count} ta\n"
-            )
-            kb = [
-                [{'text': "📥 Mahsulotlarni import/yangilash", 'callback_data': f'billz_import_{idx}'}],
-                [{'text': "⚙️ Global chegirma sozlamalari",   'callback_data': f'billz_disc_{idx}'}],
-                [{'text': "🔌 Uzish (Phase 4)",                'callback_data': f'billz_disconnect_{idx}'}],
-                [{'text': "⬅️ Orqaga",                         'callback_data': 'billz_menu'}],
-            ]
-        else:
-            txt = (
-                f"⚪️ <b>{shop.get('name','')}</b>\n\n"
-                f"Billz hali ulanmagan.\n\n"
-                f"<b>Ulash uchun:</b>\n"
-                f"1. Billz UI → Sozlamalar → API → <b>Создать ключ</b>\n"
-                f"2. Yaratilgan secret token'ni nusxalang\n"
-                f"3. Quyidagi tugmani bosing va token'ni shu chatga yuboring"
-            )
-            kb = [
-                [{'text': "🔌 Billz ni ulash", 'callback_data': f'billz_connect_{idx}'}],
-                [{'text': "⬅️ Orqaga",        'callback_data': 'billz_menu'}],
-            ]
-        send_seller(uid, txt, {'inline_keyboard': kb})
-        return
+        return cb_billz_view(uid, d, cb, cbid)
 
     if d == 'billz_menu':
-        answer_cb(cbid)
-        render_billz_menu(uid, uid)
-        return
+        return cb_billz_menu(uid, d, cb, cbid)
 
     if d.startswith('bz_activate_'):
-        pid = d[12:]
-        p = products.get(pid)
-        if not p or p.get('seller_id') != uid:
-            answer_cb(cbid, "❌ Topilmadi"); return
-        if p.get('source') != 'billz':
-            answer_cb(cbid, "❌ Faqat Billz mahsulotlari"); return
-        answer_cb(cbid)
-        # Sotuvchi shop'idan global discount
-        shop = next((sh for sh in seller_shops.get(uid, [])
-                     if sh.get('billz_secret_token')), None)
-        solo_disc  = (shop or {}).get('billz_global_solo_discount', 10)
-        group_disc = (shop or {}).get('billz_global_group_discount', 20)
-        orig = int(p.get('original_price', 0) or 0)
-        suggested_solo  = max(1, int(orig * (100 - solo_disc) / 100))
-        suggested_group = max(1, int(orig * (100 - group_disc) / 100))
-
-        # Agar mahsulotda MXIK yo'q bo'lsa — avval MXIK qadami
-        if not p.get('mxik_code'):
-            seller_state[uid] = {
-                'step': 'prod_mxik_search',
-                'bz_pid': pid,
-                'mxik_after': 'bz_act',
-                'bz_suggested_solo':  suggested_solo,
-                'bz_suggested_group': suggested_group,
-            }
-            # Mahsulot nomi bilan boshlovchi taklif — sotuvchi xohlasa darhol qidiradi
-            send_seller(uid,
-                f"▶️ <b>Yoqish — {p.get('name','')[:40]}</b>\n\n"
-                f"🏷 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
-                f"Mahsulot nomi yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
-                f"<i>Taklif: {p.get('name','')[:30]}</i>\n\n"
-                f"Bekor qilish: /cancel",
-                {'inline_keyboard': [
-                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                    [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-                ]})
-            return
-
-        # MXIK bor — to'g'ridan narx qadamiga
-        seller_state[uid] = {
-            'step': 'bz_act_solo', 'bz_pid': pid,
-            'bz_suggested_solo':  suggested_solo,
-            'bz_suggested_group': suggested_group,
-        }
-        send_seller(uid,
-            f"▶️ <b>Yoqish — {p.get('name','')}</b>\n\n"
-            f"💰 Asl narx: <b>{fmt(orig)} so'm</b>\n\n"
-            f"<b>1/4</b> Yakka narxni yozing (so'm).\n"
-            f"💡 Tavsiya: <b>{fmt(suggested_solo)}</b> so'm  ({solo_disc}% chegirma)\n\n"
-            f"Bekor qilish: /cancel")
-        return
+        return cb_bz_activate(uid, d, cb, cbid)
 
     if d.startswith('bz_deadline_'):
-        # bz_deadline_24, _48, _72, _168
-        try:
-            hours = int(d[12:])
-        except ValueError:
-            answer_cb(cbid); return
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'bz_act_deadline':
-            answer_cb(cbid); return
-        pid = s.get('bz_pid')
-        p = products.get(pid)
-        if not p:
-            seller_state.pop(uid, None)
-            answer_cb(cbid, "❌ Topilmadi"); return
-        answer_cb(cbid, f"✅ {hours} soat")
-        deadline_dt = datetime.now() + timedelta(hours=hours)
-        p['deadline']    = deadline_dt.strftime('%d.%m.%Y %H:%M')
-        p['deadline_dt'] = deadline_dt.strftime('%Y-%m-%d %H:%M')
-        p['solo_price']  = s.get('bz_solo', 0)
-        p['group_price'] = s.get('bz_group', 0)
-        p['min_group']   = s.get('bz_min', 3)
-        p['solo_available'] = bool(p['solo_price'])
-        p['is_active']   = True
-        p['status']      = 'active'
-        save_data()
-        seller_state.pop(uid, None)
-        send_seller(uid, "📤 Kanalga e'lon qilinmoqda...")
-        ok, err = post_to_channel(uid, pid)
-        save_data()
-        if ok:
-            send_seller(uid,
-                f"✅ <b>Yoqildi va e'lon qilindi!</b>\n\n"
-                f"📦 {p.get('name','')}\n"
-                f"💰 {fmt(p.get('group_price',0))} so'm\n"
-                f"⏰ {p.get('deadline','')}",
-                {'inline_keyboard': [
-                    [{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}],
-                ]})
-        else:
-            # Kanal post fail — is_active'ni qaytaramiz
-            p['is_active'] = False
-            p['status']    = 'draft'
-            save_data()
-            send_seller(uid,
-                f"⚠️ Yoqildi, lekin kanalga post qo'yib bo'lmadi:\n{err}\n\n"
-                f"Bot kanalga admin sifatida qo'shilganmi? "
-                f"Tekshiring va /myproducts → Yoqish bosib qaytadan urining.")
-        return
+        return cb_bz_deadline(uid, d, cb, cbid)
 
     if d.startswith('billz_disc_') and not d.startswith('billz_disc_set_'):
-        try:
-            idx = int(d[11:])
-        except ValueError:
-            answer_cb(cbid); return
-        shops = seller_shops.get(uid, [])
-        if idx >= len(shops):
-            answer_cb(cbid, "❌ Topilmadi"); return
-        shop = shops[idx]
-        answer_cb(cbid)
-        send_seller(uid,
-            f"⚙️ <b>Global chegirma sozlamalari</b>\n\n"
-            f"Bu qiymatlar yangi Billz mahsulotini yoqishda <b>tavsiya narx</b> sifatida ishlatiladi.\n\n"
-            f"👤 Solo chegirma:  <b>{shop.get('billz_global_solo_discount', 10)}%</b>\n"
-            f"👥 Guruh chegirma: <b>{shop.get('billz_global_group_discount', 20)}%</b>",
-            {'inline_keyboard': [
-                [{'text': "👤 Solo chegirma o'zgartirish", 'callback_data': f'billz_disc_set_solo_{idx}'}],
-                [{'text': "👥 Guruh chegirma o'zgartirish", 'callback_data': f'billz_disc_set_grp_{idx}'}],
-                [{'text': "⬅️ Orqaga",                     'callback_data': f'billz_view_{idx}'}],
-            ]})
-        return
+        return cb_billz_disc(uid, d, cb, cbid)
 
     if d.startswith('billz_disc_set_'):
-        # billz_disc_set_solo_<idx> | billz_disc_set_grp_<idx>
-        rest = d[len('billz_disc_set_'):]
-        try:
-            kind, idx_str = rest.rsplit('_', 1)
-            idx = int(idx_str)
-        except (ValueError, IndexError):
-            answer_cb(cbid); return
-        if kind not in ('solo', 'grp'):
-            answer_cb(cbid); return
-        answer_cb(cbid)
-        seller_state[uid] = {'step': 'bz_set_disc', 'bz_disc_kind': kind, 'bz_disc_idx': idx}
-        label = "Solo" if kind == 'solo' else "Guruh"
-        send_seller(uid,
-            f"⚙️ Yangi <b>{label}</b> chegirma foizini yozing (0-90):\n\n"
-            f"Masalan: <code>15</code> — 15%\n\n"
-            f"Bekor qilish: /cancel")
-        return
+        return cb_billz_disc_set(uid, d, cb, cbid)
 
     if d.startswith('billz_import_'):
-        try:
-            idx = int(d[13:])
-        except ValueError:
-            answer_cb(cbid); return
-        shops = seller_shops.get(uid, [])
-        if idx >= len(shops) or not shops[idx].get('billz_secret_token'):
-            answer_cb(cbid, "❌ Billz ulanmagan"); return
-        answer_cb(cbid, "📥 Boshlanmoqda...")
-        import_billz_products(uid, uid, idx)
-        return
+        return cb_billz_import(uid, d, cb, cbid)
 
     if d.startswith('billz_connect_'):
-        try:
-            idx = int(d[14:])
-        except ValueError:
-            answer_cb(cbid); return
-        shops = seller_shops.get(uid, [])
-        if idx >= len(shops):
-            answer_cb(cbid, "❌ Do'kon topilmadi"); return
-        if not get_fernet():
-            answer_cb(cbid, "❌ Encryption sozlanmagan", alert=True); return
-        answer_cb(cbid)
-        seller_state[uid] = {'step': 'billz_secret_token', 'billz_shop_idx': idx}
-        send_seller(uid,
-            f"🔌 <b>Billz ulash</b>\n\n"
-            f"Billz secret token'ingizni shu chatga yuboring.\n\n"
-            f"⚠️ Token shifrlanib saqlanadi. Bekor qilish: /cancel")
-        return
+        return cb_billz_connect(uid, d, cb, cbid)
 
     if d.startswith('billz_pickshop_'):
-        # billz_pickshop_<seller_shop_idx>_<billz_shop_id>
-        rest = d[len('billz_pickshop_'):]
-        try:
-            seller_idx_str, billz_shop_id = rest.split('_', 1)
-            seller_idx = int(seller_idx_str)
-        except (ValueError, IndexError):
-            answer_cb(cbid); return
-        s = seller_state.get(uid)
-        if not s or s.get('step') != 'billz_shop_select':
-            answer_cb(cbid, "❌ Holat topilmadi"); return
-        candidates = s.get('billz_candidates', [])
-        chosen = next((c for c in candidates if c['shop_id'] == billz_shop_id), None)
-        if not chosen:
-            answer_cb(cbid, "❌ Do'kon topilmadi"); return
-        plain_token = s.get('billz_pending_token')
-        if not plain_token:
-            seller_state.pop(uid, None)
-            answer_cb(cbid, "❌ Token yo'qoldi"); return
-        encrypted = encrypt_token(plain_token)
-        if not encrypted:
-            answer_cb(cbid, "❌ Shifrlash xatosi", alert=True); return
-        shops = seller_shops.get(uid, [])
-        if seller_idx >= len(shops):
-            answer_cb(cbid, "❌ Do'kon topilmadi"); return
-        shops[seller_idx]['billz_secret_token']  = encrypted
-        shops[seller_idx]['billz_shop_id']       = chosen['shop_id']
-        shops[seller_idx]['billz_shop_name']     = chosen['shop_name']
-        shops[seller_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
-        save_data()
-        seller_state.pop(uid, None)
-        answer_cb(cbid, "✅ Ulandi!")
-        send_seller(uid,
-            f"✅ <b>Billz ulandi!</b>\n\n"
-            f"🏪 {shops[seller_idx].get('name','')}\n"
-            f"🏬 Billz do'koni: <b>{chosen['shop_name']}</b>\n\n"
-            f"Keyingi qadam: mahsulotlarni import qilish (Faza 2 — keyingi deploy).",
-            {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
-        return
+        return cb_billz_pickshop(uid, d, cb, cbid)
 
     # ─── LEGAL INFO CALLBACKS ───
     if d == 'leg_start':
