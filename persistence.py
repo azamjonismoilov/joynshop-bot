@@ -3,9 +3,10 @@
 # KRITIK: load_data() global'larni QAYTA TAYINLAMAYDI — mavjud dict'larni
 # in-place (clear()+update()) yangilaydi. Aks holda bot.py 'from persistence
 # import *' orqali olgan obyektlar eski qiymatda qolib, ma'lumot "yo'qoladi".
-import os, json, logging, pg8000
+import os, json, logging, threading, pg8000
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
+save_lock = threading.RLock()  # save_data race condition guard (audit 3.1)
 
 # ─── SHARED STORAGE (saqlanadigan holat) ────────────────────────────
 # Eslatma: seller_state va _photo_url_cache bot.py'da qoladi (saqlanmaydi).
@@ -56,45 +57,46 @@ def init_db():
         logging.error(f"init_db error: {e}", exc_info=True)
 
 def save_data():
-    if not DATABASE_URL:
-        logging.warning("No DATABASE_URL")
-        return
-    for attempt in range(3):
-        try:
-            data = {
-                'products':               products,
-                'groups':                 groups,
-                'orders':                 orders,
-                'wishlists':              wishlists,
-                'buyer_profiles':         buyer_profiles,
-                'refund_requests':        refund_requests,
-                'seller_products':        {str(k): v for k, v in seller_products.items()},
-                'seller_shops':           {str(k): v for k, v in seller_shops.items()},
-                'seller_profiles':        {str(k): v for k, v in seller_profiles.items()},
-                'verified_channels':      verified_channels,
-                'pending_moderator_codes':pending_moderator_codes,
-                'referrals':              referrals,
-                'referral_map':           {str(k): v for k, v in referral_map.items()},
-                'customers':              {str(k): v for k, v in customers.items()},
-                'lives':                  {str(k): v for k, v in lives.items()},
-                'terms_acceptance_log':   terms_acceptance_log,
-            }
-            payload = json.dumps(data, ensure_ascii=False, default=str)
-            conn    = get_db()
-            cur     = conn.cursor()
-            cur.execute(
-                "INSERT INTO joynshop_data (key, value) VALUES ('main', %s) "
-                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
-                (payload,)
-            )
-            conn.commit()
-            cur.close(); conn.close()
-            logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
+    with save_lock:
+        if not DATABASE_URL:
+            logging.warning("No DATABASE_URL")
             return
-        except Exception as e:
-            logging.error(f"save_data error (attempt {attempt+1}): {e}")
-            if attempt == 2:
-                logging.error("save_data failed 3 times!", exc_info=True)
+        for attempt in range(3):
+            try:
+                data = {
+                    'products':               products,
+                    'groups':                 groups,
+                    'orders':                 orders,
+                    'wishlists':              wishlists,
+                    'buyer_profiles':         buyer_profiles,
+                    'refund_requests':        refund_requests,
+                    'seller_products':        {str(k): v for k, v in seller_products.items()},
+                    'seller_shops':           {str(k): v for k, v in seller_shops.items()},
+                    'seller_profiles':        {str(k): v for k, v in seller_profiles.items()},
+                    'verified_channels':      verified_channels,
+                    'pending_moderator_codes':pending_moderator_codes,
+                    'referrals':              referrals,
+                    'referral_map':           {str(k): v for k, v in referral_map.items()},
+                    'customers':              {str(k): v for k, v in customers.items()},
+                    'lives':                  {str(k): v for k, v in lives.items()},
+                    'terms_acceptance_log':   terms_acceptance_log,
+                }
+                payload = json.dumps(data, ensure_ascii=False, default=str)
+                conn    = get_db()
+                cur     = conn.cursor()
+                cur.execute(
+                    "INSERT INTO joynshop_data (key, value) VALUES ('main', %s) "
+                    "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+                    (payload,)
+                )
+                conn.commit()
+                cur.close(); conn.close()
+                logging.info(f"Data saved: {len(products)} products, {len(orders)} orders")
+                return
+            except Exception as e:
+                logging.error(f"save_data error (attempt {attempt+1}): {e}")
+                if attempt == 2:
+                    logging.error("save_data failed 3 times!", exc_info=True)
 
 def load_data():
     # KRITIK: rebind QILMAYMIZ — har dict in-place (clear()+update()) yangilanadi,
