@@ -2219,6 +2219,88 @@ def cb_billz_pickshop(uid, d, cb, cbid):
         {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
     return
 
+# ─── CB HANDLERS: Misc (variants/delivery/addmod/confirm/edit_map) (ekstraksiya) ───
+def cb_variants(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s:
+        answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+    answer_cb(cbid)
+    if d == 'variants_yes':
+        s['step'] = 'variants_input'
+        send_seller(uid,
+            "Variantlarni vergul bilan yozing:\n\n"
+            "<i>O'lcham uchun: 38, 39, 40, 41, 43</i>\n"
+            "<i>Rang uchun: Qizil, Ko'k, Yashil</i>\n"
+            "<i>Aralash: S, M, L, XL</i>"
+        )
+    else:
+        s['variants'] = []
+        s['step'] = 'min_group'
+        send_seller(uid, "6️⃣ Minimal guruh soni (2-100):")
+    return
+
+def cb_delivery(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s:
+        answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+    dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
+    s['delivery_type'] = dtype
+    s['step'] = 'seller_channel'
+    answer_cb(cbid)
+    send_seller(uid,
+        f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
+        "9️⃣ Kanalingiz username ini yozing:\n"
+        "<i>Masalan: @mening_kanalim</i>\n\n"
+        "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
+    )
+    return
+
+def cb_addmod_ch(uid, d, cb, cbid):
+    channel = d[10:]
+    answer_cb(cbid)
+    if verified_channels.get(channel, {}).get('owner_id') != uid:
+        send_seller(uid, "❌ Bu kanal egasi emassiz!"); return
+    seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': channel}
+    send_seller(uid,
+        f"🛡 <b>{channel}</b> uchun moderator qo'shish\n\n"
+        f"Moderatorning Telegram @username ini yozing:\n"
+        f"<i>Masalan: @username</i>\n\n"
+        f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
+    )
+    return
+
+def cb_confirm_product(uid, d, cb, cbid):
+    s = seller_state.get(uid)
+    if not s:
+        answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+    answer_cb(cbid)
+    publish_product(uid, uid, s)
+    return
+
+def cb_edit_map(uid, d, cb, cbid):
+    edit_map = {
+        'edit_name':           ('name',           '1️⃣ Yangi mahsulot nomini yozing:'),
+        'edit_shop_name':      ('shop_name',       "2️⃣ Yangi do'kon nomini yozing:"),
+        'edit_description':    ('description',     '3️⃣ Yangi tavsifni yozing:'),
+        'edit_original_price': ('original_price',  '4️⃣ Yangi asl narxni yozing (so\'m):'),
+        'edit_group_price':    ('group_price',     '5️⃣ Yangi guruh narxini yozing (so\'m):'),
+        'edit_min_group':      ('min_group',       '6️⃣ Yangi minimal guruh sonini yozing (2-100):'),
+        'edit_photo':          ('photo',           '7️⃣ Yangi rasmni yuboring 📸'),
+        'edit_contact':        ('contact',         "8️⃣ Yangi aloqa ma'lumotini yozing:"),
+        'edit_seller_channel': ('seller_channel',  '9️⃣ Yangi kanal username ini yozing:'),
+    }
+    if d in edit_map:
+        s = seller_state.get(uid)
+        if not s:
+            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
+        field, prompt = edit_map[d]
+        s['step']       = 'editing'
+        s['edit_field'] = field
+        seller_state[uid] = s
+        answer_cb(cbid)
+        send_seller(uid, prompt)
+        return
+
 def seller_handle_cb(cb):
     cbid = cb['id']
     uid  = cb['from']['id']
@@ -2868,84 +2950,18 @@ def seller_handle_cb(cb):
         return cb_seller_deny_refund(uid, d, cb, cbid)
 
     if d in ('variants_yes', 'variants_no'):
-        s = seller_state.get(uid)
-        if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
-        answer_cb(cbid)
-        if d == 'variants_yes':
-            s['step'] = 'variants_input'
-            send_seller(uid,
-                "Variantlarni vergul bilan yozing:\n\n"
-                "<i>O'lcham uchun: 38, 39, 40, 41, 43</i>\n"
-                "<i>Rang uchun: Qizil, Ko'k, Yashil</i>\n"
-                "<i>Aralash: S, M, L, XL</i>"
-            )
-        else:
-            s['variants'] = []
-            s['step'] = 'min_group'
-            send_seller(uid, "6️⃣ Minimal guruh soni (2-100):")
-        return
+        return cb_variants(uid, d, cb, cbid)
 
     if d.startswith('delivery_'):
-        s = seller_state.get(uid)
-        if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
-        dtype = 'deliver' if d == 'delivery_deliver' else 'pickup'
-        s['delivery_type'] = dtype
-        s['step'] = 'seller_channel'
-        answer_cb(cbid)
-        send_seller(uid,
-            f"{'🚚 Sotuvchi yetkazadi' if dtype == 'deliver' else '🏪 Xaridor olib ketadi'} ✅\n\n"
-            "9️⃣ Kanalingiz username ini yozing:\n"
-            "<i>Masalan: @mening_kanalim</i>\n\n"
-            "⚠️ Sotuvchi bot kanalga <b>admin</b> sifatida qo'shilgan bo'lishi kerak!"
-        )
-        return
+        return cb_delivery(uid, d, cb, cbid)
 
     if d.startswith('addmod_ch_'):
-        channel = d[10:]
-        answer_cb(cbid)
-        if verified_channels.get(channel, {}).get('owner_id') != uid:
-            send_seller(uid, "❌ Bu kanal egasi emassiz!"); return
-        seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': channel}
-        send_seller(uid,
-            f"🛡 <b>{channel}</b> uchun moderator qo'shish\n\n"
-            f"Moderatorning Telegram @username ini yozing:\n"
-            f"<i>Masalan: @username</i>\n\n"
-            f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
-        )
-        return
+        return cb_addmod_ch(uid, d, cb, cbid)
 
     if d == 'confirm_product':
-        s = seller_state.get(uid)
-        if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
-        answer_cb(cbid)
-        publish_product(uid, uid, s)
-        return
+        return cb_confirm_product(uid, d, cb, cbid)
 
-    edit_map = {
-        'edit_name':           ('name',           '1️⃣ Yangi mahsulot nomini yozing:'),
-        'edit_shop_name':      ('shop_name',       "2️⃣ Yangi do'kon nomini yozing:"),
-        'edit_description':    ('description',     '3️⃣ Yangi tavsifni yozing:'),
-        'edit_original_price': ('original_price',  '4️⃣ Yangi asl narxni yozing (so\'m):'),
-        'edit_group_price':    ('group_price',     '5️⃣ Yangi guruh narxini yozing (so\'m):'),
-        'edit_min_group':      ('min_group',       '6️⃣ Yangi minimal guruh sonini yozing (2-100):'),
-        'edit_photo':          ('photo',           '7️⃣ Yangi rasmni yuboring 📸'),
-        'edit_contact':        ('contact',         "8️⃣ Yangi aloqa ma'lumotini yozing:"),
-        'edit_seller_channel': ('seller_channel',  '9️⃣ Yangi kanal username ini yozing:'),
-    }
-    if d in edit_map:
-        s = seller_state.get(uid)
-        if not s:
-            answer_cb(cbid, '❌ Jarayon topilmadi!'); return
-        field, prompt = edit_map[d]
-        s['step']       = 'editing'
-        s['edit_field'] = field
-        seller_state[uid] = s
-        answer_cb(cbid)
-        send_seller(uid, prompt)
-        return
+    return cb_edit_map(uid, d, cb, cbid)
 
 # ─── VALIDATION + MXIK ─── (validation.py ga ko'chirildi)
 from validation import *
