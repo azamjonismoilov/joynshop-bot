@@ -262,7 +262,7 @@ function loadOv(){
         <div class="card hero"><div class="cic" style="background:rgba(255,255,255,.15);color:white"><i class="ri-money-dollar-circle-line"></i></div><div class="clbl">Jami GMV</div><div class="cval">${fmtM(d.finance.gmv_total)}</div><div class="csub">${fmtF(d.finance.gmv_total)}</div></div>
         <div class="card"><div class="cic ic-g"><i class="ri-shopping-bag-3-line"></i></div><div class="clbl">Jami buyurtmalar</div><div class="cval">${fmtN(d.orders.total)}</div><div class="csub"><span class="bdg bg bp">+${d.orders.today} bugun</span></div></div>
         <div class="card"><div class="cic ic-b"><i class="ri-group-line"></i></div><div class="clbl">Jami xaridorlar</div><div class="cval">${fmtN(d.buyers.total)}</div><div class="csub"><span class="bdg bb bp">+${d.buyers.today} bugun</span></div></div>
-        <div class="card"><div class="cic ic-y"><i class="ri-bar-chart-2-line"></i></div><div class="clbl">Daromad (5%)</div><div class="cval">${fmtM(d.finance.commission_total)}</div><div class="csub">${fmtF(d.finance.commission_total)}</div></div>
+        <div class="card"><div class="cic ic-y"><i class="ri-bar-chart-2-line"></i></div><div class="clbl">Daromad (${d.finance.commission_pct}%)</div><div class="cval">${fmtM(d.finance.commission_total)}</div><div class="csub">${fmtF(d.finance.commission_total)}</div></div>
       </div>
       <div class="slbl">O'sish grafigi</div>
       <div class="chard"><div class="chdr"><div><div class="chtitle">14 kunlik GMV va buyurtmalar</div><div class="chsub">Kunlik dinamika</div></div><div class="chleg"><div style="display:flex;align-items:center;gap:5px"><div class="chlegdot" style="background:var(--o500)"></div>GMV</div><div style="display:flex;align-items:center;gap:5px"><div class="chlegdot" style="background:var(--b500)"></div>Buyurtmalar</div></div></div><div class="chwrap"><canvas id="gmvChart"></canvas></div></div>
@@ -423,7 +423,7 @@ function loadSettings(){
   document.getElementById('page-settings').innerHTML=`
     <div class="phdr"><div><div class="ptitle">Sozlamalar</div><div class="psub">Tizim konfiguratsiyasi</div></div></div>
     <div class="card"><div class="slbl" style="margin:0 0 0">Tizim ma'lumotlari</div>
-      <div class="srow"><div><div class="slabel">Komissiya foizi</div><div class="ssub">Har bir muvaffaqiyatli sotuv uchun</div></div><span class="bdg bg bp" style="font-size:13px;padding:4px 12px">5%</span></div>
+      <div class="srow"><div><div class="slabel">Komissiya foizi</div><div class="ssub">Har bir muvaffaqiyatli sotuv uchun</div></div><span class="bdg bg bp" style="font-size:13px;padding:4px 12px">${statsData?.finance?.commission_pct}%</span></div>
       <div class="srow"><div><div class="slabel">Default deadline</div><div class="ssub">Yangi mahsulot uchun standart muddat</div></div><span class="bdg bb bp" style="font-size:13px;padding:4px 12px">48 soat</span></div>
       <div class="srow"><div><div class="slabel">Dashboard versiyasi</div></div><span class="bdg bx bp">v2.1</span></div>
     </div>
