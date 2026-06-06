@@ -179,7 +179,10 @@ def load_data():
         seller_products.update({int(k) if k.isdigit() else k: v for k, v in raw_sp.items()})
         raw_cu = data.get('customers', {})
         customers.clear()
-        customers.update({int(k) if str(k).isdigit() else k: v for k, v in raw_cu.items()})
+        # customers kaliti STRING qoladi — update_customer/CRM/seller API barchasi
+        # str(uid) ishlatadi. Int-normalizatsiya (boshqa dict'lardagi kabi) bu yerda
+        # nomuvofiqlik va data-loss berardi (load->int vs str usage).
+        customers.update(raw_cu)
         raw_lv = data.get('lives', {})
         lives.clear()
         lives.update({k: v for k, v in raw_lv.items()})
