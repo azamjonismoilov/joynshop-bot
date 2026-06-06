@@ -3706,6 +3706,271 @@ def publish_product(uid, cid, s):
         )
         show_confirm(cid, s)
 
+# ─── CMD HANDLERS: buyruq handlerlari (seller_handle_msg'dan ekstraksiya) ───
+def cmd_cancel(cid, uid, text, msg):
+    seller_state.pop(uid, None)
+    send_seller(cid,
+        "❌ Bekor qilindi.\n\n🏪 <b>Bosh menyu:</b>",
+        {'inline_keyboard': [
+            [{'text': "🏠 Menyu ochish", 'callback_data': 'back_menu'}],
+        ]})
+    return
+
+def cmd_menu(cid, uid, text, msg):
+    send_seller(cid,
+        "🏪 <b>Joynshop Sotuvchi Paneli</b>",
+        {'inline_keyboard': [
+            [{'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
+             {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'}],
+            [{'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
+             {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'}],
+            [{'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
+             {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'}],
+        ]})
+    return
+
+def cmd_stats(cid, uid, text, msg):
+    conf   = sum(1 for o in orders.values() if o['status'] == 'confirmed')
+    rev    = sum(o['amount'] for o in orders.values() if o['status'] == 'confirmed')
+    active = sum(1 for p in products.values() if p.get('status') != 'closed')
+    send_seller(cid,
+        f"📊 <b>Umumiy statistika</b>\n\n"
+        f"📦 Aktiv mahsulotlar: {active}\n"
+        f"✅ Tasdiqlangan buyurtmalar: {conf}\n"
+        f"💰 Jami aylanma: {fmt(rev)} so'm\n"
+        f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(int(rev*COMMISSION_RATE))} so'm"
+    )
+    return
+
+def cmd_start(cid, uid, text, msg):
+    # Deeplink param: t.me/<bot>?start=<param> → "/start <param>"
+    # Terms gate global yuqorida tekshirilgan — bu yerga hech qachon
+    # terms_accepted=False holatida kelinmaydi.
+    parts = text.split(maxsplit=1)
+    start_param = parts[1].strip() if len(parts) > 1 else ''
+    if start_param == 'addproduct':
+        seller_start_addproduct_flow(uid, cid)
+        return
+    shops = seller_shops.get(uid) or seller_shops.get(str(uid), [])
+    is_new = not shops and str(uid) not in [str(k) for k in seller_shops.keys()]
+    if is_new:
+        cur_state = seller_state.get(uid, {})
+        if not cur_state.get('step','').startswith('ob_'):
+            seller_state[uid] = {'step': 'ob_shop_name'}
+            send_seller(cid,
+                "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
+                "Bir marta profilingizni to'ldiring.\n\n"
+                "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
+            )
+        else:
+            send_seller(cid, "📝 Do'kon ma'lumotlarini kiritishni davom eting.")
+    else:
+        shop_names = ', '.join(s['name'] for s in shops) if shops else ''
+        send_seller(cid,
+            f"🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
+            f"{'🏬 ' + shop_names + chr(10) if shop_names else ''}"
+            f"Guruh savdosi orqali ko'proq soting!",
+            {'keyboard': [
+                [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
+                [{'text': '➕ Mahsulot qo\'shish'}, {'text': '👥 Mijozlar'}],
+                [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
+            ], 'resize_keyboard': True, 'is_persistent': True}
+        )
+    return
+
+def cmd_myproducts(cid, uid, text, msg):
+    render_myproducts(uid, cid, page=0)
+    return
+
+def cmd_mystats(cid, uid, text, msg):
+    my = seller_products.get(uid, [])
+    if not my:
+        send_seller(cid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
+    revenue    = sum(o['amount'] for o in orders.values() if o.get('product_id') in my and o['status'] == 'confirmed')
+    commission = int(revenue * COMMISSION_RATE)
+    send_seller(cid,
+        f"📊 <b>Sizning statistikangiz:</b>\n\n"
+        f"📦 Jami mahsulot: {len(my)}\n"
+        f"🔥 Aktiv: {sum(1 for pid in my if products.get(pid,{}).get('status')!='closed')}\n"
+        f"✅ Muvaffaqiyatli guruh: {sum(1 for pid in my if len(groups.get(pid,[]))>=products.get(pid,{}).get('min_group',99))}\n"
+        f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
+        f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
+        f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
+        {'inline_keyboard': [[{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}]]}
+    )
+    return
+
+def cmd_myorders(cid, uid, text, msg):
+    my_pids = seller_products.get(uid, [])
+    pending = {k:v for k,v in orders.items() if v.get('product_id') in my_pids and v['status']=='confirming'}
+    if not pending:
+        send_seller(cid, "📋 Tasdiqlanmagan buyurtma yo'q."); return
+    for code, o in list(pending.items())[-10:]:
+        p = products.get(o['product_id'], {})
+        send_seller(cid,
+            f"🔔 <b>YANGI TO'LOV!</b>\n\n"
+            f"📦 {p.get('name','')}\n👤 {o['user_name']}\n"
+            f"💰 {fmt(o['amount'])} so'm\n"
+            f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n🆔 #{code}",
+            {'inline_keyboard': [[
+                {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
+                {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'}
+            ]]}
+        )
+    return
+
+def cmd_boost(cid, uid, text, msg):
+    parts = text.split()
+    if len(parts) < 2:
+        send_seller(cid, "❌ Format: /boost [ID]"); return
+    pid = parts[1]
+    if pid not in products:
+        send_seller(cid, '❌ Topilmadi!'); return
+    p = products[pid]
+    if p.get('seller_id') != uid and uid != ADMIN_ID:
+        send_seller(cid, '❌ Bu sizning mahsulotingiz emas!'); return
+    count = len(groups.get(pid, []))
+    send_seller(cid,
+        f"📢 <b>{p['name']}</b> qayta e'lon qilasizmi?\n\n"
+        f"👥 Hozir: {count}/{p['min_group']} kishi\n💰 {fmt(p['group_price'])} so'm",
+        {'inline_keyboard': [[
+            {'text': "✅ E'lon qil", 'callback_data': f'boost_confirm_{pid}'},
+            {'text': "❌ Yo'q",      'callback_data': 'noop'}
+        ]]}
+    )
+    return
+
+def cmd_delete(cid, uid, text, msg):
+    parts = text.split()
+    if len(parts) < 2:
+        send_seller(cid, "❌ Format: /delete [ID]"); return
+    pid = parts[1]
+    if pid not in products:
+        send_seller(cid, '❌ Topilmadi!'); return
+    p = products[pid]
+    if p.get('seller_id') != uid and uid != ADMIN_ID:
+        send_seller(cid, "❌ Ruxsat yo'q!"); return
+    p['status']    = 'closed'
+    p['is_active'] = False
+    ch_cid = p.get('channel_chat_id'); ch_mid = p.get('channel_message_id')
+    if ch_cid and ch_mid:
+        try:
+            requests.post(
+                f'https://api.telegram.org/bot{SELLER_TOKEN}/deleteMessage',
+                json={'chat_id': ch_cid, 'message_id': ch_mid}, timeout=5
+            )
+        except Exception as e:
+            logging.error(f"deleteMessage error: {e}")
+    if uid in seller_products and pid in seller_products[uid]:
+        seller_products[uid].remove(pid)
+    save_data()
+    send_seller(cid, f"✅ <b>{p['name']}</b> o'chirildi.")
+    return
+
+def cmd_integrations(cid, uid, text, msg):
+    render_integrations_menu(uid, cid)
+    return
+
+def cmd_mycustomers(cid, uid, text, msg):
+    render_customer_list(uid, cid)
+    return
+
+def cmd_legal(cid, uid, text, msg):
+    render_legal_summary(uid, cid)
+    return
+
+def cmd_billz(cid, uid, text, msg):
+    # Backward compatibility — /billz to'g'ridan Billz menyuga olib boradi
+    render_billz_menu(uid, cid)
+    return
+
+def cmd_help(cid, uid, text, msg):
+    send_seller(cid,
+        "📘 <b>Sotuvchi yordam</b>\n\n"
+        "/start       — 🏠 Bosh sahifa\n"
+        "/addproduct  — ➕ Mahsulot qo'shish\n"
+        "/myproducts  — 📦 Mahsulotlarim\n"
+        "/myorders    — 📋 Buyurtmalar\n"
+        "/mystats     — 📊 Statistika\n"
+        "/billz       — 🔌 Billz integratsiyasi\n"
+        "/legal       — 📋 Yuridik ma'lumotlar\n"
+        "/menu        — 📱 Bosh menyu\n"
+        "/cancel      — ❌ Bekor qilish\n"
+        "/help        — ℹ️ Yordam\n\n"
+        "💬 Yordam: @joynshop_support"
+    )
+    return
+
+def cmd_golive(cid, uid, text, msg):
+    my_pids = seller_products.get(uid, [])
+    active_prods = [(pid, products[pid]) for pid in my_pids
+                    if pid in products and products[pid].get('status') == 'active']
+    if not active_prods:
+        send_seller(cid,
+            "❌ Avval faol mahsulot qo'shing.\n\n/addproduct yozing."
+        )
+        return
+    # Tanlov klaviaturasi
+    kb = []
+    for pid, p in active_prods[:10]:
+        kb.append([{'text': f"📦 {p.get('name','')[:30]}",
+                    'callback_data': f'live_pick_{pid}'}])
+    kb.append([{'text': "❌ Bekor", 'callback_data': 'live_cancel'}])
+    send_seller(cid,
+        "🔴 <b>LIVE boshlash</b>\n\n"
+        "Qaysi mahsulot uchun Live qilasiz?",
+        {'inline_keyboard': kb}
+    )
+    return
+
+def cmd_addproduct(cid, uid, text, msg):
+    seller_start_addproduct_flow(uid, cid)
+    return
+
+def cmd_addmoderator(cid, uid, text, msg):
+    my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid]
+    if not my_channels:
+        send_seller(cid, "❌ Siz hech bir kanalning egasi emassiz.\n\nAvval mahsulot qo'shib, kanal tasdiqlang.")
+        return
+    if len(my_channels) == 1:
+        seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': my_channels[0]}
+        send_seller(cid,
+            f"🛡 <b>{my_channels[0]}</b> uchun moderator qo'shish\n\n"
+            f"Moderatorning Telegram @username ini yozing:\n"
+            f"<i>Masalan: @username</i>\n\n"
+            f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
+        )
+    else:
+        btns = [[{'text': ch, 'callback_data': f'addmod_ch_{ch}'}] for ch in my_channels]
+        send_seller(cid, "Qaysi kanal uchun moderator qo'shmoqchisiz?", {'inline_keyboard': btns})
+    return
+
+def cmd_mod(cid, uid, text, msg):
+    code = text.strip()
+    if code not in pending_moderator_codes:
+        send_seller(cid, "❌ Kod topilmadi yoki muddati o'tgan."); return
+    data    = pending_moderator_codes[code]
+    channel = data['channel']
+    if channel in verified_channels:
+        if uid not in verified_channels[channel]['moderators']:
+            verified_channels[channel]['moderators'].append(uid)
+    del pending_moderator_codes[code]
+    save_data()
+    send_seller(cid,
+        f"✅ <b>{channel}</b> kanalida moderator bo'ldingiz!\n\n"
+        f"Endi /addproduct orqali mahsulot qo'sha olasiz."
+    )
+    owner_id = verified_channels.get(channel, {}).get('owner_id')
+    if owner_id:
+        send_seller(owner_id,
+            f"🛡 Yangi moderator qo'shildi!\n\n"
+            f"Kanal: {channel}\n"
+            f"Moderator ID: <code>{uid}</code>"
+        )
+    return
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -3724,25 +3989,9 @@ def seller_handle_msg(msg):
     # /menu   — back_menu ekranini chiqaradi (state'ga tegmasdan)
     # Bu /start dan ham, prod_* dan ham, ob_* dan ham ishlaydi.
     if text == '/cancel':
-        seller_state.pop(uid, None)
-        send_seller(cid,
-            "❌ Bekor qilindi.\n\n🏪 <b>Bosh menyu:</b>",
-            {'inline_keyboard': [
-                [{'text': "🏠 Menyu ochish", 'callback_data': 'back_menu'}],
-            ]})
-        return
+        return cmd_cancel(cid, uid, text, msg)
     if text == '/menu':
-        send_seller(cid,
-            "🏪 <b>Joynshop Sotuvchi Paneli</b>",
-            {'inline_keyboard': [
-                [{'text': "📦 Mahsulotlarim",      'callback_data': 'menu_myproducts'},
-                 {'text': "📋 Buyurtmalar",        'callback_data': 'menu_myorders'}],
-                [{'text': "➕ Mahsulot qo'shish",  'callback_data': 'menu_addproduct'},
-                 {'text': "👥 Mijozlar",            'callback_data': 'menu_mycustomers'}],
-                [{'text': "📊 Statistika",         'callback_data': 'menu_mystats'},
-                 {'text': "🔌 Integratsiyalar",    'callback_data': 'menu_integrations'}],
-            ]})
-        return
+        return cmd_menu(cid, uid, text, msg)
 
     if is_prod_in_progress(uid) and text in PROD_BLOCKED_TEXTS:
         send_seller(cid, get_prod_progress_text(uid),
@@ -3754,200 +4003,43 @@ def seller_handle_msg(msg):
         return
 
     if uid == ADMIN_ID and text == '/stats':
-        conf   = sum(1 for o in orders.values() if o['status'] == 'confirmed')
-        rev    = sum(o['amount'] for o in orders.values() if o['status'] == 'confirmed')
-        active = sum(1 for p in products.values() if p.get('status') != 'closed')
-        send_seller(cid,
-            f"📊 <b>Umumiy statistika</b>\n\n"
-            f"📦 Aktiv mahsulotlar: {active}\n"
-            f"✅ Tasdiqlangan buyurtmalar: {conf}\n"
-            f"💰 Jami aylanma: {fmt(rev)} so'm\n"
-            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(int(rev*COMMISSION_RATE))} so'm"
-        )
-        return
+        return cmd_stats(cid, uid, text, msg)
 
     if text == '/start' or text.startswith('/start '):
-        # Deeplink param: t.me/<bot>?start=<param> → "/start <param>"
-        # Terms gate global yuqorida tekshirilgan — bu yerga hech qachon
-        # terms_accepted=False holatida kelinmaydi.
-        parts = text.split(maxsplit=1)
-        start_param = parts[1].strip() if len(parts) > 1 else ''
-        if start_param == 'addproduct':
-            seller_start_addproduct_flow(uid, cid)
-            return
-        shops = seller_shops.get(uid) or seller_shops.get(str(uid), [])
-        is_new = not shops and str(uid) not in [str(k) for k in seller_shops.keys()]
-        if is_new:
-            cur_state = seller_state.get(uid, {})
-            if not cur_state.get('step','').startswith('ob_'):
-                seller_state[uid] = {'step': 'ob_shop_name'}
-                send_seller(cid,
-                    "🏪 <b>Joynshop Sotuvchi Paneliga xush kelibsiz!</b>\n\n"
-                    "Bir marta profilingizni to'ldiring.\n\n"
-                    "<b>1/4</b> Do'kon nomini yozing:\n<i>Masalan: Nike Toshkent</i>"
-                )
-            else:
-                send_seller(cid, "📝 Do'kon ma'lumotlarini kiritishni davom eting.")
-        else:
-            shop_names = ', '.join(s['name'] for s in shops) if shops else ''
-            send_seller(cid,
-                f"🏪 <b>Joynshop Sotuvchi Paneli</b>\n\n"
-                f"{'🏬 ' + shop_names + chr(10) if shop_names else ''}"
-                f"Guruh savdosi orqali ko'proq soting!",
-                {'keyboard': [
-                    [{'text': '📦 Mahsulotlarim'},      {'text': '📋 Buyurtmalar'}],
-                    [{'text': '➕ Mahsulot qo\'shish'}, {'text': '👥 Mijozlar'}],
-                    [{'text': '📊 Statistika'},         {'text': '🔌 Integratsiyalar'}],
-                ], 'resize_keyboard': True, 'is_persistent': True}
-            )
-        return
+        return cmd_start(cid, uid, text, msg)
 
     if text == '/myproducts' or text == '📦 Mahsulotlarim':
-        render_myproducts(uid, cid, page=0)
-        return
+        return cmd_myproducts(cid, uid, text, msg)
 
     if text == '/mystats' or text == '📊 Statistika':
-        my = seller_products.get(uid, [])
-        if not my:
-            send_seller(cid, "📊 Statistika yo'q.\n\n/addproduct — mahsulot qo'shing!"); return
-        revenue    = sum(o['amount'] for o in orders.values() if o.get('product_id') in my and o['status'] == 'confirmed')
-        commission = int(revenue * COMMISSION_RATE)
-        send_seller(cid,
-            f"📊 <b>Sizning statistikangiz:</b>\n\n"
-            f"📦 Jami mahsulot: {len(my)}\n"
-            f"🔥 Aktiv: {sum(1 for pid in my if products.get(pid,{}).get('status')!='closed')}\n"
-            f"✅ Muvaffaqiyatli guruh: {sum(1 for pid in my if len(groups.get(pid,[]))>=products.get(pid,{}).get('min_group',99))}\n"
-            f"👥 Jami qo'shilgan: {sum(len(groups.get(pid,[])) for pid in my)}\n\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"💰 Jami sotuv: {fmt(revenue)} so'm\n"
-            f"📊 Komissiya ({int(COMMISSION_RATE*100)}%): {fmt(commission)} so'm\n"
-            f"✅ Sof daromad: {fmt(revenue-commission)} so'm",
-            {'inline_keyboard': [[{'text': "📑 Excel eksport", 'callback_data': 'menu_export'}]]}
-        )
-        return
+        return cmd_mystats(cid, uid, text, msg)
 
     if text == '/myorders' or text == '📋 Buyurtmalar':
-        my_pids = seller_products.get(uid, [])
-        pending = {k:v for k,v in orders.items() if v.get('product_id') in my_pids and v['status']=='confirming'}
-        if not pending:
-            send_seller(cid, "📋 Tasdiqlanmagan buyurtma yo'q."); return
-        for code, o in list(pending.items())[-10:]:
-            p = products.get(o['product_id'], {})
-            send_seller(cid,
-                f"🔔 <b>YANGI TO'LOV!</b>\n\n"
-                f"📦 {p.get('name','')}\n👤 {o['user_name']}\n"
-                f"💰 {fmt(o['amount'])} so'm\n"
-                f"🛒 {'Yakka' if o.get('type')=='solo' else 'Guruh'}\n🆔 #{code}",
-                {'inline_keyboard': [[
-                    {'text': '✅ Tasdiqlash', 'callback_data': f'seller_ac_{code}'},
-                    {'text': '❌ Rad',        'callback_data': f'seller_ar_{code}'}
-                ]]}
-            )
-        return
+        return cmd_myorders(cid, uid, text, msg)
 
     if text.startswith('/boost'):
-        parts = text.split()
-        if len(parts) < 2:
-            send_seller(cid, "❌ Format: /boost [ID]"); return
-        pid = parts[1]
-        if pid not in products:
-            send_seller(cid, '❌ Topilmadi!'); return
-        p = products[pid]
-        if p.get('seller_id') != uid and uid != ADMIN_ID:
-            send_seller(cid, '❌ Bu sizning mahsulotingiz emas!'); return
-        count = len(groups.get(pid, []))
-        send_seller(cid,
-            f"📢 <b>{p['name']}</b> qayta e'lon qilasizmi?\n\n"
-            f"👥 Hozir: {count}/{p['min_group']} kishi\n💰 {fmt(p['group_price'])} so'm",
-            {'inline_keyboard': [[
-                {'text': "✅ E'lon qil", 'callback_data': f'boost_confirm_{pid}'},
-                {'text': "❌ Yo'q",      'callback_data': 'noop'}
-            ]]}
-        )
-        return
+        return cmd_boost(cid, uid, text, msg)
 
     if text.startswith('/delete'):
-        parts = text.split()
-        if len(parts) < 2:
-            send_seller(cid, "❌ Format: /delete [ID]"); return
-        pid = parts[1]
-        if pid not in products:
-            send_seller(cid, '❌ Topilmadi!'); return
-        p = products[pid]
-        if p.get('seller_id') != uid and uid != ADMIN_ID:
-            send_seller(cid, "❌ Ruxsat yo'q!"); return
-        p['status']    = 'closed'
-        p['is_active'] = False
-        ch_cid = p.get('channel_chat_id'); ch_mid = p.get('channel_message_id')
-        if ch_cid and ch_mid:
-            try:
-                requests.post(
-                    f'https://api.telegram.org/bot{SELLER_TOKEN}/deleteMessage',
-                    json={'chat_id': ch_cid, 'message_id': ch_mid}, timeout=5
-                )
-            except Exception as e:
-                logging.error(f"deleteMessage error: {e}")
-        if uid in seller_products and pid in seller_products[uid]:
-            seller_products[uid].remove(pid)
-        save_data()
-        send_seller(cid, f"✅ <b>{p['name']}</b> o'chirildi.")
-        return
+        return cmd_delete(cid, uid, text, msg)
 
     if text == '/integrations' or text == '🔌 Integratsiyalar':
-        render_integrations_menu(uid, cid)
-        return
+        return cmd_integrations(cid, uid, text, msg)
 
     if text == '/mycustomers' or text == '👥 Mijozlar':
-        render_customer_list(uid, cid)
-        return
+        return cmd_mycustomers(cid, uid, text, msg)
 
     if text == '/legal':
-        render_legal_summary(uid, cid)
-        return
+        return cmd_legal(cid, uid, text, msg)
 
     if text == '/billz' or text == '🔌 Billz':
-        # Backward compatibility — /billz to'g'ridan Billz menyuga olib boradi
-        render_billz_menu(uid, cid)
-        return
+        return cmd_billz(cid, uid, text, msg)
 
     if text == '/help':
-        send_seller(cid,
-            "📘 <b>Sotuvchi yordam</b>\n\n"
-            "/start       — 🏠 Bosh sahifa\n"
-            "/addproduct  — ➕ Mahsulot qo'shish\n"
-            "/myproducts  — 📦 Mahsulotlarim\n"
-            "/myorders    — 📋 Buyurtmalar\n"
-            "/mystats     — 📊 Statistika\n"
-            "/billz       — 🔌 Billz integratsiyasi\n"
-            "/legal       — 📋 Yuridik ma'lumotlar\n"
-            "/menu        — 📱 Bosh menyu\n"
-            "/cancel      — ❌ Bekor qilish\n"
-            "/help        — ℹ️ Yordam\n\n"
-            "💬 Yordam: @joynshop_support"
-        )
-        return
+        return cmd_help(cid, uid, text, msg)
 
     if text == '/golive' or text == "🔴 Live":
-        my_pids = seller_products.get(uid, [])
-        active_prods = [(pid, products[pid]) for pid in my_pids
-                        if pid in products and products[pid].get('status') == 'active']
-        if not active_prods:
-            send_seller(cid,
-                "❌ Avval faol mahsulot qo'shing.\n\n/addproduct yozing."
-            )
-            return
-        # Tanlov klaviaturasi
-        kb = []
-        for pid, p in active_prods[:10]:
-            kb.append([{'text': f"📦 {p.get('name','')[:30]}",
-                        'callback_data': f'live_pick_{pid}'}])
-        kb.append([{'text': "❌ Bekor", 'callback_data': 'live_cancel'}])
-        send_seller(cid,
-            "🔴 <b>LIVE boshlash</b>\n\n"
-            "Qaysi mahsulot uchun Live qilasiz?",
-            {'inline_keyboard': kb}
-        )
-        return
+        return cmd_golive(cid, uid, text, msg)
 
     if text == '/mylive':
         # Sotuvchining faol live'larini ko'rsatish
@@ -3974,8 +4066,7 @@ def seller_handle_msg(msg):
         return
 
     if text == '/addproduct' or text == "➕ Mahsulot qo'shish":
-        seller_start_addproduct_flow(uid, cid)
-        return
+        return cmd_addproduct(cid, uid, text, msg)
 
     if text in ('/mychannels', '/shops', "📢 Do'konlarim", '📢 Kanallarim'):
         shops = seller_shops.get(uid, [])
@@ -3997,46 +4088,10 @@ def seller_handle_msg(msg):
             return
 
     if text == '/addmoderator':
-        my_channels = [ch for ch, data in verified_channels.items() if data['owner_id'] == uid]
-        if not my_channels:
-            send_seller(cid, "❌ Siz hech bir kanalning egasi emassiz.\n\nAvval mahsulot qo'shib, kanal tasdiqlang.")
-            return
-        if len(my_channels) == 1:
-            seller_state[uid] = {'step': 'add_mod_user', 'mod_channel': my_channels[0]}
-            send_seller(cid,
-                f"🛡 <b>{my_channels[0]}</b> uchun moderator qo'shish\n\n"
-                f"Moderatorning Telegram @username ini yozing:\n"
-                f"<i>Masalan: @username</i>\n\n"
-                f"⚠️ U avval seller botni ishga tushirgan bo'lishi kerak!"
-            )
-        else:
-            btns = [[{'text': ch, 'callback_data': f'addmod_ch_{ch}'}] for ch in my_channels]
-            send_seller(cid, "Qaysi kanal uchun moderator qo'shmoqchisiz?", {'inline_keyboard': btns})
-        return
+        return cmd_addmoderator(cid, uid, text, msg)
 
     if text.startswith('MOD-'):
-        code = text.strip()
-        if code not in pending_moderator_codes:
-            send_seller(cid, "❌ Kod topilmadi yoki muddati o'tgan."); return
-        data    = pending_moderator_codes[code]
-        channel = data['channel']
-        if channel in verified_channels:
-            if uid not in verified_channels[channel]['moderators']:
-                verified_channels[channel]['moderators'].append(uid)
-        del pending_moderator_codes[code]
-        save_data()
-        send_seller(cid,
-            f"✅ <b>{channel}</b> kanalida moderator bo'ldingiz!\n\n"
-            f"Endi /addproduct orqali mahsulot qo'sha olasiz."
-        )
-        owner_id = verified_channels.get(channel, {}).get('owner_id')
-        if owner_id:
-            send_seller(owner_id,
-                f"🛡 Yangi moderator qo'shildi!\n\n"
-                f"Kanal: {channel}\n"
-                f"Moderator ID: <code>{uid}</code>"
-            )
-        return
+        return cmd_mod(cid, uid, text, msg)
 
     if uid in seller_state:
         s    = seller_state[uid]
