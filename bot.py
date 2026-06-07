@@ -4076,6 +4076,41 @@ def step_add_mod_user(cid, uid, text, msg, s):
     )
     return
 
+# ─── STEP HANDLERS: B Shop-edit (seller_handle_msg zanjiri, 3-bosqich) ───
+def step_edit_shop_name(cid, uid, text, msg, s):
+    s['ob_shop_name'] = text; s['step'] = 'ob_phone'
+    send_seller(cid, f"✅ Do'kon nomi yangilandi.\n\n📞 Telefon raqam:\n<i>+998XXXXXXXXX yoki /skip</i>",
+        {'inline_keyboard': [[{'text': "⏭ O'zgartirmaslik", 'callback_data': 'ob_keep_phone'}]]})
+
+def step_edit_phone_direct(cid, uid, text, msg, s):
+    phone = text.strip()
+    idx = s.get('edit_shop_idx', 0)
+    del seller_state[uid]
+    ok, _ = do_update_shop(uid, idx, {'phone': phone})
+    send_seller(cid, f"✅ Telefon yangilandi: {phone}" if ok else "❌ Telefonni yangilab bo'lmadi")
+
+def step_edit_address_direct(cid, uid, text, msg, s):
+    addr = text.strip()
+    idx = s.get('edit_shop_idx', 0)
+    del seller_state[uid]
+    ok, _ = do_update_shop(uid, idx, {'address': addr})
+    send_seller(cid, f"✅ Manzil yangilandi: {addr}" if ok else "❌ Manzilni yangilab bo'lmadi")
+
+def step_edit_social_direct(cid, uid, text, msg, s):
+    social = {}
+    for line in text.strip().splitlines():
+        if ':' in line:
+            k, v = line.split(':', 1)
+            social[k.strip().lower()] = v.strip()
+    idx = s.get('edit_shop_idx', 0)
+    del seller_state[uid]
+    ok, _ = do_update_shop(uid, idx, {'social': social})
+    if ok:
+        lines = '\n'.join(f"🔗 {k}: {v}" for k, v in social.items() if v)
+        send_seller(cid, f"✅ Ijtimoiy tarmoqlar yangilandi:\n{lines}" if lines else "✅ Ijtimoiy tarmoqlar tozalandi.")
+    else:
+        send_seller(cid, "❌ Yangilab bo'lmadi")
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4360,38 +4395,16 @@ def seller_handle_msg(msg):
                     f"Tayyor bo'lgach yana <code>/confirm</code> yozing yoki /cancel")
 
         elif step == 'edit_shop_name':
-            s['ob_shop_name'] = text; s['step'] = 'ob_phone'
-            send_seller(cid, f"✅ Do'kon nomi yangilandi.\n\n📞 Telefon raqam:\n<i>+998XXXXXXXXX yoki /skip</i>",
-                {'inline_keyboard': [[{'text': "⏭ O'zgartirmaslik", 'callback_data': 'ob_keep_phone'}]]})
+            return step_edit_shop_name(cid, uid, text, msg, s)
 
         elif step == 'edit_phone_direct':
-            phone = text.strip()
-            idx = s.get('edit_shop_idx', 0)
-            del seller_state[uid]
-            ok, _ = do_update_shop(uid, idx, {'phone': phone})
-            send_seller(cid, f"✅ Telefon yangilandi: {phone}" if ok else "❌ Telefonni yangilab bo'lmadi")
+            return step_edit_phone_direct(cid, uid, text, msg, s)
 
         elif step == 'edit_address_direct':
-            addr = text.strip()
-            idx = s.get('edit_shop_idx', 0)
-            del seller_state[uid]
-            ok, _ = do_update_shop(uid, idx, {'address': addr})
-            send_seller(cid, f"✅ Manzil yangilandi: {addr}" if ok else "❌ Manzilni yangilab bo'lmadi")
+            return step_edit_address_direct(cid, uid, text, msg, s)
 
         elif step == 'edit_social_direct':
-            social = {}
-            for line in text.strip().splitlines():
-                if ':' in line:
-                    k, v = line.split(':', 1)
-                    social[k.strip().lower()] = v.strip()
-            idx = s.get('edit_shop_idx', 0)
-            del seller_state[uid]
-            ok, _ = do_update_shop(uid, idx, {'social': social})
-            if ok:
-                lines = '\n'.join(f"🔗 {k}: {v}" for k, v in social.items() if v)
-                send_seller(cid, f"✅ Ijtimoiy tarmoqlar yangilandi:\n{lines}" if lines else "✅ Ijtimoiy tarmoqlar tozalandi.")
-            else:
-                send_seller(cid, "❌ Yangilab bo'lmadi")
+            return step_edit_social_direct(cid, uid, text, msg, s)
 
         elif step == 'prod_name':
             s['name'] = text; s['step'] = 'prod_category'
