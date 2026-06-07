@@ -4250,6 +4250,58 @@ def step_ob_confirm_admin(cid, uid, text, msg, s):
             f"• Post Messages ruxsati berilganmi?\n\n"
             f"Tayyor bo'lgach yana <code>/confirm</code> yozing yoki /cancel")
 
+# ─── STEP HANDLERS: D Legal nested (seller_handle_msg zanjiri, 3-bosqich) ───
+def step_leg(cid, uid, text, msg, s):
+    # Yuridik ma'lumot kiritish — har step alohida validatsiya
+    if step == 'leg_stir':
+        ok, val, err = validate_stir(text)
+        field = 'stir'
+        next_step  = 'leg_account'
+        next_label = "📋 <b>Qadam 3/6 — Hisob raqami</b>\n\nBank hisob raqamingizni kiriting (20 raqam):"
+    elif step == 'leg_account':
+        ok, val, err = validate_bank_account(text)
+        field = 'bank_account'
+        next_step  = 'leg_bank_name'
+        next_label = "📋 <b>Qadam 4/6 — Bank nomi</b>\n\nQaysi bankda? (masalan: Kapitalbank, Davr Bank, Agrobank):"
+    elif step == 'leg_bank_name':
+        ok, val, err = validate_bank_name(text)
+        field = 'bank_name'
+        next_step  = 'leg_mfo'
+        next_label = "📋 <b>Qadam 5/6 — MFO</b>\n\nBank MFO kodini kiriting (5 raqam):"
+    elif step == 'leg_mfo':
+        ok, val, err = validate_mfo(text)
+        field = 'bank_mfo'
+        # MFO dan keyin: MChJ bo'lsa direktor, aks holda confirm
+        prof_status = seller_profiles.get(uid, {}).get('legal_status', '')
+        if prof_status == 'mchj':
+            next_step  = 'leg_director'
+            next_label = "📋 <b>Qadam 6/6 — Direktor</b>\n\nDirektor F.I.O. ni to'liq kiriting (familiya, ism, sharif):"
+        else:
+            next_step  = 'leg_confirm'
+            next_label = None  # confirm ekranini render_legal_confirm chiqaradi
+    else:  # leg_director
+        ok, val, err = validate_director_name(text)
+        field = 'director_name'
+        next_step  = 'leg_confirm'
+        next_label = None
+    if not ok:
+        send_seller(cid, err)
+        return
+    prof = seller_profiles.setdefault(uid, {})
+    prof[field] = val
+    # Edit rejimida — to'g'ridan leg_confirm'ga qaytamiz
+    if s.get('leg_editing'):
+        s.pop('leg_editing', None)
+        s['step'] = 'leg_confirm'
+        render_legal_confirm(uid, cid)
+        return
+    s['step'] = next_step
+    if next_step == 'leg_confirm':
+        render_legal_confirm(uid, cid)
+    else:
+        send_seller(cid, next_label + "\n\n<i>Bekor qilish: /cancel</i>")
+    return
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4608,55 +4660,7 @@ def seller_handle_msg(msg):
             show_prod_confirm(cid, s, shop)
 
         elif step in ('leg_stir', 'leg_account', 'leg_bank_name', 'leg_mfo', 'leg_director'):
-            # Yuridik ma'lumot kiritish — har step alohida validatsiya
-            if step == 'leg_stir':
-                ok, val, err = validate_stir(text)
-                field = 'stir'
-                next_step  = 'leg_account'
-                next_label = "📋 <b>Qadam 3/6 — Hisob raqami</b>\n\nBank hisob raqamingizni kiriting (20 raqam):"
-            elif step == 'leg_account':
-                ok, val, err = validate_bank_account(text)
-                field = 'bank_account'
-                next_step  = 'leg_bank_name'
-                next_label = "📋 <b>Qadam 4/6 — Bank nomi</b>\n\nQaysi bankda? (masalan: Kapitalbank, Davr Bank, Agrobank):"
-            elif step == 'leg_bank_name':
-                ok, val, err = validate_bank_name(text)
-                field = 'bank_name'
-                next_step  = 'leg_mfo'
-                next_label = "📋 <b>Qadam 5/6 — MFO</b>\n\nBank MFO kodini kiriting (5 raqam):"
-            elif step == 'leg_mfo':
-                ok, val, err = validate_mfo(text)
-                field = 'bank_mfo'
-                # MFO dan keyin: MChJ bo'lsa direktor, aks holda confirm
-                prof_status = seller_profiles.get(uid, {}).get('legal_status', '')
-                if prof_status == 'mchj':
-                    next_step  = 'leg_director'
-                    next_label = "📋 <b>Qadam 6/6 — Direktor</b>\n\nDirektor F.I.O. ni to'liq kiriting (familiya, ism, sharif):"
-                else:
-                    next_step  = 'leg_confirm'
-                    next_label = None  # confirm ekranini render_legal_confirm chiqaradi
-            else:  # leg_director
-                ok, val, err = validate_director_name(text)
-                field = 'director_name'
-                next_step  = 'leg_confirm'
-                next_label = None
-            if not ok:
-                send_seller(cid, err)
-                return
-            prof = seller_profiles.setdefault(uid, {})
-            prof[field] = val
-            # Edit rejimida — to'g'ridan leg_confirm'ga qaytamiz
-            if s.get('leg_editing'):
-                s.pop('leg_editing', None)
-                s['step'] = 'leg_confirm'
-                render_legal_confirm(uid, cid)
-                return
-            s['step'] = next_step
-            if next_step == 'leg_confirm':
-                render_legal_confirm(uid, cid)
-            else:
-                send_seller(cid, next_label + "\n\n<i>Bekor qilish: /cancel</i>")
-            return
+            return step_leg(cid, uid, text, msg, s)
 
         elif step == 'bz_set_disc':
             if text.strip() == '/cancel':
