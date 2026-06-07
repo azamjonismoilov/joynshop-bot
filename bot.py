@@ -3971,6 +3971,111 @@ def cmd_mod(cid, uid, text, msg):
         )
     return
 
+# ─── STEP HANDLERS: mustaqil step bloklari (seller_handle_msg'dan ekstraksiya, 2-bosqich) ───
+def step_live_video(cid, uid, text, msg, s):
+    video = msg.get('video') or msg.get('document')
+    if not video:
+        send_seller(cid, "❌ Iltimos, video yuboring (matn emas).")
+        return
+    duration = video.get('duration', 30)  # document da duration bo'lmasligi mumkin
+    file_id  = video.get('file_id', '')
+    if not file_id:
+        send_seller(cid, "❌ Video fayl topilmadi, qayta yuboring.")
+        return
+    s['video_file_id']  = file_id
+    s['video_duration'] = duration
+    s['step'] = 'live_duration'
+    send_seller(cid,
+        f"✅ Video qabul qilindi ({duration} soniya)\n\n"
+        f"⏰ <b>Live davomiyligi?</b>",
+        {'inline_keyboard': [
+            [{'text': "1 soat",  'callback_data': 'live_dur_1'},
+             {'text': "3 soat",  'callback_data': 'live_dur_3'},
+             {'text': "24 soat", 'callback_data': 'live_dur_24'}],
+            [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
+        ]}
+    )
+    return
+
+def step_crm_send_msg(cid, uid, text, msg, s):
+    if text == '/cancel':
+        del seller_state[uid]
+        send_seller(cid, "❌ Bekor qilindi.")
+        return
+    target_uid = s.get('target_uid')
+    target_name = s.get('target_name')
+    del seller_state[uid]
+    shop_name = (seller_shops.get(uid) or [{}])[0].get('name', '')
+    try:
+        send_buyer(target_uid,
+            f"💬 <b>{shop_name}</b> dan xabar:\n\n{text}\n\n"
+            f"<i>Joynshop orqali yuborildi</i>"
+        )
+        send_seller(cid, f"✅ Xabar <b>{target_name}</b> ga yuborildi.")
+    except Exception as e:
+        send_seller(cid, f"❌ Xabar yuborilmadi: {e}")
+    return
+
+def step_crm_add_note(cid, uid, text, msg, s):
+    if text == '/cancel':
+        del seller_state[uid]
+        send_seller(cid, "❌ Bekor qilindi.")
+        return
+    sid = str(uid)
+    cuid = s.get('target_cuid')
+    target_name = s.get('target_name')
+    del seller_state[uid]
+    ok, _ = do_update_customer(sid, cuid, {'note': text})
+    if ok:
+        send_seller(cid, f"✅ Izoh <b>{target_name}</b> uchun saqlandi.",
+            {'inline_keyboard': [[{'text': "👤 Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}]]}
+        )
+    else:
+        send_seller(cid, "❌ Mijoz topilmadi.")
+    return
+
+def step_crm_search_query(cid, uid, text, msg, s):
+    del seller_state[uid]
+    sid = str(uid)
+    my_customers = customers.get(sid, {})
+    q = text.lower().strip()
+    if not q:
+        send_seller(cid, "❌ Qidiruv so'rovi bo'sh.")
+        return
+    results = []
+    for cuid, c in my_customers.items():
+        if q in c.get('name','').lower() or q in str(c.get('user_id','')).lower():
+            results.append((cuid, c))
+    if not results:
+        send_seller(cid, f"🔍 \"{text}\" bo'yicha hech narsa topilmadi.",
+            {'inline_keyboard': [[{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}]]}
+        )
+        return
+    kb = []
+    txt = f"🔍 <b>Qidiruv natijasi: {len(results)} ta</b>\n\n"
+    for cuid, c in results[:15]:
+        badges = " ⭐" if 'vip' in c.get('tags', []) else ""
+        txt += f"• <b>{c['name']}{badges}</b> — {fmt(c['total_spent'])} so'm\n"
+        kb.append([{'text': "👤 " + c['name'], 'callback_data': 'crm_view_' + cuid}])
+    kb.append([{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}])
+    send_seller(cid, txt, {'inline_keyboard': kb})
+    return
+
+def step_add_mod_user(cid, uid, text, msg, s):
+    username = text if text.startswith('@') else f'@{text}'
+    channel  = s.get('mod_channel')
+    code     = gen_mod_code()
+    pending_moderator_codes[code] = {'channel': channel, 'added_by': uid}
+    del seller_state[uid]
+    send_seller(cid,
+        f"✅ Moderator uchun kod yaratildi!\n\n"
+        f"Quyidagi kodni <b>{username}</b> ga yuboring:\n\n"
+        f"<code>{code}</code>\n\n"
+        f"U seller botga shu kodni yuborishi kerak.\n"
+        f"Kod 24 soat amal qiladi."
+    )
+    return
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4099,111 +4204,22 @@ def seller_handle_msg(msg):
 
         # ─── LIVE: video qabul qilish ───
         if step == 'live_video':
-            video = msg.get('video') or msg.get('document')
-            if not video:
-                send_seller(cid, "❌ Iltimos, video yuboring (matn emas).")
-                return
-            duration = video.get('duration', 30)  # document da duration bo'lmasligi mumkin
-            file_id  = video.get('file_id', '')
-            if not file_id:
-                send_seller(cid, "❌ Video fayl topilmadi, qayta yuboring.")
-                return
-            s['video_file_id']  = file_id
-            s['video_duration'] = duration
-            s['step'] = 'live_duration'
-            send_seller(cid,
-                f"✅ Video qabul qilindi ({duration} soniya)\n\n"
-                f"⏰ <b>Live davomiyligi?</b>",
-                {'inline_keyboard': [
-                    [{'text': "1 soat",  'callback_data': 'live_dur_1'},
-                     {'text': "3 soat",  'callback_data': 'live_dur_3'},
-                     {'text': "24 soat", 'callback_data': 'live_dur_24'}],
-                    [{'text': "❌ Bekor", 'callback_data': 'live_cancel'}],
-                ]}
-            )
-            return
+            return step_live_video(cid, uid, text, msg, s)
 
         # ─── CRM: Mijozga xabar yuborish ───
         if step == 'crm_send_msg':
-            if text == '/cancel':
-                del seller_state[uid]
-                send_seller(cid, "❌ Bekor qilindi.")
-                return
-            target_uid = s.get('target_uid')
-            target_name = s.get('target_name')
-            del seller_state[uid]
-            shop_name = (seller_shops.get(uid) or [{}])[0].get('name', '')
-            try:
-                send_buyer(target_uid,
-                    f"💬 <b>{shop_name}</b> dan xabar:\n\n{text}\n\n"
-                    f"<i>Joynshop orqali yuborildi</i>"
-                )
-                send_seller(cid, f"✅ Xabar <b>{target_name}</b> ga yuborildi.")
-            except Exception as e:
-                send_seller(cid, f"❌ Xabar yuborilmadi: {e}")
-            return
+            return step_crm_send_msg(cid, uid, text, msg, s)
 
         # ─── CRM: Mijozga izoh qo'shish ───
         if step == 'crm_add_note':
-            if text == '/cancel':
-                del seller_state[uid]
-                send_seller(cid, "❌ Bekor qilindi.")
-                return
-            sid = str(uid)
-            cuid = s.get('target_cuid')
-            target_name = s.get('target_name')
-            del seller_state[uid]
-            ok, _ = do_update_customer(sid, cuid, {'note': text})
-            if ok:
-                send_seller(cid, f"✅ Izoh <b>{target_name}</b> uchun saqlandi.",
-                    {'inline_keyboard': [[{'text': "👤 Mijozga qaytish", 'callback_data': 'crm_view_'+cuid}]]}
-                )
-            else:
-                send_seller(cid, "❌ Mijoz topilmadi.")
-            return
+            return step_crm_add_note(cid, uid, text, msg, s)
 
         # ─── CRM: Qidiruv ───
         if step == 'crm_search_query':
-            del seller_state[uid]
-            sid = str(uid)
-            my_customers = customers.get(sid, {})
-            q = text.lower().strip()
-            if not q:
-                send_seller(cid, "❌ Qidiruv so'rovi bo'sh.")
-                return
-            results = []
-            for cuid, c in my_customers.items():
-                if q in c.get('name','').lower() or q in str(c.get('user_id','')).lower():
-                    results.append((cuid, c))
-            if not results:
-                send_seller(cid, f"🔍 \"{text}\" bo'yicha hech narsa topilmadi.",
-                    {'inline_keyboard': [[{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}]]}
-                )
-                return
-            kb = []
-            txt = f"🔍 <b>Qidiruv natijasi: {len(results)} ta</b>\n\n"
-            for cuid, c in results[:15]:
-                badges = " ⭐" if 'vip' in c.get('tags', []) else ""
-                txt += f"• <b>{c['name']}{badges}</b> — {fmt(c['total_spent'])} so'm\n"
-                kb.append([{'text': "👤 " + c['name'], 'callback_data': 'crm_view_' + cuid}])
-            kb.append([{'text': "⬅️ CRM", 'callback_data': 'menu_mycustomers'}])
-            send_seller(cid, txt, {'inline_keyboard': kb})
-            return
+            return step_crm_search_query(cid, uid, text, msg, s)
 
         if step == 'add_mod_user':
-            username = text if text.startswith('@') else f'@{text}'
-            channel  = s.get('mod_channel')
-            code     = gen_mod_code()
-            pending_moderator_codes[code] = {'channel': channel, 'added_by': uid}
-            del seller_state[uid]
-            send_seller(cid,
-                f"✅ Moderator uchun kod yaratildi!\n\n"
-                f"Quyidagi kodni <b>{username}</b> ga yuboring:\n\n"
-                f"<code>{code}</code>\n\n"
-                f"U seller botga shu kodni yuborishi kerak.\n"
-                f"Kod 24 soat amal qiladi."
-            )
-            return
+            return step_add_mod_user(cid, uid, text, msg, s)
 
         if step == 'ob_shop_name':
             s['ob_shop_name'] = text; s['step'] = 'ob_phone'
