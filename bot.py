@@ -4111,6 +4111,145 @@ def step_edit_social_direct(cid, uid, text, msg, s):
     else:
         send_seller(cid, "❌ Yangilab bo'lmadi")
 
+# ─── STEP HANDLERS: A Onboarding (seller_handle_msg zanjiri, 3-bosqich) ───
+def step_ob_shop_name(cid, uid, text, msg, s):
+    s['ob_shop_name'] = text; s['step'] = 'ob_phone'
+    s.pop('ob_msg_id', None)
+    send_seller(cid,
+        "📞 Asosiy telefon raqamingizni yuboring.\n\n"
+        "Pastdagi tugma orqali raqamni avtomatik ulashing yoki qo'lda yozing.\n"
+        "<i>+998XXXXXXXXX</i>",
+        {
+            'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
+                           'request_contact': True}]],
+            'one_time_keyboard': True,
+            'resize_keyboard': True,
+        })
+
+def step_ob_phone(cid, uid, text, msg, s):
+    contact = msg.get('contact')
+    if contact:
+        phone = contact.get('phone_number', '').strip()
+        if phone and not phone.startswith('+'):
+            phone = '+' + phone
+    else:
+        phone = text.strip()
+
+    if not phone.startswith('+998') or len(phone) < 12:
+        send_seller(cid,
+            "❌ Noto'g'ri format. <b>+998XXXXXXXXX</b> shaklida yuboring "
+            "yoki pastdagi tugmani bosing.",
+            {
+                'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
+                               'request_contact': True}]],
+                'one_time_keyboard': True,
+                'resize_keyboard': True,
+            })
+        return
+
+    s['ob_phone'] = phone; s['step'] = 'ob_phone2'
+    s.pop('ob_msg_id', None)
+    send_seller(cid, f"✅ Qabul qilindi: <code>{phone}</code>",
+                {'remove_keyboard': True})
+    send_or_edit_seller(cid,
+        "📱 Qo'shimcha telefon (ixtiyoriy):\n<i>+998XXXXXXXXX</i>",
+        {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_phone2'}]]},
+        state=s)
+
+def step_ob_phone2(cid, uid, text, msg, s):
+    s['ob_phone2'] = text.strip() if text != '/skip' else ''
+    s['step'] = 'ob_address'
+    s.pop('ob_msg_id', None)
+    send_or_edit_seller(cid,
+        "📍 Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor, 3-mavze</i>",
+        {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]},
+        state=s)
+
+def step_ob_address(cid, uid, text, msg, s):
+    s['ob_address'] = text.strip() if text != '/skip' else ''
+    s['step'] = 'ob_social'
+    s.pop('ob_msg_id', None)
+    send_or_edit_seller(cid,
+        "🌐 Ijtimoiy tarmoqlar (ixtiyoriy):\n"
+        "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz</code>",
+        {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_social'}]]},
+        state=s)
+
+def step_ob_social(cid, uid, text, msg, s):
+    if text != '/skip':
+        social = {}
+        for line in text.strip().splitlines():
+            if ':' in line:
+                k, v = line.split(':', 1)
+                social[k.strip().lower()] = v.strip()
+        s['ob_social'] = social
+    else:
+        s['ob_social'] = {}
+    s['step'] = 'ob_delivery'
+    s.pop('ob_msg_id', None)
+    send_or_edit_seller(cid,
+        "🚚 Yetkazib berish turini tanlang:",
+        {'inline_keyboard': [
+            [{'text': "🚚 Yetkazib beraman",   'callback_data': 'ob_delivery_deliver'}],
+            [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
+            [{'text': "🚚🏪 Ikkalasi ham",       'callback_data': 'ob_delivery_both'}],
+        ]},
+        state=s)
+
+def step_ob_channel(cid, uid, text, msg, s):
+    channel = text if text.startswith('@') else f'@{text}'
+    send_seller(cid, f"🔍 <b>{channel}</b> tekshirilmoqda...")
+    # 1) Kanal mavjudligini tekshirish
+    if not channel_exists(channel):
+        send_seller(cid,
+            f"❌ <b>{channel}</b> kanali topilmadi yoki shaxsiy.\n\n"
+            "Kanal username to'g'rimi? <code>@kanalim</code> formatida qayta kiriting:")
+        return
+    # 2) Foydalanuvchi admin yoki egasi ekanligini tekshirish
+    user_admin = can_manage_channel(uid, channel) or is_channel_admin(uid, channel)
+    if not user_admin:
+        send_seller(cid,
+            f"❌ Siz <b>{channel}</b> kanalining admini emassiz!\n\n"
+            "Avval o'zingizni kanalga admin qiling, keyin qayta kiriting:")
+        return
+    # 3) Bot admin ekanligini tekshirish
+    if is_bot_admin_in(channel):
+        finalize_shop_onboarding(uid, cid, s, channel)
+    else:
+        # Bot admin emas — /confirm flow ga o'tamiz
+        s['ob_pending_channel'] = channel
+        s['step'] = 'ob_confirm_admin'
+        send_seller(cid,
+            f"⚠️ <b>Bot {channel} kanalida admin emas!</b>\n\n"
+            f"Quyidagini bajaring:\n"
+            f"1️⃣ {channel} → Settings → Administrators\n"
+            f"2️⃣ Add Admin → seller botni qidirib qo'shing\n"
+            f"3️⃣ Post Messages, Edit, Delete ruxsatlarini bering\n\n"
+            f"Tayyor bo'lganingizda <code>/confirm</code> yozing.\n"
+            f"Boshqa kanal kiritmoqchimisiz — /cancel")
+
+def step_ob_confirm_admin(cid, uid, text, msg, s):
+    if text.strip() == '/cancel':
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Bekor qilindi. Yangi do'kon uchun /start"); return
+    if text.strip() != '/confirm':
+        send_seller(cid,
+            "Bot admin qilingach <code>/confirm</code> yozing yoki bekor qilish uchun /cancel"); return
+    channel = s.get('ob_pending_channel')
+    if not channel:
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Holat yo'qoldi. /start"); return
+    send_seller(cid, f"🔍 <b>{channel}</b> qayta tekshirilmoqda...")
+    if is_bot_admin_in(channel):
+        finalize_shop_onboarding(uid, cid, s, channel)
+    else:
+        send_seller(cid,
+            f"❌ Bot hali ham {channel} kanalida admin emas.\n\n"
+            f"Tekshiring:\n"
+            f"• Bot username to'g'ri qo'shilganmi?\n"
+            f"• Post Messages ruxsati berilganmi?\n\n"
+            f"Tayyor bo'lgach yana <code>/confirm</code> yozing yoki /cancel")
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4257,142 +4396,25 @@ def seller_handle_msg(msg):
             return step_add_mod_user(cid, uid, text, msg, s)
 
         if step == 'ob_shop_name':
-            s['ob_shop_name'] = text; s['step'] = 'ob_phone'
-            s.pop('ob_msg_id', None)
-            send_seller(cid,
-                "📞 Asosiy telefon raqamingizni yuboring.\n\n"
-                "Pastdagi tugma orqali raqamni avtomatik ulashing yoki qo'lda yozing.\n"
-                "<i>+998XXXXXXXXX</i>",
-                {
-                    'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
-                                   'request_contact': True}]],
-                    'one_time_keyboard': True,
-                    'resize_keyboard': True,
-                })
+            return step_ob_shop_name(cid, uid, text, msg, s)
 
         elif step == 'ob_phone':
-            contact = msg.get('contact')
-            if contact:
-                phone = contact.get('phone_number', '').strip()
-                if phone and not phone.startswith('+'):
-                    phone = '+' + phone
-            else:
-                phone = text.strip()
-
-            if not phone.startswith('+998') or len(phone) < 12:
-                send_seller(cid,
-                    "❌ Noto'g'ri format. <b>+998XXXXXXXXX</b> shaklida yuboring "
-                    "yoki pastdagi tugmani bosing.",
-                    {
-                        'keyboard': [[{'text': "📱 Telefon raqamimni ulashish",
-                                       'request_contact': True}]],
-                        'one_time_keyboard': True,
-                        'resize_keyboard': True,
-                    })
-                return
-
-            s['ob_phone'] = phone; s['step'] = 'ob_phone2'
-            s.pop('ob_msg_id', None)
-            send_seller(cid, f"✅ Qabul qilindi: <code>{phone}</code>",
-                        {'remove_keyboard': True})
-            send_or_edit_seller(cid,
-                "📱 Qo'shimcha telefon (ixtiyoriy):\n<i>+998XXXXXXXXX</i>",
-                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_phone2'}]]},
-                state=s)
+            return step_ob_phone(cid, uid, text, msg, s)
 
         elif step == 'ob_phone2':
-            s['ob_phone2'] = text.strip() if text != '/skip' else ''
-            s['step'] = 'ob_address'
-            s.pop('ob_msg_id', None)
-            send_or_edit_seller(cid,
-                "📍 Do'kon manzili (ixtiyoriy):\n<i>Toshkent, Chilonzor, 3-mavze</i>",
-                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_address'}]]},
-                state=s)
+            return step_ob_phone2(cid, uid, text, msg, s)
 
         elif step == 'ob_address':
-            s['ob_address'] = text.strip() if text != '/skip' else ''
-            s['step'] = 'ob_social'
-            s.pop('ob_msg_id', None)
-            send_or_edit_seller(cid,
-                "🌐 Ijtimoiy tarmoqlar (ixtiyoriy):\n"
-                "<code>instagram: @dokon_uz\ntelegram: @kanal\nwebsite: dokon.uz</code>",
-                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'ob_skip_social'}]]},
-                state=s)
+            return step_ob_address(cid, uid, text, msg, s)
 
         elif step == 'ob_social':
-            if text != '/skip':
-                social = {}
-                for line in text.strip().splitlines():
-                    if ':' in line:
-                        k, v = line.split(':', 1)
-                        social[k.strip().lower()] = v.strip()
-                s['ob_social'] = social
-            else:
-                s['ob_social'] = {}
-            s['step'] = 'ob_delivery'
-            s.pop('ob_msg_id', None)
-            send_or_edit_seller(cid,
-                "🚚 Yetkazib berish turini tanlang:",
-                {'inline_keyboard': [
-                    [{'text': "🚚 Yetkazib beraman",   'callback_data': 'ob_delivery_deliver'}],
-                    [{'text': "🏪 Xaridor olib ketadi", 'callback_data': 'ob_delivery_pickup'}],
-                    [{'text': "🚚🏪 Ikkalasi ham",       'callback_data': 'ob_delivery_both'}],
-                ]},
-                state=s)
+            return step_ob_social(cid, uid, text, msg, s)
 
         elif step == 'ob_channel':
-            channel = text if text.startswith('@') else f'@{text}'
-            send_seller(cid, f"🔍 <b>{channel}</b> tekshirilmoqda...")
-            # 1) Kanal mavjudligini tekshirish
-            if not channel_exists(channel):
-                send_seller(cid,
-                    f"❌ <b>{channel}</b> kanali topilmadi yoki shaxsiy.\n\n"
-                    "Kanal username to'g'rimi? <code>@kanalim</code> formatida qayta kiriting:")
-                return
-            # 2) Foydalanuvchi admin yoki egasi ekanligini tekshirish
-            user_admin = can_manage_channel(uid, channel) or is_channel_admin(uid, channel)
-            if not user_admin:
-                send_seller(cid,
-                    f"❌ Siz <b>{channel}</b> kanalining admini emassiz!\n\n"
-                    "Avval o'zingizni kanalga admin qiling, keyin qayta kiriting:")
-                return
-            # 3) Bot admin ekanligini tekshirish
-            if is_bot_admin_in(channel):
-                finalize_shop_onboarding(uid, cid, s, channel)
-            else:
-                # Bot admin emas — /confirm flow ga o'tamiz
-                s['ob_pending_channel'] = channel
-                s['step'] = 'ob_confirm_admin'
-                send_seller(cid,
-                    f"⚠️ <b>Bot {channel} kanalida admin emas!</b>\n\n"
-                    f"Quyidagini bajaring:\n"
-                    f"1️⃣ {channel} → Settings → Administrators\n"
-                    f"2️⃣ Add Admin → seller botni qidirib qo'shing\n"
-                    f"3️⃣ Post Messages, Edit, Delete ruxsatlarini bering\n\n"
-                    f"Tayyor bo'lganingizda <code>/confirm</code> yozing.\n"
-                    f"Boshqa kanal kiritmoqchimisiz — /cancel")
+            return step_ob_channel(cid, uid, text, msg, s)
 
         elif step == 'ob_confirm_admin':
-            if text.strip() == '/cancel':
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Bekor qilindi. Yangi do'kon uchun /start"); return
-            if text.strip() != '/confirm':
-                send_seller(cid,
-                    "Bot admin qilingach <code>/confirm</code> yozing yoki bekor qilish uchun /cancel"); return
-            channel = s.get('ob_pending_channel')
-            if not channel:
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Holat yo'qoldi. /start"); return
-            send_seller(cid, f"🔍 <b>{channel}</b> qayta tekshirilmoqda...")
-            if is_bot_admin_in(channel):
-                finalize_shop_onboarding(uid, cid, s, channel)
-            else:
-                send_seller(cid,
-                    f"❌ Bot hali ham {channel} kanalida admin emas.\n\n"
-                    f"Tekshiring:\n"
-                    f"• Bot username to'g'ri qo'shilganmi?\n"
-                    f"• Post Messages ruxsati berilganmi?\n\n"
-                    f"Tayyor bo'lgach yana <code>/confirm</code> yozing yoki /cancel")
+            return step_ob_confirm_admin(cid, uid, text, msg, s)
 
         elif step == 'edit_shop_name':
             return step_edit_shop_name(cid, uid, text, msg, s)
