@@ -4302,6 +4302,170 @@ def step_leg(cid, uid, text, msg, s):
         send_seller(cid, next_label + "\n\n<i>Bekor qilish: /cancel</i>")
     return
 
+# ─── STEP HANDLERS: E Billz (seller_handle_msg zanjiri, 3-bosqich) ───
+def step_bz_set_disc(cid, uid, text, msg, s):
+    if text.strip() == '/cancel':
+        idx = s.get('bz_disc_idx', 0)
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Bekor qilindi.",
+            {'inline_keyboard': [[{'text': "⬅️ Orqaga", 'callback_data': f'billz_disc_{idx}'}]]})
+        return
+    try:
+        pct = int(text.strip().rstrip('%'))
+    except (ValueError, TypeError):
+        send_seller(cid, "❌ Butun son kiriting (0-90)"); return
+    if pct < 0 or pct > 90:
+        send_seller(cid, "❌ 0 dan 90 gacha bo'lishi kerak"); return
+    idx  = s.get('bz_disc_idx', 0)
+    kind = s.get('bz_disc_kind')
+    shops = seller_shops.get(uid, [])
+    if idx >= len(shops):
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Do'kon topilmadi"); return
+    field = 'billz_global_solo_discount' if kind == 'solo' else 'billz_global_group_discount'
+    shops[idx][field] = pct
+    save_data()
+    seller_state.pop(uid, None)
+    label = "Solo" if kind == 'solo' else "Guruh"
+    send_seller(cid,
+        f"✅ {label} chegirma: <b>{pct}%</b>\n\n"
+        f"Bu qiymat keyingi Billz mahsulotni yoqishda tavsiya narx hisoblashda ishlatiladi.",
+        {'inline_keyboard': [[{'text': "⬅️ Sozlamalar", 'callback_data': f'billz_disc_{idx}'}]]})
+    return
+
+def step_bz_act(cid, uid, text, msg, s):
+    if text.strip() == '/cancel':
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Yoqish bekor qilindi.",
+            {'inline_keyboard': [[{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}]]})
+        return
+    pid = s.get('bz_pid')
+    p = products.get(pid)
+    if not p or p.get('seller_id') != uid:
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Mahsulot topilmadi"); return
+    orig = int(p.get('original_price', 0) or 0)
+
+    if step == 'bz_act_solo':
+        solo = parse_price(text)
+        if solo is None or solo <= 0:
+            send_seller(cid, "❌ To'g'ri raqam kiriting"); return
+        if solo >= orig:
+            send_seller(cid, "❌ Yakka narx asl narxdan past bo'lishi kerak. Qayta kiriting."); return
+        s['bz_solo'] = solo
+        s['step'] = 'bz_act_grp'
+        send_seller(cid,
+            f"✅ Yakka: {fmt(solo)} so'm\n\n"
+            f"<b>2/4</b> Guruh narxini yozing (so'm).\n"
+            f"💡 Tavsiya: <b>{fmt(s.get('bz_suggested_group', 0))}</b> so'm")
+        return
+
+    if step == 'bz_act_grp':
+        grp = parse_price(text)
+        if grp is None or grp <= 0:
+            send_seller(cid, "❌ To'g'ri raqam kiriting"); return
+        if grp >= s.get('bz_solo', 0):
+            send_seller(cid, "❌ Guruh narxi yakka narxdan past bo'lishi kerak. Qayta kiriting."); return
+        s['bz_group'] = grp
+        s['step'] = 'bz_act_min'
+        send_seller(cid,
+            f"✅ Guruh: {fmt(grp)} so'm\n\n"
+            f"<b>3/4</b> Minimal guruh sonini yozing (2-100):")
+        return
+
+    if step == 'bz_act_min':
+        ok, mg, err = validate_min_group_text(text)
+        if not ok:
+            send_seller(cid, err); return
+        s['bz_min'] = mg
+        s['step'] = 'bz_act_deadline'
+        send_seller(cid,
+            f"✅ Min guruh: {mg} kishi\n\n"
+            f"<b>4/4</b> Muddatni tanlang:",
+            {'inline_keyboard': [
+                [{'text': "24 soat",  'callback_data': 'bz_deadline_24'},
+                 {'text': "2 kun",   'callback_data': 'bz_deadline_48'}],
+                [{'text': "3 kun",   'callback_data': 'bz_deadline_72'},
+                 {'text': "1 hafta",'callback_data': 'bz_deadline_168'}],
+            ]})
+        return
+
+def step_billz_secret_token(cid, uid, text, msg, s):
+    if text.strip() == '/cancel':
+        seller_state.pop(uid, None)
+        send_seller(cid, "❌ Bekor qilindi.",
+            {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+        return
+    secret = text.strip()
+    if len(secret) < 10:
+        send_seller(cid, "❌ Token juda qisqa. Qayta yuboring yoki /cancel"); return
+    shop_idx = s.get('billz_shop_idx', 0)
+    send_seller(cid, "🔍 Billz bilan ulanish tekshirilmoqda...")
+    access_token, err = billz_login(secret)
+    if not access_token:
+        send_seller(cid,
+            f"❌ Ulanish muvaffaqiyatsiz: {err}\n\n"
+            f"Tokenni qayta tekshirib yuboring yoki /cancel")
+        return
+    # Mahsulot olib ko'rib do'konlarni aniqlash
+    try:
+        r = requests.get(
+            f'{BILLZ_BASE_URL}/v2/products',
+            headers={'Authorization': f'Bearer {access_token}'},
+            params={'limit': 1, 'page': 1}, timeout=15
+        )
+        if r.status_code != 200:
+            send_seller(cid,
+                f"❌ Billz dan mahsulot olishda xato: HTTP {r.status_code}\n\n"
+                f"Token to'g'ri lekin ruxsat cheklanganmi? Qayta urining yoki /cancel")
+            return
+        resp = r.json() or {}
+    except Exception as e:
+        send_seller(cid, f"❌ Tarmoq xatosi: {e}\n\nQayta urining yoki /cancel")
+        return
+    candidates = billz_extract_shops(resp)
+    if not candidates:
+        send_seller(cid,
+            "⚠️ Billz hisobingizda mahsulot topilmadi yoki shop_measurement_values bo'sh.\n\n"
+            "Avval Billz UI'da kamida bitta mahsulot va do'kon yarating, keyin qayta urining.")
+        seller_state.pop(uid, None)
+        return
+    if len(candidates) == 1:
+        # Avtomatik tanlash
+        only = candidates[0]
+        encrypted = encrypt_token(secret)
+        if not encrypted:
+            send_seller(cid, "❌ Shifrlash xatosi"); seller_state.pop(uid, None); return
+        shops = seller_shops.get(uid, [])
+        if shop_idx >= len(shops):
+            send_seller(cid, "❌ Do'kon topilmadi"); seller_state.pop(uid, None); return
+        shops[shop_idx]['billz_secret_token']  = encrypted
+        shops[shop_idx]['billz_shop_id']       = only['shop_id']
+        shops[shop_idx]['billz_shop_name']     = only['shop_name']
+        shops[shop_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
+        save_data()
+        seller_state.pop(uid, None)
+        send_seller(cid,
+            f"✅ <b>Billz ulandi!</b>\n\n"
+            f"🏬 Billz do'koni: <b>{only['shop_name']}</b>\n\n"
+            f"Mahsulotlarni import qilish — Faza 2 (keyingi deploy).",
+            {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
+        return
+    # Bir nechta do'kon — tanlash so'raymiz
+    s['step']               = 'billz_shop_select'
+    s['billz_pending_token']= secret
+    s['billz_candidates']   = candidates
+    kb = [[{'text': c['shop_name'][:40],
+            'callback_data': f"billz_pickshop_{shop_idx}_{c['shop_id']}"}]
+          for c in candidates[:20]]
+    kb.append([{'text': "❌ Bekor", 'callback_data': 'billz_menu'}])
+    send_seller(cid,
+        f"✅ Token to'g'ri.\n\n"
+        f"Billz hisobingizda <b>{len(candidates)}</b> ta do'kon topildi. "
+        f"Joynshop'dagi <b>{seller_shops.get(uid,[{}])[shop_idx].get('name','')}</b> bilan qaysisini bog'lashni xohlaysiz?",
+        {'inline_keyboard': kb})
+    return
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4663,167 +4827,13 @@ def seller_handle_msg(msg):
             return step_leg(cid, uid, text, msg, s)
 
         elif step == 'bz_set_disc':
-            if text.strip() == '/cancel':
-                idx = s.get('bz_disc_idx', 0)
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Bekor qilindi.",
-                    {'inline_keyboard': [[{'text': "⬅️ Orqaga", 'callback_data': f'billz_disc_{idx}'}]]})
-                return
-            try:
-                pct = int(text.strip().rstrip('%'))
-            except (ValueError, TypeError):
-                send_seller(cid, "❌ Butun son kiriting (0-90)"); return
-            if pct < 0 or pct > 90:
-                send_seller(cid, "❌ 0 dan 90 gacha bo'lishi kerak"); return
-            idx  = s.get('bz_disc_idx', 0)
-            kind = s.get('bz_disc_kind')
-            shops = seller_shops.get(uid, [])
-            if idx >= len(shops):
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Do'kon topilmadi"); return
-            field = 'billz_global_solo_discount' if kind == 'solo' else 'billz_global_group_discount'
-            shops[idx][field] = pct
-            save_data()
-            seller_state.pop(uid, None)
-            label = "Solo" if kind == 'solo' else "Guruh"
-            send_seller(cid,
-                f"✅ {label} chegirma: <b>{pct}%</b>\n\n"
-                f"Bu qiymat keyingi Billz mahsulotni yoqishda tavsiya narx hisoblashda ishlatiladi.",
-                {'inline_keyboard': [[{'text': "⬅️ Sozlamalar", 'callback_data': f'billz_disc_{idx}'}]]})
-            return
+            return step_bz_set_disc(cid, uid, text, msg, s)
 
         elif step in ('bz_act_solo', 'bz_act_grp', 'bz_act_min'):
-            if text.strip() == '/cancel':
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Yoqish bekor qilindi.",
-                    {'inline_keyboard': [[{'text': "📦 Mahsulotlarim", 'callback_data': 'menu_myproducts'}]]})
-                return
-            pid = s.get('bz_pid')
-            p = products.get(pid)
-            if not p or p.get('seller_id') != uid:
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Mahsulot topilmadi"); return
-            orig = int(p.get('original_price', 0) or 0)
-
-            if step == 'bz_act_solo':
-                solo = parse_price(text)
-                if solo is None or solo <= 0:
-                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
-                if solo >= orig:
-                    send_seller(cid, "❌ Yakka narx asl narxdan past bo'lishi kerak. Qayta kiriting."); return
-                s['bz_solo'] = solo
-                s['step'] = 'bz_act_grp'
-                send_seller(cid,
-                    f"✅ Yakka: {fmt(solo)} so'm\n\n"
-                    f"<b>2/4</b> Guruh narxini yozing (so'm).\n"
-                    f"💡 Tavsiya: <b>{fmt(s.get('bz_suggested_group', 0))}</b> so'm")
-                return
-
-            if step == 'bz_act_grp':
-                grp = parse_price(text)
-                if grp is None or grp <= 0:
-                    send_seller(cid, "❌ To'g'ri raqam kiriting"); return
-                if grp >= s.get('bz_solo', 0):
-                    send_seller(cid, "❌ Guruh narxi yakka narxdan past bo'lishi kerak. Qayta kiriting."); return
-                s['bz_group'] = grp
-                s['step'] = 'bz_act_min'
-                send_seller(cid,
-                    f"✅ Guruh: {fmt(grp)} so'm\n\n"
-                    f"<b>3/4</b> Minimal guruh sonini yozing (2-100):")
-                return
-
-            if step == 'bz_act_min':
-                ok, mg, err = validate_min_group_text(text)
-                if not ok:
-                    send_seller(cid, err); return
-                s['bz_min'] = mg
-                s['step'] = 'bz_act_deadline'
-                send_seller(cid,
-                    f"✅ Min guruh: {mg} kishi\n\n"
-                    f"<b>4/4</b> Muddatni tanlang:",
-                    {'inline_keyboard': [
-                        [{'text': "24 soat",  'callback_data': 'bz_deadline_24'},
-                         {'text': "2 kun",   'callback_data': 'bz_deadline_48'}],
-                        [{'text': "3 kun",   'callback_data': 'bz_deadline_72'},
-                         {'text': "1 hafta",'callback_data': 'bz_deadline_168'}],
-                    ]})
-                return
+            return step_bz_act(cid, uid, text, msg, s)
 
         elif step == 'billz_secret_token':
-            if text.strip() == '/cancel':
-                seller_state.pop(uid, None)
-                send_seller(cid, "❌ Bekor qilindi.",
-                    {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
-                return
-            secret = text.strip()
-            if len(secret) < 10:
-                send_seller(cid, "❌ Token juda qisqa. Qayta yuboring yoki /cancel"); return
-            shop_idx = s.get('billz_shop_idx', 0)
-            send_seller(cid, "🔍 Billz bilan ulanish tekshirilmoqda...")
-            access_token, err = billz_login(secret)
-            if not access_token:
-                send_seller(cid,
-                    f"❌ Ulanish muvaffaqiyatsiz: {err}\n\n"
-                    f"Tokenni qayta tekshirib yuboring yoki /cancel")
-                return
-            # Mahsulot olib ko'rib do'konlarni aniqlash
-            try:
-                r = requests.get(
-                    f'{BILLZ_BASE_URL}/v2/products',
-                    headers={'Authorization': f'Bearer {access_token}'},
-                    params={'limit': 1, 'page': 1}, timeout=15
-                )
-                if r.status_code != 200:
-                    send_seller(cid,
-                        f"❌ Billz dan mahsulot olishda xato: HTTP {r.status_code}\n\n"
-                        f"Token to'g'ri lekin ruxsat cheklanganmi? Qayta urining yoki /cancel")
-                    return
-                resp = r.json() or {}
-            except Exception as e:
-                send_seller(cid, f"❌ Tarmoq xatosi: {e}\n\nQayta urining yoki /cancel")
-                return
-            candidates = billz_extract_shops(resp)
-            if not candidates:
-                send_seller(cid,
-                    "⚠️ Billz hisobingizda mahsulot topilmadi yoki shop_measurement_values bo'sh.\n\n"
-                    "Avval Billz UI'da kamida bitta mahsulot va do'kon yarating, keyin qayta urining.")
-                seller_state.pop(uid, None)
-                return
-            if len(candidates) == 1:
-                # Avtomatik tanlash
-                only = candidates[0]
-                encrypted = encrypt_token(secret)
-                if not encrypted:
-                    send_seller(cid, "❌ Shifrlash xatosi"); seller_state.pop(uid, None); return
-                shops = seller_shops.get(uid, [])
-                if shop_idx >= len(shops):
-                    send_seller(cid, "❌ Do'kon topilmadi"); seller_state.pop(uid, None); return
-                shops[shop_idx]['billz_secret_token']  = encrypted
-                shops[shop_idx]['billz_shop_id']       = only['shop_id']
-                shops[shop_idx]['billz_shop_name']     = only['shop_name']
-                shops[shop_idx]['billz_connected_at']  = datetime.now().strftime('%Y-%m-%d %H:%M')
-                save_data()
-                seller_state.pop(uid, None)
-                send_seller(cid,
-                    f"✅ <b>Billz ulandi!</b>\n\n"
-                    f"🏬 Billz do'koni: <b>{only['shop_name']}</b>\n\n"
-                    f"Mahsulotlarni import qilish — Faza 2 (keyingi deploy).",
-                    {'inline_keyboard': [[{'text': "🔌 Billz menyu", 'callback_data': 'billz_menu'}]]})
-                return
-            # Bir nechta do'kon — tanlash so'raymiz
-            s['step']               = 'billz_shop_select'
-            s['billz_pending_token']= secret
-            s['billz_candidates']   = candidates
-            kb = [[{'text': c['shop_name'][:40],
-                    'callback_data': f"billz_pickshop_{shop_idx}_{c['shop_id']}"}]
-                  for c in candidates[:20]]
-            kb.append([{'text': "❌ Bekor", 'callback_data': 'billz_menu'}])
-            send_seller(cid,
-                f"✅ Token to'g'ri.\n\n"
-                f"Billz hisobingizda <b>{len(candidates)}</b> ta do'kon topildi. "
-                f"Joynshop'dagi <b>{seller_shops.get(uid,[{}])[shop_idx].get('name','')}</b> bilan qaysisini bog'lashni xohlaysiz?",
-                {'inline_keyboard': kb})
-            return
+            return step_billz_secret_token(cid, uid, text, msg, s)
 
         elif step and step.startswith('pp_edit_'):
             if text.strip() == '/cancel':
