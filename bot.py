@@ -4466,6 +4466,186 @@ def step_billz_secret_token(cid, uid, text, msg, s):
         {'inline_keyboard': kb})
     return
 
+# ─── STEP HANDLERS: C Product-wizard (seller_handle_msg zanjiri, 3-bosqich) ───
+def step_prod_name(cid, uid, text, msg, s):
+    s['name'] = text; s['step'] = 'prod_category'
+    kb = []
+    row = []
+    for i, (cat, icon) in enumerate(CATEGORIES):
+        row.append({'text': f"{icon} {cat}", 'callback_data': f"cat_{cat}"})
+        if len(row) == 2:
+            kb.append(row); row = []
+    if row: kb.append(row)
+    send_seller(cid,
+        f"✅ <b>{text}</b>\n\n"
+        "<b>2/7</b> Kategoriyani tanlang:",
+        {'inline_keyboard': kb}
+    )
+
+def step_prod_photo(cid, uid, text, msg, s):
+    photo = msg.get('photo')
+    video = msg.get('video')
+    media_group_id = msg.get('media_group_id')
+    media_id = None
+    if photo:
+        media_id = photo[-1]['file_id']
+    elif video:
+        media_id = video['file_id']
+    if media_id:
+        if media_id not in s['photo_ids'] and len(s['photo_ids']) < 5:
+            s['photo_ids'].append(media_id)
+            upload_photo_async(media_id, SELLER_TOKEN, s)
+        if media_group_id:
+            s['last_media_group'] = media_group_id
+            if s.get('album_timer'):
+                s['album_timer'].cancel()
+            def send_album_count(cid=cid, s=s):
+                count = len(s.get('photo_ids', []))
+                send_seller(cid,
+                    f"✅ {count}/5 media qabul qilindi. Yana yuboring yoki davom eting:",
+                    {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
+                )
+            import threading as _t
+            timer = _t.Timer(0.8, send_album_count)
+            s['album_timer'] = timer
+            timer.start()
+        else:
+            count = len(s['photo_ids'])
+            send_seller(cid,
+                f"✅ {count}/5 media. Yana yuboring yoki davom eting:",
+                {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
+            )
+    else:
+        send_seller(cid, "❌ Rasm yoki video yuboring!")
+
+def step_prod_price(cid, uid, text, msg, s):
+    sale_type = s.get('sale_type', 'both')
+    parts = [p.strip() for p in text.replace(' ','').replace(',','').split('/')]
+    orig = parse_price(parts[0]) if parts else None
+    if orig is None:
+        send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
+    if sale_type == 'solo':
+        ok, err = validate_prices(orig, 0, orig, sale_type='solo')
+        if not ok:
+            send_seller(cid, err); return
+        s['original_price'] = orig
+        s['solo_price']     = orig
+        s['group_price']    = orig
+        s['min_group']      = 1
+        s['step'] = 'prod_desc'; s['description'] = ''; s['variants'] = []
+        send_seller(cid,
+            f"✅ Narx: {orig:,} so'm\n\n"
+            "<b>5/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+            "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+            {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
+        )
+    else:
+        grp = parse_price(parts[1]) if len(parts) > 1 else None
+        if grp is None:
+            send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
+        ok, err = validate_prices(orig, grp, grp if sale_type == 'both' else 0, sale_type=sale_type)
+        if not ok:
+            send_seller(cid, err); return
+        disc = round((orig-grp)/orig*100)
+        s['original_price'] = orig
+        s['group_price']    = grp
+        s['solo_price']     = grp if sale_type == 'both' else 0
+        s['step'] = 'prod_min_group'
+        send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>5/5</b> Minimal guruh soni (2-100):")
+
+def step_prod_min_group(cid, uid, text, msg, s):
+    ok, mg, err = validate_min_group_text(text)
+    if not ok:
+        send_seller(cid, err); return
+    s['min_group'] = mg
+    s['step'] = 'prod_desc'
+    s['description'] = ''
+    s['variants'] = []
+    send_seller(cid,
+        f"✅ Minimal guruh: {mg} kishi\n\n"
+        "<b>6/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
+        "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
+        {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
+    )
+
+def step_prod_desc(cid, uid, text, msg, s):
+    s['description'] = text[:300]
+    s['step'] = 'prod_mxik_search'
+    send_seller(cid,
+        "✅ Tavsif saqlandi.\n\n"
+        "🔍 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
+        "Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
+        "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
+        "Bekor qilish: /cancel",
+        {'inline_keyboard': [
+            [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+            [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+        ]})
+
+def step_prod_mxik_search(cid, uid, text, msg, s):
+    keyword = text.strip()
+    if len(keyword) < 2:
+        send_seller(cid, "❌ Kamida 2 ta belgi kiriting"); return
+    results, err = mxik_search(keyword)
+    if err:
+        send_seller(cid,
+            f"⚠️ {err}\n\n"
+            f"Qaytadan urining, kodni qo'lda kiriting yoki o'tkazib yuboring:",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                [{'text': "🔄 Qayta qidirish",        'callback_data': 'prod_mxik_again'}],
+                [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+            ]})
+        return
+    if not results:
+        send_seller(cid,
+            f"🔍 \"{keyword}\" — natija yo'q.\n\nBoshqa kalit so'z bilan urinib ko'ring yoki o'tkazib yuboring.",
+            {'inline_keyboard': [
+                [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
+                [{'text': "🔄 Boshqa so'z",          'callback_data': 'prod_mxik_again'}],
+                [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
+            ]})
+        return
+    s['mxik_results'] = results
+    s['mxik_keyword'] = keyword
+    render_mxik_results(uid, cid, keyword, results, page=0)
+
+def step_prod_mxik_manual(cid, uid, text, msg, s):
+    ok, code, err = mxik_validate_code(text)
+    if not ok:
+        send_seller(cid, err); return
+    # Qo'lda kiritilgan kodni saqlaymiz, "manual" deb belgi
+    s['mxik_code'] = code
+    s['mxik_name'] = "(qo'lda kiritilgan)"
+    s['step'] = 'prod_mxik_confirm_state'
+    render_mxik_confirm(uid, cid, code, s['mxik_name'])
+
+def step_prod_edit_desc(cid, uid, text, msg, s):
+    s['description'] = text[:300]; s['step'] = 'prod_confirm'
+    shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+    show_prod_confirm(cid, s, shop)
+
+def step_prod_edit_solo(cid, uid, text, msg, s):
+    solo = parse_price(text)
+    if solo is None or solo <= 0:
+        send_seller(cid, "❌ To'g'ri raqam kiriting (masalan: 850000)"); return
+    orig = s.get('original_price', 0)
+    grp  = s.get('group_price', 0)
+    sale_type = s.get('sale_type', 'both')
+    ok, err = validate_prices(orig, grp, solo, sale_type=sale_type)
+    if not ok:
+        send_seller(cid, err); return
+    s['solo_price'] = solo; s['step'] = 'prod_confirm'
+    shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+    show_prod_confirm(cid, s, shop)
+
+def step_prod_edit_variants(cid, uid, text, msg, s):
+    raw = [v.strip() for v in text.replace('،',',').split(',') if v.strip()]
+    if not raw: send_seller(cid, "❌ Kamida 1 ta variant!"); return
+    s['variants'] = raw; s['step'] = 'prod_confirm'
+    shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
+    show_prod_confirm(cid, s, shop)
+
 def seller_handle_msg(msg):
     cid  = msg['chat']['id']
     uid  = msg['from']['id']
@@ -4645,183 +4825,34 @@ def seller_handle_msg(msg):
             return step_edit_social_direct(cid, uid, text, msg, s)
 
         elif step == 'prod_name':
-            s['name'] = text; s['step'] = 'prod_category'
-            kb = []
-            row = []
-            for i, (cat, icon) in enumerate(CATEGORIES):
-                row.append({'text': f"{icon} {cat}", 'callback_data': f"cat_{cat}"})
-                if len(row) == 2:
-                    kb.append(row); row = []
-            if row: kb.append(row)
-            send_seller(cid,
-                f"✅ <b>{text}</b>\n\n"
-                "<b>2/7</b> Kategoriyani tanlang:",
-                {'inline_keyboard': kb}
-            )
+            return step_prod_name(cid, uid, text, msg, s)
 
         elif step == 'prod_photo':
-            photo = msg.get('photo')
-            video = msg.get('video')
-            media_group_id = msg.get('media_group_id')
-            media_id = None
-            if photo:
-                media_id = photo[-1]['file_id']
-            elif video:
-                media_id = video['file_id']
-            if media_id:
-                if media_id not in s['photo_ids'] and len(s['photo_ids']) < 5:
-                    s['photo_ids'].append(media_id)
-                    upload_photo_async(media_id, SELLER_TOKEN, s)
-                if media_group_id:
-                    s['last_media_group'] = media_group_id
-                    if s.get('album_timer'):
-                        s['album_timer'].cancel()
-                    def send_album_count(cid=cid, s=s):
-                        count = len(s.get('photo_ids', []))
-                        send_seller(cid,
-                            f"✅ {count}/5 media qabul qilindi. Yana yuboring yoki davom eting:",
-                            {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
-                        )
-                    import threading as _t
-                    timer = _t.Timer(0.8, send_album_count)
-                    s['album_timer'] = timer
-                    timer.start()
-                else:
-                    count = len(s['photo_ids'])
-                    send_seller(cid,
-                        f"✅ {count}/5 media. Yana yuboring yoki davom eting:",
-                        {'inline_keyboard': [[{'text': f"➡️ Davom etish ({count} ta)", 'callback_data': 'prod_photo_done'}]]}
-                    )
-            else:
-                send_seller(cid, "❌ Rasm yoki video yuboring!")
+            return step_prod_photo(cid, uid, text, msg, s)
 
         elif step == 'prod_price':
-            sale_type = s.get('sale_type', 'both')
-            parts = [p.strip() for p in text.replace(' ','').replace(',','').split('/')]
-            orig = parse_price(parts[0]) if parts else None
-            if orig is None:
-                send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
-            if sale_type == 'solo':
-                ok, err = validate_prices(orig, 0, orig, sale_type='solo')
-                if not ok:
-                    send_seller(cid, err); return
-                s['original_price'] = orig
-                s['solo_price']     = orig
-                s['group_price']    = orig
-                s['min_group']      = 1
-                s['step'] = 'prod_desc'; s['description'] = ''; s['variants'] = []
-                send_seller(cid,
-                    f"✅ Narx: {orig:,} so'm\n\n"
-                    "<b>5/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
-                    "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
-                    {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
-                )
-            else:
-                grp = parse_price(parts[1]) if len(parts) > 1 else None
-                if grp is None:
-                    send_seller(cid, "❌ Format: <code>850000 / 550000</code>"); return
-                ok, err = validate_prices(orig, grp, grp if sale_type == 'both' else 0, sale_type=sale_type)
-                if not ok:
-                    send_seller(cid, err); return
-                disc = round((orig-grp)/orig*100)
-                s['original_price'] = orig
-                s['group_price']    = grp
-                s['solo_price']     = grp if sale_type == 'both' else 0
-                s['step'] = 'prod_min_group'
-                send_seller(cid, f"✅ {orig:,} → {grp:,} so'm (-{disc}%)\n\n<b>5/5</b> Minimal guruh soni (2-100):")
+            return step_prod_price(cid, uid, text, msg, s)
 
         elif step == 'prod_min_group':
-            ok, mg, err = validate_min_group_text(text)
-            if not ok:
-                send_seller(cid, err); return
-            s['min_group'] = mg
-            s['step'] = 'prod_desc'
-            s['description'] = ''
-            s['variants'] = []
-            send_seller(cid,
-                f"✅ Minimal guruh: {mg} kishi\n\n"
-                "<b>6/6</b> Mahsulot tavsifi (ixtiyoriy):\n"
-                "<i>Mahsulot haqida qo'shimcha ma'lumot...</i>",
-                {'inline_keyboard': [[{'text': "⏭ O'tkazib yuborish", 'callback_data': 'prod_skip_desc'}]]}
-            )
+            return step_prod_min_group(cid, uid, text, msg, s)
 
         elif step == 'prod_desc':
-            s['description'] = text[:300]
-            s['step'] = 'prod_mxik_search'
-            send_seller(cid,
-                "✅ Tavsif saqlandi.\n\n"
-                "🔍 <b>MXIK kodi (ixtiyoriy)</b>\n\n"
-                "Mahsulot nomini yoki kalit so'z kiriting yoki o'tkazib yuboring:\n"
-                "<i>Masalan: krem, ko'ylak paxta, telefon</i>\n\n"
-                "Bekor qilish: /cancel",
-                {'inline_keyboard': [
-                    [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                    [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-                ]})
+            return step_prod_desc(cid, uid, text, msg, s)
 
         elif step == 'prod_mxik_search':
-            keyword = text.strip()
-            if len(keyword) < 2:
-                send_seller(cid, "❌ Kamida 2 ta belgi kiriting"); return
-            results, err = mxik_search(keyword)
-            if err:
-                send_seller(cid,
-                    f"⚠️ {err}\n\n"
-                    f"Qaytadan urining, kodni qo'lda kiriting yoki o'tkazib yuboring:",
-                    {'inline_keyboard': [
-                        [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                        [{'text': "🔄 Qayta qidirish",        'callback_data': 'prod_mxik_again'}],
-                        [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-                    ]})
-                return
-            if not results:
-                send_seller(cid,
-                    f"🔍 \"{keyword}\" — natija yo'q.\n\nBoshqa kalit so'z bilan urinib ko'ring yoki o'tkazib yuboring.",
-                    {'inline_keyboard': [
-                        [{'text': "🔢 Kodni qo'lda kiritish", 'callback_data': 'prod_mxik_manual_btn'}],
-                        [{'text': "🔄 Boshqa so'z",          'callback_data': 'prod_mxik_again'}],
-                        [{'text': "⏭ O'tkazib yuborish",     'callback_data': 'prod_mxik_skip'}],
-                    ]})
-                return
-            s['mxik_results'] = results
-            s['mxik_keyword'] = keyword
-            render_mxik_results(uid, cid, keyword, results, page=0)
+            return step_prod_mxik_search(cid, uid, text, msg, s)
 
         elif step == 'prod_mxik_manual':
-            ok, code, err = mxik_validate_code(text)
-            if not ok:
-                send_seller(cid, err); return
-            # Qo'lda kiritilgan kodni saqlaymiz, "manual" deb belgi
-            s['mxik_code'] = code
-            s['mxik_name'] = "(qo'lda kiritilgan)"
-            s['step'] = 'prod_mxik_confirm_state'
-            render_mxik_confirm(uid, cid, code, s['mxik_name'])
+            return step_prod_mxik_manual(cid, uid, text, msg, s)
 
         elif step == 'prod_edit_desc':
-            s['description'] = text[:300]; s['step'] = 'prod_confirm'
-            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            show_prod_confirm(cid, s, shop)
+            return step_prod_edit_desc(cid, uid, text, msg, s)
 
         elif step == 'prod_edit_solo':
-            solo = parse_price(text)
-            if solo is None or solo <= 0:
-                send_seller(cid, "❌ To'g'ri raqam kiriting (masalan: 850000)"); return
-            orig = s.get('original_price', 0)
-            grp  = s.get('group_price', 0)
-            sale_type = s.get('sale_type', 'both')
-            ok, err = validate_prices(orig, grp, solo, sale_type=sale_type)
-            if not ok:
-                send_seller(cid, err); return
-            s['solo_price'] = solo; s['step'] = 'prod_confirm'
-            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            show_prod_confirm(cid, s, shop)
+            return step_prod_edit_solo(cid, uid, text, msg, s)
 
         elif step == 'prod_edit_variants':
-            raw = [v.strip() for v in text.replace('،',',').split(',') if v.strip()]
-            if not raw: send_seller(cid, "❌ Kamida 1 ta variant!"); return
-            s['variants'] = raw; s['step'] = 'prod_confirm'
-            shop = seller_shops.get(uid,[{}])[s.get('shop_idx',0)]
-            show_prod_confirm(cid, s, shop)
+            return step_prod_edit_variants(cid, uid, text, msg, s)
 
         elif step in ('leg_stir', 'leg_account', 'leg_bank_name', 'leg_mfo', 'leg_director'):
             return step_leg(cid, uid, text, msg, s)
